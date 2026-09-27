@@ -1,0 +1,29 @@
+{
+  "name": "sms-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bilingual School Management System for Nepal",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev --workspaces --parallel",
+    "dev:api": "npm run dev --workspace=@sms/api",
+    "dev:web": "npm run dev --workspace=@sms/web",
+    "db:seed": "npm run db:seed --workspace=@sms/api",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "keywords": [
+    "school-management-system",
+    "nepal",
+    "bilingual",
+    "pwa"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}
