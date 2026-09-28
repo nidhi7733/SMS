@@ -467,7 +467,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xs border border-slate-200 dark:border-slate-800 transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-2xs border border-slate-200 dark:border-slate-800 transition-colors">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800 mb-2.5">
@@ -501,7 +501,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* 1. Class Teacher Assigned Class Attendance Card (Visible if user is assigned as Class Teacher) */}
       {myAssignment && myAssignment.isClassTeacher && (
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-indigo-700/60 transition transform">
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 sm:p-6 shadow-md border border-indigo-700/60 transition transform">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-bold border border-blue-400/30">
@@ -678,7 +678,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       )}
 
       {/* 2. Today's Attendance Overview for Principal / Admin / All Staff */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xs border border-slate-200 dark:border-slate-800 space-y-6 transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 shadow-2xs border border-slate-200 dark:border-slate-800 space-y-6 transition-colors">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
           <div className="flex items-center space-x-3.5">
@@ -1665,7 +1665,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
       {/* Principal Administrative Action: Staff Monthly Attendance View & Print */}
       {isPrincipalOrAdmin && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-indigo-800/50">
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 sm:p-6 shadow-md border border-indigo-800/50">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-900/90 text-indigo-200 text-xs font-bold border border-indigo-700/80">

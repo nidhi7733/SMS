@@ -22,6 +22,7 @@ import { SubstituteManagement } from './pages/SubstituteManagement';
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [attendanceSubTab, setAttendanceSubTab] = useState<
     'DAILY' | 'MONTHLY_REGISTER' | 'STAFF_ATTENDANCE' | 'STAFF_MONTHLY_REGISTER'
   >('DAILY');
@@ -54,10 +55,18 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors">
-      <Navbar />
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar currentTab={currentTab} setCurrentTab={setCurrentTab} />
-        <main className="flex-1 p-4 lg:p-6 max-w-7xl mx-auto w-full overflow-y-auto">
+      <Navbar
+        onToggleMenu={() => setIsMobileMenuOpen((prev) => !prev)}
+        isMenuOpen={isMobileMenuOpen}
+      />
+      <div className="flex-1 flex overflow-hidden relative">
+        <Sidebar
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
+        <main className="flex-1 p-2 sm:p-4 lg:p-6 max-w-7xl mx-auto w-full overflow-y-auto overflow-x-hidden">
           {currentTab === 'dashboard' && <Dashboard onNavigate={handleNavigate} />}
           {currentTab === 'academic' && <AcademicStructure />}
           {currentTab === 'students' && <StudentsManagement />}
