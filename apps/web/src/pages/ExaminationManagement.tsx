@@ -21,6 +21,12 @@ import {
   X,
   School,
   FileText,
+  Check,
+  CheckSquare,
+  Square,
+  Hash,
+  UserCheck,
+  RefreshCw,
 } from 'lucide-react';
 
 interface ExamItem {
@@ -72,11 +78,19 @@ interface StudentCasRatingRow {
   themeName?: string;
 }
 
+interface TeacherAllotmentResponse {
+  isAdmin: boolean;
+  isAllAllowed: boolean;
+  staffId: string | null;
+  teacherName: string;
+  allotments: Array<{ classId: string; sectionId: string | null; subjectId: string }>;
+}
+
 export const ExaminationManagement: React.FC = () => {
   const { t, formatNumber, language } = useLanguage();
   const { school } = useSchool();
 
-  const [activeTab, setActiveTab] = useState<'EXAMS' | 'ENTRY' | 'LEDGER' | 'REPORT'>('EXAMS');
+  const [activeTab, setActiveTab] = useState<'EXAMS' | 'ENTRY' | 'LEDGER' | 'REPORT' | 'ADMIT_CARD'>('EXAMS');
 
   // Metadata
   const [exams, setExams] = useState<ExamItem[]>([]);
@@ -109,6 +123,43 @@ export const ExaminationManagement: React.FC = () => {
 
   const [isExamLocked, setIsExamLocked] = useState(false);
   const [activeSubjectMeta, setActiveSubjectMeta] = useState<any>(null);
+
+  // Teacher Subject Allotment & Single Submission Lock States
+  const [myAllotments, setMyAllotments] = useState<TeacherAllotmentResponse>({
+    isAdmin: true,
+    isAllAllowed: true,
+    staffId: null,
+    teacherName: '',
+    allotments: [],
+  });
+  const [entryStatus, setEntryStatus] = useState<'DRAFT' | 'SUBMITTED' | 'NOT_ENTERED'>('NOT_ENTERED');
+  const [isLockedForUser, setIsLockedForUser] = useState(false);
+  const [canUnlock, setCanUnlock] = useState(false);
+  const [isAllotted, setIsAllotted] = useState(true);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  // Tab 5: Applications & Admit Cards states
+  const [applications, setApplications] = useState<any[]>([]);
+  const [appSummary, setAppSummary] = useState({
+    totalCount: 0,
+    approvedCount: 0,
+    pendingCount: 0,
+    rejectedCount: 0,
+    printedCount: 0,
+  });
+  const [appClassId, setAppClassId] = useState<string>('ALL');
+  const [appSectionId, setAppSectionId] = useState<string>('ALL');
+  const [appStatusFilter, setAppStatusFilter] = useState<string>('ALL');
+  const [appSearch, setAppSearch] = useState<string>('');
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [isAppLoading, setIsAppLoading] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isGeneratingSymbols, setIsGeneratingSymbols] = useState(false);
+  const [isSymbolModalOpen, setIsSymbolModalOpen] = useState(false);
+  const [symbolPrefix, setSymbolPrefix] = useState('2083-10-');
+  const [symbolStart, setSymbolStart] = useState(1);
+  const [symbolPad, setSymbolPad] = useState(3);
+  const [isPrintingAdmitCard, setIsPrintingAdmitCard] = useState(false);
 
   // Ledger State
   const [ledgerData, setLedgerData] = useState<any>(null);
@@ -145,12 +196,13 @@ export const ExaminationManagement: React.FC = () => {
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const [resExams, resClasses, resSections, resSubjects, resYears] = await Promise.all([
+      const [resExams, resClasses, resSections, resSubjects, resYears, resAllotments] = await Promise.all([
         fetch('/api/exams', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/academic/classes', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/academic/sections', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/academic/subjects', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/academic/years', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/exams/my-allotments', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
       const examsData = await resExams.json();
@@ -158,6 +210,18 @@ export const ExaminationManagement: React.FC = () => {
       const sectionsData = await resSections.json();
       const subjectsData = await resSubjects.json();
       const yearsData = await resYears.json();
+
+      let allotData: TeacherAllotmentResponse = {
+        isAllAllowed: true,
+        allotments: [],
+        isAdmin: true,
+        staffId: null,
+        teacherName: '',
+      };
+      if (resAllotments.ok) {
+        allotData = await resAllotments.json();
+        setMyAllotments(allotData);
+      }
 
       const examList = examsData.exams || [];
       setExams(examList);
@@ -167,10 +231,16 @@ export const ExaminationManagement: React.FC = () => {
 
       const classList = classesData.classes || [];
       setClasses(classList);
-      // Default to Class 10 if present
-      const c10 = classList.find((c: any) => c.code === '10') || classList[0];
-      if (c10) {
-        setSelectedClassId(c10.id);
+
+      // Determine initial class based on role/allotments
+      if (!allotData.isAllAllowed && allotData.allotments.length > 0) {
+        const firstAllot = allotData.allotments[0];
+        setSelectedClassId(firstAllot.classId);
+        setSelectedSubjectId(firstAllot.subjectId);
+        if (firstAllot.sectionId) setSelectedSectionId(firstAllot.sectionId);
+      } else {
+        const c10 = classList.find((c: any) => c.code === '10') || classList[0];
+        if (c10) setSelectedClassId(c10.id);
       }
 
       setSections(sectionsData.sections || []);
@@ -187,6 +257,22 @@ export const ExaminationManagement: React.FC = () => {
     }
   };
 
+  // Filter classes for Marks Entry based on Teacher Allotments
+  const entryClasses = useMemo(() => {
+    if (myAllotments.isAllAllowed) return classes;
+    const allowedClassIds = new Set(myAllotments.allotments.map((a) => a.classId));
+    return classes.filter((c) => allowedClassIds.has(c.id));
+  }, [classes, myAllotments]);
+
+  // Ensure selectedClassId is valid for teacher when in ENTRY tab
+  useEffect(() => {
+    if (activeTab === 'ENTRY' && !myAllotments.isAllAllowed && entryClasses.length > 0) {
+      if (!entryClasses.some((c) => c.id === selectedClassId)) {
+        setSelectedClassId(entryClasses[0].id);
+      }
+    }
+  }, [activeTab, myAllotments, entryClasses, selectedClassId]);
+
   // Filter sections by selected class
   const filteredSections = useMemo(() => {
     if (!selectedClassId) return [];
@@ -200,18 +286,25 @@ export const ExaminationManagement: React.FC = () => {
     }
   }, [filteredSections]);
 
-  // Filter subjects by selected class
-  const filteredSubjects = useMemo(() => {
+  // Filter subjects for Marks Entry based on Teacher Allotments
+  const entrySubjects = useMemo(() => {
     if (!selectedClassId) return [];
-    return subjects.filter((sub) => sub.classId === selectedClassId);
-  }, [subjects, selectedClassId]);
+    const classSubs = subjects.filter((sub) => sub.classId === selectedClassId);
+    if (myAllotments.isAllAllowed) return classSubs;
+    const allowedSubIds = new Set(
+      myAllotments.allotments
+        .filter((a) => a.classId === selectedClassId)
+        .map((a) => a.subjectId)
+    );
+    return classSubs.filter((sub) => allowedSubIds.has(sub.id));
+  }, [subjects, selectedClassId, myAllotments]);
 
-  // Set default subject when filtered subjects change
+  // Set default subject when entry subjects change
   useEffect(() => {
-    if (filteredSubjects.length > 0 && !filteredSubjects.some((s) => s.id === selectedSubjectId)) {
-      setSelectedSubjectId(filteredSubjects[0].id);
+    if (entrySubjects.length > 0 && !entrySubjects.some((s) => s.id === selectedSubjectId)) {
+      setSelectedSubjectId(entrySubjects[0].id);
     }
-  }, [filteredSubjects]);
+  }, [entrySubjects]);
 
   // CDC Letter Grading 2078 helper for live UI calculation
   const calculateLetter = (
@@ -286,6 +379,10 @@ export const ExaminationManagement: React.FC = () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to load CAS ratings');
         setIsExamLocked(data.isLocked || false);
+        setEntryStatus(data.entryStatus || 'DRAFT');
+        setIsLockedForUser(Boolean(data.isLockedForUser));
+        setCanUnlock(Boolean(data.canUnlock));
+        setIsAllotted(data.isAllotted !== undefined ? data.isAllotted : true);
         setCas1To3Rows(data.entries || []);
       } else {
         // Fetch Class 4-12 Marks with CAS sub-components
@@ -296,6 +393,10 @@ export const ExaminationManagement: React.FC = () => {
         if (!res.ok) throw new Error(data.message || 'Failed to load marks');
 
         setIsExamLocked(data.isLocked || false);
+        setEntryStatus(data.entryStatus || 'DRAFT');
+        setIsLockedForUser(Boolean(data.isLockedForUser));
+        setCanUnlock(Boolean(data.canUnlock));
+        setIsAllotted(data.isAllotted !== undefined ? data.isAllotted : true);
 
         const thF = sub?.theoryFullMarks || 75;
         const prF = sub?.practicalFullMarks || 25;
@@ -468,7 +569,11 @@ export const ExaminationManagement: React.FC = () => {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to save CAS ratings');
-        setSuccessMessage('कक्षा १-३ को निरन्तर मूल्याङ्कन (CAS) सफलतापूर्वक सुरक्षित गरियो!');
+        setSuccessMessage('कक्षा १-३ को मूल्याङ्कन सफलतापूर्वक सुरक्षित गरी बुझाइयो (SUBMITTED)!');
+        setEntryStatus('SUBMITTED');
+        if (!myAllotments.isAllAllowed) {
+          setIsLockedForUser(true);
+        }
         setTimeout(() => setSuccessMessage(null), 3000);
       } else {
         const payload = {
@@ -497,7 +602,11 @@ export const ExaminationManagement: React.FC = () => {
 
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to save marks');
-        setSuccessMessage('अंकहरू तथा CAS उप-शीर्षकहरू सफलतापूर्वक सुरक्षित गरियो!');
+        setSuccessMessage('अंकहरू तथा CAS उप-शीर्षकहरू सफलतापूर्वक सुरक्षित गरी बुझाइयो (SUBMITTED)!');
+        setEntryStatus('SUBMITTED');
+        if (!myAllotments.isAllAllowed) {
+          setIsLockedForUser(true);
+        }
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err: any) {
@@ -505,6 +614,464 @@ export const ExaminationManagement: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Admin Unlock Marks for Teacher Editing
+  const handleUnlockMarks = async () => {
+    if (!selectedExamId || !selectedSubjectId) return;
+    setIsUnlocking(true);
+    try {
+      const res = await fetch(`/api/exams/${selectedExamId}/marks/unlock`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ subjectId: selectedSubjectId, classId: selectedClassId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to unlock marks');
+      setSuccessMessage('प्राप्ताङ्क पुनः सम्पादनका लागि शिक्षकलाई सफलतापूर्वक अनलक गरियो (Reset to DRAFT)।');
+      setEntryStatus('DRAFT');
+      setIsLockedForUser(false);
+      setCanUnlock(false);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      fetchMarksForEntry();
+    } catch (err: any) {
+      setError(err.message || 'Error unlocking marks');
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // Fetch Applications List for Tab 5
+  const fetchApplications = async () => {
+    if (!selectedExamId) return;
+    setIsAppLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (appClassId && appClassId !== 'ALL') params.append('classId', appClassId);
+      if (appSectionId && appSectionId !== 'ALL') params.append('sectionId', appSectionId);
+      if (appStatusFilter && appStatusFilter !== 'ALL') params.append('status', appStatusFilter);
+      if (appSearch) params.append('search', appSearch);
+
+      const res = await fetch(`/api/exams/${selectedExamId}/applications?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to load applications');
+      setApplications(data.applications || []);
+      if (data.summary) {
+        setAppSummary(data.summary);
+      }
+      setSelectedAppIds([]);
+    } catch (err: any) {
+      setError(err.message || 'Error loading exam applications');
+    } finally {
+      setIsAppLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'ADMIT_CARD' && selectedExamId) {
+      fetchApplications();
+    }
+  }, [activeTab, selectedExamId, appClassId, appSectionId, appStatusFilter]);
+
+  // Bulk / Single Application Status Change
+  const handleUpdateAppStatus = async (appIds: string[], status: 'APPROVED' | 'PENDING' | 'REJECTED') => {
+    if (!selectedExamId || appIds.length === 0) return;
+    setIsUpdatingStatus(true);
+    try {
+      const res = await fetch(`/api/exams/${selectedExamId}/applications/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ applicationIds: appIds, status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update application status');
+      setSuccessMessage(data.message || `आवेदन स्थिति ${status} मा परिवर्तन गरियो।`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+      fetchApplications();
+    } catch (err: any) {
+      setError(err.message || 'Error updating application status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Generate Sequential Symbol Numbers
+  const handleGenerateSymbols = async () => {
+    if (!selectedExamId) return;
+    setIsGeneratingSymbols(true);
+    try {
+      const res = await fetch(`/api/exams/${selectedExamId}/applications/generate-symbols`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          classId: appClassId !== 'ALL' ? appClassId : undefined,
+          prefix: symbolPrefix,
+          startFrom: Number(symbolStart) || 1,
+          padLength: Number(symbolPad) || 3,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to generate symbol numbers');
+      setSuccessMessage(data.message || 'सिम्बोल नम्बरहरू सफलतापूर्वक जारी गरियो।');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setIsSymbolModalOpen(false);
+      fetchApplications();
+    } catch (err: any) {
+      setError(err.message || 'Error generating symbols');
+    } finally {
+      setIsGeneratingSymbols(false);
+    }
+  };
+
+  // Print Admit Cards (Single or Batch)
+  const handlePrintAdmitCards = async (filter?: { studentId?: string; classId?: string; sectionId?: string }) => {
+    if (!selectedExamId) return;
+    setIsPrintingAdmitCard(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter?.studentId) {
+        params.append('studentId', filter.studentId);
+      } else {
+        if (appClassId && appClassId !== 'ALL') params.append('classId', appClassId);
+        if (appSectionId && appSectionId !== 'ALL') params.append('sectionId', appSectionId);
+      }
+
+      const res = await fetch(`/api/exams/${selectedExamId}/admit-cards?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to fetch admit cards');
+
+      const examinees = data.examinees || [];
+      if (examinees.length === 0) {
+        setError('प्रवेशपत्र छाप्न कुनै स्वीकृत (Approved) परीक्षार्थी भेटिएन।');
+        return;
+      }
+
+      // Record print count in background
+      fetch(`/api/exams/${selectedExamId}/admit-cards/record-print`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ studentIds: examinees.map((e: any) => e.studentId) }),
+      }).catch(console.error);
+
+      // Render print window (2 cards per A4 page)
+      renderAdmitCardsPrintWindow(data.school, data.exam, examinees);
+
+      // Refresh applications after printing to update counters
+      setTimeout(() => fetchApplications(), 1500);
+    } catch (err: any) {
+      setError(err.message || 'Error printing admit cards');
+    } finally {
+      setIsPrintingAdmitCard(false);
+    }
+  };
+
+  // Dedicated 2-Cards per A4 Page Admit Card Print Engine
+  const renderAdmitCardsPrintWindow = (schoolData: any, examData: any, examineesList: any[]) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('कृपया पप-अप (Pop-up) अनुमति दिनुहोस् प्रवेशपत्र मुद्रण गर्नका लागि।');
+      return;
+    }
+
+    const schoolNameNp = schoolData?.nameNp || school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय';
+    const schoolNameEn = schoolData?.nameEn || school?.nameEn || 'Shree Shanti Secondary School';
+    const addressNp = schoolData?.addressNp || school?.addressNp || 'काठमाडौं, बागमती प्रदेश, नेपाल';
+    const phone = schoolData?.phone || school?.phone || '';
+    const iemisCode = schoolData?.iemisCode || school?.iemisCode || '270010001';
+    const logoUrl = schoolData?.logoUrl || school?.logoUrl;
+    const examTitle = examData?.nameNp || examData?.nameEn || 'परीक्षा २०८३';
+
+    // Pair examinees into groups of 2 for each A4 sheet
+    const pages: any[][] = [];
+    for (let i = 0; i < examineesList.length; i += 2) {
+      pages.push(examineesList.slice(i, i + 2));
+    }
+
+    let pagesHtml = '';
+
+    pages.forEach((pair) => {
+      pagesHtml += `<div class="a4-page">`;
+
+      pair.forEach((ex, cardIdx) => {
+        const photoHtml = ex.photoUrl
+          ? `<img src="${ex.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" alt="Student" />`
+          : `<div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; color: #94a3b8; font-size: 10px; font-weight: bold; text-align: center; line-height: 1.2;">
+              तस्बिर<br/><span style="font-size: 8.5px; font-family: monospace;">(PP Photo)</span>
+             </div>`;
+
+        const subjectsRows = (ex.subjects || []).map((sub: any, sIdx: number) => `
+          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;">
+            <td style="padding: 2.5px 4px; text-align: center; font-family: monospace;">${sIdx + 1}</td>
+            <td style="padding: 2.5px 4px; font-family: monospace; font-weight: bold; color: #1e3a8a;">${sub.code}</td>
+            <td style="padding: 2.5px 4px; font-weight: 600;">${sub.nameNp || sub.nameEn}</td>
+            <td style="padding: 2.5px 4px; text-align: center;">${sub.creditHours || 4}</td>
+            <td style="padding: 2.5px 4px; text-align: center; font-family: monospace;">${sub.examDateBs || examData.startDateBs || '—'}</td>
+            <td style="padding: 2.5px 4px; text-align: center; font-size: 9px;">${sub.examTime || '10:00 - 1:00'}</td>
+            <td style="padding: 2.5px 4px; text-align: center; color: #cbd5e1;">..................</td>
+          </tr>
+        `).join('');
+
+        const instructionsHtml = (ex.instructionsNp || [
+          '१. प्रवेशपत्र बिना परीक्षा हलमा प्रवेश गर्न पाइने छैन।',
+          '२. परीक्षा सुरु हुनुभन्दा १५ मिनेट अगावै परीक्षा हलमा प्रवेश गरिसक्नुपर्नेछ।',
+          '३. मोबाइल फोन तथा अनाधिकृत इलेक्ट्रोनिक सामग्री निषेध गरिएको छ।',
+          '४. उत्तरपुस्तिकामा आफ्नो नाम, सिम्बोल नं र कक्षा प्रष्ट लेख्नुपर्दछ।'
+        ]).map((ins: string) => `<li style="margin-bottom: 1.5px;">${ins}</li>`).join('');
+
+        pagesHtml += `
+          <div class="admit-card">
+            <!-- Header -->
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #1e3a8a; padding-bottom: 4px;">
+              <!-- School Logo -->
+              <div style="width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                ${logoUrl ? `<img src="${logoUrl}" style="max-width: 60px; max-height: 60px; object-fit: contain;" />` : `
+                  <div style="width: 52px; height: 52px; border: 2px solid #1e3a8a; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; color: #1e3a8a; text-align: center;">
+                    विद्यालय<br/>छाप
+                  </div>
+                `}
+              </div>
+
+              <!-- School Info -->
+              <div style="flex: 1; text-align: center; padding: 0 8px;">
+                <div style="font-size: 8.5px; font-weight: bold; color: #475569; letter-spacing: 0.5px; text-transform: uppercase;">
+                  नेपाल सरकार • शिक्षा, विज्ञान तथा प्रविधि मन्त्रालय • पाठ्यक्रम विकास केन्द्र (CDC)
+                </div>
+                <h2 style="margin: 1px 0; font-size: 17px; font-weight: 900; color: #0f172a; font-family: 'Times New Roman', serif; line-height: 1.1;">
+                  ${schoolNameNp}
+                </h2>
+                <h3 style="margin: 0; font-size: 11.5px; font-weight: bold; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px;">
+                  ${schoolNameEn}
+                </h3>
+                <div style="font-size: 9.5px; color: #475569; margin-top: 1px;">
+                  ${addressNp} ${phone ? `| फोन: ${phone}` : ''} | IEMIS: <b>${iemisCode}</b>
+                </div>
+              </div>
+
+              <!-- Student Photo Box -->
+              <div style="width: 65px; height: 75px; border: 1.5px solid #0f172a; border-radius: 4px; overflow: hidden; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                ${photoHtml}
+              </div>
+            </div>
+
+            <!-- Admit Card Title Bar -->
+            <div style="background: #0f172a; color: #ffffff; text-align: center; padding: 2.5px 6px; margin: 3px 0 5px 0; border-radius: 3px; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: 8.5px; font-weight: bold; letter-spacing: 1px;">EXAMINATION ADMIT CARD</span>
+              <span style="font-size: 11.5px; font-weight: 900; letter-spacing: 0.5px;">
+                प्रवेश-पत्र : ${examTitle}
+              </span>
+              <span style="font-size: 8.5px; font-family: monospace;">शैक्षिक सत्र: <b>${examData.startDateBs ? examData.startDateBs.slice(0, 4) : '२०८३'}</b></span>
+            </div>
+
+            <!-- Student Bio Details Grid -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 4px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px;">
+              <tr>
+                <td style="padding: 2.5px 6px; width: 14%; color: #475569;">सिम्बोल नं:</td>
+                <td style="padding: 2.5px 6px; width: 36%;">
+                  <span style="font-family: monospace; font-size: 13px; font-weight: 900; color: #1e3a8a; background: #e0f2fe; padding: 1px 5px; border-radius: 3px; border: 1px solid #7dd3fc;">
+                    ${ex.symbolNumber}
+                  </span>
+                </td>
+                <td style="padding: 2.5px 6px; width: 14%; color: #475569;">रोल नं:</td>
+                <td style="padding: 2.5px 6px; width: 36%; font-weight: bold; font-family: monospace; font-size: 12px;">
+                  ${ex.rollNumber}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 2.5px 6px; color: #475569;">विद्यार्थीको नाम:</td>
+                <td style="padding: 2.5px 6px; font-weight: bold; color: #0f172a;">
+                  ${ex.fullNameNp} <span style="font-size: 9.5px; font-weight: normal; color: #475569;">(${ex.fullNameEn})</span>
+                </td>
+                <td style="padding: 2.5px 6px; color: #475569;">कक्षा / खण्ड:</td>
+                <td style="padding: 2.5px 6px; font-weight: bold; color: #0f172a;">
+                  ${ex.classNameNp} (${ex.sectionNameNp || ex.sectionCode})
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 2.5px 6px; color: #475569;">जन्म मिति (DOB):</td>
+                <td style="padding: 2.5px 6px; font-family: monospace;">
+                  ${ex.dobBs || '—'} BS
+                </td>
+                <td style="padding: 2.5px 6px; color: #475569;">अभिभावक:</td>
+                <td style="padding: 2.5px 6px; font-weight: 500;">
+                  ${ex.guardianName || '—'} ${ex.phone ? `(${ex.phone})` : ''}
+                </td>
+              </tr>
+            </table>
+
+            <!-- Subjects Examination Schedule Table -->
+            <div style="flex: 1; overflow: hidden; margin-bottom: 4px;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; border: 1px solid #cbd5e1;">
+                <thead>
+                  <tr style="background: #f1f5f9; border-bottom: 1.5px solid #cbd5e1; font-size: 9px; color: #334155; font-weight: bold;">
+                    <th style="padding: 2px 4px; width: 22px; text-align: center;">क्र.सं.</th>
+                    <th style="padding: 2px 4px; width: 62px;">कोड</th>
+                    <th style="padding: 2px 4px;">परीक्षाका विषयहरू (CDC Subjects)</th>
+                    <th style="padding: 2px 4px; width: 35px; text-align: center;">क्रेडिट</th>
+                    <th style="padding: 2px 4px; width: 70px; text-align: center;">मिति</th>
+                    <th style="padding: 2px 4px; width: 65px; text-align: center;">समय</th>
+                    <th style="padding: 2px 4px; width: 70px; text-align: center;">निरीक्षक दस्तखत</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${subjectsRows}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Instructions & Rules -->
+            <div style="border: 1px dashed #94a3b8; background: #fffbeb; border-radius: 4px; padding: 2.5px 6px; font-size: 8px; color: #78350f; line-height: 1.25; margin-bottom: 5px;">
+              <div style="font-weight: bold; text-decoration: underline; margin-bottom: 1px;">परीक्षार्थीका लागि अनिवार्य निर्देशनहरू:</div>
+              <ul style="margin: 0; padding-left: 14px;">
+                ${instructionsHtml}
+              </ul>
+            </div>
+
+            <!-- Signatures Footer -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; padding: 2px 10px 0px 10px; font-size: 9.5px; color: #1e293b;">
+              <div style="text-align: center;">
+                <div style="border-top: 1px solid #475569; width: 95px; padding-top: 2px; font-weight: bold;">कक्षा शिक्षक</div>
+                <div style="font-size: 8px; color: #64748b;">Class Teacher</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="width: 65px; height: 32px; border: 1px dashed #94a3b8; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 7.5px; color: #94a3b8; margin: 0 auto 2px auto;">
+                  विद्यालय छाप
+                </div>
+                <div style="font-size: 8px; color: #64748b;">School Seal</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="border-top: 1px solid #475569; width: 125px; padding-top: 2px; font-weight: bold;">परीक्षा नियन्त्रक / प्र.अ.</div>
+                <div style="font-size: 8px; color: #64748b;">Controller / Principal</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        if (cardIdx === 0 && pair.length > 1) {
+          pagesHtml += `
+            <div class="cut-line">
+              <span>✂ - - - - - - - - यहाँबाट काट्नुहोस् (Cut Along Dashed Line) - - - - - - - - ✂</span>
+            </div>
+          `;
+        }
+      });
+
+      pagesHtml += `</div>`;
+    });
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html lang="ne">
+      <head>
+        <meta charset="UTF-8" />
+        <title>प्रवेशपत्र मुद्रण - ${examTitle}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            padding: 0;
+            background: #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 4mm 6mm;
+          }
+          .a4-page {
+            width: 210mm;
+            min-height: 287mm;
+            margin: 10px auto;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 4mm 5mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            page-break-after: always;
+            box-sizing: border-box;
+          }
+          .admit-card {
+            border: 2px solid #1e3a8a;
+            border-radius: 6px;
+            padding: 5px 8px;
+            height: 135mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #ffffff;
+            position: relative;
+          }
+          .cut-line {
+            text-align: center;
+            font-size: 9px;
+            color: #64748b;
+            margin: 1.5mm 0;
+            border-top: 1.5px dashed #94a3b8;
+            position: relative;
+          }
+          .cut-line span {
+            background: #ffffff;
+            padding: 0 10px;
+            position: relative;
+            top: -6px;
+          }
+          @media print {
+            body {
+              background: none;
+              padding: 0;
+            }
+            .a4-page {
+              margin: 0 !important;
+              padding: 4mm 5mm !important;
+              box-shadow: none !important;
+              width: 100% !important;
+              height: 100% !important;
+              page-break-after: always !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="position: sticky; top: 0; z-index: 100; background: #0f172a; color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+          <div style="font-weight: bold; font-size: 14px;">
+            📄 प्रवेशपत्र पूर्वावलोकन (Admit Cards Preview) • कुल ${examineesList.length} परीक्षार्थी (${pages.length} पाना A4)
+          </div>
+          <button onclick="window.print()" style="padding: 8px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer;">
+            🖨️ अहिले छाप्नुहोस् (Print Now)
+          </button>
+        </div>
+        ${pagesHtml}
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(fullHtml);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   // 3. Fetch Tabulation Ledger
@@ -733,6 +1300,18 @@ export const ExaminationManagement: React.FC = () => {
             <Award className="w-4 h-4" />
             <span>ग्रेडसिट / रिपोर्ट कार्ड (Grade Sheet)</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('ADMIT_CARD')}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition flex items-center space-x-2 ${
+              activeTab === 'ADMIT_CARD'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white/10 hover:bg-white/20 text-indigo-100'
+            }`}
+          >
+            <Printer className="w-4 h-4" />
+            <span>प्रवेशपत्र तथा आवेदन (Admit Cards & Applications)</span>
+          </button>
         </div>
       </div>
 
@@ -857,7 +1436,7 @@ export const ExaminationManagement: React.FC = () => {
                 onChange={(e) => setSelectedClassId(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
               >
-                {classes.map((c) => (
+                {entryClasses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nameNp || c.nameEn} ({c.code})
                   </option>
@@ -889,7 +1468,7 @@ export const ExaminationManagement: React.FC = () => {
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
                 className="px-3 py-1.5 rounded-lg border border-blue-300 dark:border-blue-700 bg-blue-50/30 dark:bg-slate-800 text-sm font-bold text-slate-900 dark:text-slate-100"
               >
-                {filteredSubjects.map((sub) => (
+                {entrySubjects.map((sub) => (
                   <option key={sub.id} value={sub.id}>
                     {sub.nameNp || sub.nameEn} ({sub.code})
                   </option>
@@ -897,18 +1476,103 @@ export const ExaminationManagement: React.FC = () => {
               </select>
             </div>
 
-            {/* Save Button */}
-            <div className="ml-auto pt-4 md:pt-0">
+            {/* Actions: Save Button & Admin Unlock */}
+            <div className="ml-auto pt-4 md:pt-0 flex items-center space-x-2">
+              {canUnlock && (
+                <button
+                  onClick={handleUnlockMarks}
+                  disabled={isUnlocking}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50 flex items-center space-x-1.5"
+                  title="शिक्षकलाई पुनः सम्पादन गर्न अनुमति दिनुहोस्"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>{isUnlocking ? 'अनलक गरिँदैछ...' : 'पुनः सम्पादन खुला गर्नुहोस् (Unlock)'}</span>
+                </button>
+              )}
+
               <button
                 onClick={handleSaveMarks}
-                disabled={isSaving || isExamLocked}
+                disabled={isSaving || isExamLocked || isLockedForUser}
                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50 flex items-center space-x-2"
               >
                 <Save className="w-4 h-4" />
-                <span>{isSaving ? 'सुरक्षित हुँदैछ...' : 'प्राप्तांक सुरक्षित गर्नुहोस्'}</span>
+                <span>
+                  {isSaving
+                    ? 'सुरक्षित हुँदैछ...'
+                    : isLockedForUser
+                    ? 'अंक बुझाइसकिएको छ (Locked)'
+                    : 'प्राप्तांक सुरक्षित गर्नुहोस्'}
+                </span>
               </button>
             </div>
           </div>
+
+          {/* Teacher Subject Allotment Notice (if no subjects allotted to teacher) */}
+          {!myAllotments.isAllAllowed && entryClasses.length === 0 && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <span className="font-bold text-sm">कुनै विषय बाँडफाँड (Subject Allotment) गरिएको छैन।</span>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                  तपाईंलाई समयतालिका (Routine) वा विषय व्यवस्थापनमा कुनै कक्षा/विषय तोकिएको छैन। कृपया विद्यालय प्रशासन वा प्रधानाध्यापकसँग सम्पर्क गर्नुहोस्।
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!isAllotted && (
+            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 flex items-center space-x-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <div>
+                <span className="font-bold text-sm">यो विषय तपाईंलाई बाँडफाँड गरिएको छैन।</span>
+                <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
+                  शिक्षकले केवल आफूलाई तोकिएको कक्षा र विषयको मात्र प्राप्ताङ्क प्रविष्टि गर्न पाउनुहुनेछ।
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Submission Lock Banner */}
+          {entryStatus === 'SUBMITTED' && (
+            <div
+              className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                isLockedForUser
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200'
+                  : 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                {isLockedForUser ? (
+                  <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                ) : (
+                  <CheckCircle className="w-5 h-5 text-blue-600 shrink-0" />
+                )}
+                <div>
+                  <span className="font-bold text-sm">
+                    {isLockedForUser
+                      ? 'प्राप्ताङ्क प्रविष्टि भई बुझाइसकिएको छ (SUBMITTED & LOCKED)।'
+                      : 'यो विषयको प्राप्ताङ्क शिक्षकद्वारा बुझाइसकिएको छ (SUBMITTED)।'}
+                  </span>
+                  <p className="text-xs mt-0.5 opacity-90">
+                    {isLockedForUser
+                      ? 'शिक्षकले एकपटक बुझाएपछि फेरि सम्पादन गर्न मिल्दैन। कुनै प्राप्ताङ्क सच्याउनु परेमा विद्यालय प्रशासन वा प्रधानाध्यापकसँग सम्पर्क गरी अनलक गराउनुहोस्।'
+                      : 'व्यवस्थापक अधिकार (Admin Mode) अनुसार तपाईं सिधै सम्पादन गर्न सक्नुहुन्छ वा शिक्षकलाई सम्पादन दिन अनलक गर्न सक्नुहुन्छ।'}
+                  </p>
+                </div>
+              </div>
+
+              {canUnlock && (
+                <button
+                  onClick={handleUnlockMarks}
+                  disabled={isUnlocking}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow transition flex items-center space-x-1.5 shrink-0 self-start sm:self-center"
+                >
+                  <Unlock className="w-3.5 h-3.5" />
+                  <span>{isUnlocking ? 'अनलक गरिँदैछ...' : 'शिक्षकका लागि अनलक गर्नुहोस्'}</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Subject Weightage Banner (Adaptive) */}
           {isClass1To3 ? (
@@ -930,8 +1594,8 @@ export const ExaminationManagement: React.FC = () => {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleSetAllLevel3}
-                  disabled={isExamLocked}
-                  className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 active:scale-95 text-white font-bold rounded-lg transition border border-emerald-400/50 shadow-sm"
+                  disabled={isExamLocked || isLockedForUser}
+                  className="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-600 active:scale-95 text-white font-bold rounded-lg transition border border-emerald-400/50 shadow-sm disabled:opacity-50"
                   title="सबै विद्यार्थीलाई अपेक्षित उपलब्धि 'स्तर ३ (राम्रो)' मा सेट गर्नुहोस्"
                 >
                   ⚡ सबैलाई स्तर ३ (राम्रो) मा सेट गर्नुहोस्
@@ -1029,9 +1693,9 @@ export const ExaminationManagement: React.FC = () => {
                                 <button
                                   key={btn.level}
                                   type="button"
-                                  disabled={isExamLocked}
+                                  disabled={isExamLocked || isLockedForUser}
                                   onClick={() => handleCas1To3Change(row.studentId, 'levelRating', btn.level)}
-                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex flex-col items-center border ${
+                                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex flex-col items-center border disabled:opacity-50 ${
                                     row.levelRating === btn.level ? btn.bgActive : btn.bgIdle
                                   }`}
                                 >
@@ -1047,11 +1711,11 @@ export const ExaminationManagement: React.FC = () => {
                             <div className="space-y-1">
                               <input
                                 type="text"
-                                disabled={isExamLocked}
+                                disabled={isExamLocked || isLockedForUser}
                                 value={row.achievementRemarks || ''}
                                 onChange={(e) => handleCas1To3Change(row.studentId, 'achievementRemarks', e.target.value)}
                                 placeholder="सिकाइ उपलब्धि सम्बन्धी टिप्पणी..."
-                                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 font-medium"
+                                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100 font-medium disabled:opacity-60"
                               />
                               <div className="flex flex-wrap gap-1">
                                 {[
@@ -1062,8 +1726,9 @@ export const ExaminationManagement: React.FC = () => {
                                   <button
                                     key={phrase}
                                     type="button"
+                                    disabled={isExamLocked || isLockedForUser}
                                     onClick={() => handleCas1To3Change(row.studentId, 'achievementRemarks', phrase)}
-                                    className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition"
+                                    className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition disabled:opacity-50 disabled:pointer-events-none"
                                   >
                                     + {phrase.slice(0, 18)}...
                                   </button>
@@ -1147,11 +1812,11 @@ export const ExaminationManagement: React.FC = () => {
                               type="number"
                               min="0"
                               max={activeSubjectMeta?.theoryFullMarks || 75}
-                              disabled={row.isAbsent || isExamLocked}
+                              disabled={row.isAbsent || isExamLocked || isLockedForUser}
                               value={row.theoryMarks}
                               onChange={(e) => handleMarkChange(row.studentId, 'theoryMarks', e.target.value)}
                               placeholder="0"
-                              className={`w-16 px-2 py-1 rounded-lg border text-center font-bold text-xs transition ${
+                              className={`w-16 px-2 py-1 rounded-lg border text-center font-bold text-xs transition disabled:opacity-60 ${
                                 Number(row.theoryMarks) < (activeSubjectMeta?.theoryPassMarks || 27) && row.theoryMarks !== ''
                                   ? 'border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300'
                                   : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100'
@@ -1165,11 +1830,11 @@ export const ExaminationManagement: React.FC = () => {
                               type="number"
                               min="0"
                               max="4"
-                              disabled={row.isAbsent || isExamLocked}
+                              disabled={row.isAbsent || isExamLocked || isLockedForUser}
                               value={row.casParticipation ?? ''}
                               onChange={(e) => handleMarkChange(row.studentId, 'casParticipation', e.target.value)}
                               placeholder="0"
-                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs"
+                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs disabled:opacity-60"
                             />
                           </td>
 
@@ -1179,11 +1844,11 @@ export const ExaminationManagement: React.FC = () => {
                               type="number"
                               min="0"
                               max="16"
-                              disabled={row.isAbsent || isExamLocked}
+                              disabled={row.isAbsent || isExamLocked || isLockedForUser}
                               value={row.casProjectPractical ?? ''}
                               onChange={(e) => handleMarkChange(row.studentId, 'casProjectPractical', e.target.value)}
                               placeholder="0"
-                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs"
+                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs disabled:opacity-60"
                             />
                           </td>
 
@@ -1193,11 +1858,11 @@ export const ExaminationManagement: React.FC = () => {
                               type="number"
                               min="0"
                               max="2"
-                              disabled={row.isAbsent || isExamLocked}
+                              disabled={row.isAbsent || isExamLocked || isLockedForUser}
                               value={row.casDiscipline ?? ''}
                               onChange={(e) => handleMarkChange(row.studentId, 'casDiscipline', e.target.value)}
                               placeholder="0"
-                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs"
+                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs disabled:opacity-60"
                             />
                           </td>
 
@@ -1207,11 +1872,11 @@ export const ExaminationManagement: React.FC = () => {
                               type="number"
                               min="0"
                               max="3"
-                              disabled={row.isAbsent || isExamLocked}
+                              disabled={row.isAbsent || isExamLocked || isLockedForUser}
                               value={row.casTerminalExam ?? ''}
                               onChange={(e) => handleMarkChange(row.studentId, 'casTerminalExam', e.target.value)}
                               placeholder="0"
-                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs"
+                              className="w-14 px-1.5 py-1 rounded border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 text-center font-mono text-xs disabled:opacity-60"
                             />
                           </td>
 
@@ -1233,9 +1898,9 @@ export const ExaminationManagement: React.FC = () => {
                             <input
                               type="checkbox"
                               checked={row.isAbsent}
-                              disabled={isExamLocked}
+                              disabled={isExamLocked || isLockedForUser}
                               onChange={(e) => handleMarkChange(row.studentId, 'isAbsent', e.target.checked)}
-                              className="w-4 h-4 text-rose-600 rounded border-slate-300"
+                              className="w-4 h-4 text-rose-600 rounded border-slate-300 disabled:opacity-50"
                             />
                           </td>
 
@@ -1300,11 +1965,11 @@ export const ExaminationManagement: React.FC = () => {
                           <td className="py-2.5 px-3">
                             <input
                               type="text"
-                              disabled={isExamLocked}
+                              disabled={isExamLocked || isLockedForUser}
                               value={row.remarks || ''}
                               onChange={(e) => handleMarkChange(row.studentId, 'remarks', e.target.value)}
                               placeholder="कैफियत..."
-                              className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-xs"
+                              className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent text-xs disabled:opacity-60"
                             />
                           </td>
                         </tr>
@@ -2104,6 +2769,535 @@ export const ExaminationManagement: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ================= TAB 5: ADMIT CARD & APPLICATION MANAGEMENT ================= */}
+      {activeTab === 'ADMIT_CARD' && (
+        <div className="space-y-4">
+          {/* Top KPI Summary Metric Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center space-x-3">
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">कुल परीक्षार्थी</div>
+                <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+                  {formatNumber(appSummary.totalCount)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center space-x-3">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">स्वीकृत आवेदन</div>
+                <div className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
+                  {formatNumber(appSummary.approvedCount)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center space-x-3">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">विचाराधीन (Pending)</div>
+                <div className="text-xl font-black text-amber-700 dark:text-amber-400 mt-0.5">
+                  {formatNumber(appSummary.pendingCount)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center space-x-3">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">
+                <X className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">अस्वीकृत</div>
+                <div className="text-xl font-black text-rose-700 dark:text-rose-400 mt-0.5">
+                  {formatNumber(appSummary.rejectedCount)}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center space-x-3 col-span-2 sm:col-span-1">
+              <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
+                <Printer className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-purple-600 uppercase tracking-wider">प्रवेशपत्र मुद्रित</div>
+                <div className="text-xl font-black text-purple-700 dark:text-purple-400 mt-0.5">
+                  {formatNumber(appSummary.printedCount)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar & Action Controls */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Exam */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">परीक्षा (Exam):</label>
+                  <select
+                    value={selectedExamId}
+                    onChange={(e) => setSelectedExamId(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
+                  >
+                    {exams.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nameNp || e.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Class */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">कक्षा (Class):</label>
+                  <select
+                    value={appClassId}
+                    onChange={(e) => setAppClassId(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
+                  >
+                    <option value="ALL">-- सम्पूर्ण कक्षाहरू (All) --</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nameNp || c.nameEn} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Section */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">खण्ड (Section):</label>
+                  <select
+                    value={appSectionId}
+                    onChange={(e) => setAppSectionId(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
+                  >
+                    <option value="ALL">-- सम्पूर्ण खण्डहरू (All) --</option>
+                    {sections.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nameNp || s.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">आवेदन स्थिति (Status):</label>
+                  <select
+                    value={appStatusFilter}
+                    onChange={(e) => setAppStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
+                  >
+                    <option value="ALL">सबै स्थिति (All)</option>
+                    <option value="APPROVED">स्वीकृत मात्र (Approved)</option>
+                    <option value="PENDING">विचाराधीन मात्र (Pending)</option>
+                    <option value="REJECTED">अस्वीकृत मात्र (Rejected)</option>
+                  </select>
+                </div>
+
+                {/* Search */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">खोजी (Search):</label>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="नाम, कोड, सिम्बोल नं..."
+                      value={appSearch}
+                      onChange={(e) => setAppSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && fetchApplications()}
+                      className="pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm w-48"
+                    />
+                  </div>
+                </div>
+
+                <div className="self-end pb-0.5">
+                  <button
+                    onClick={fetchApplications}
+                    disabled={isAppLoading}
+                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
+                    title="ताजा गर्नुहोस् (Refresh)"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isAppLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setIsSymbolModalOpen(true)}
+                  className="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold rounded-xl text-xs border border-indigo-200 dark:border-indigo-800 transition flex items-center space-x-1.5 shadow-sm"
+                  title="स्वतः क्रमबद्ध सिम्बोल नम्बर उत्पादन गर्नुहोस्"
+                >
+                  <Hash className="w-4 h-4" />
+                  <span>सिम्बोल नं जारी गर्नुहोस्</span>
+                </button>
+
+                <button
+                  onClick={() => handlePrintAdmitCards()}
+                  disabled={isPrintingAdmitCard}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs transition flex items-center space-x-2 shadow-md disabled:opacity-50"
+                  title="स्वीकृत विद्यार्थीहरूको प्रवेशपत्र एकमुष्ठ छाप्नुहोस् (A4: २ प्रति प्रतिपृष्ठ)"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>
+                    {isPrintingAdmitCard ? 'प्रिन्ट तयार हुँदैछ...' : 'प्रवेशपत्र छाप्नुहोस् (A4 Print)'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bulk Actions Bar if items selected */}
+            {selectedAppIds.length > 0 && (
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-blue-50/50 dark:bg-blue-950/30 p-3 rounded-xl">
+                <div className="flex items-center space-x-2 text-xs font-bold text-blue-900 dark:text-blue-200">
+                  <CheckSquare className="w-4 h-4 text-blue-600" />
+                  <span>{formatNumber(selectedAppIds.length)} जना परीक्षार्थी छानिएका छन्:</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleUpdateAppStatus(selectedAppIds, 'APPROVED')}
+                    disabled={isUpdatingStatus}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1 shadow-sm disabled:opacity-50"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>स्वीकृत गर्नुहोस्</span>
+                  </button>
+                  <button
+                    onClick={() => handleUpdateAppStatus(selectedAppIds, 'REJECTED')}
+                    disabled={isUpdatingStatus}
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1 shadow-sm disabled:opacity-50"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>अस्वीकृत गर्नुहोस्</span>
+                  </button>
+                  <button
+                    onClick={() => handleUpdateAppStatus(selectedAppIds, 'PENDING')}
+                    disabled={isUpdatingStatus}
+                    className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-bold rounded-lg text-xs transition disabled:opacity-50"
+                  >
+                    पेन्डिङमा राख्नुहोस्
+                  </button>
+                  <button
+                    onClick={() => setSelectedAppIds([])}
+                    className="text-xs text-slate-500 hover:text-slate-700 ml-2"
+                  >
+                    रद्द गर्नुहोस्
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Applications Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+            {isAppLoading ? (
+              <div className="p-16 text-center text-slate-500 font-semibold flex flex-col items-center justify-center space-y-2">
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                <span>आवेदन विवरण लोड हुँदैछ...</span>
+              </div>
+            ) : applications.length === 0 ? (
+              <div className="p-16 text-center text-slate-500">
+                <Users className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <p className="font-bold text-base text-slate-700 dark:text-slate-300">
+                  कुनै परीक्षा आवेदन भेटिएन।
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  माथि कक्षा वा परीक्षा परिवर्तन गर्नुहोस् वा विद्यार्थी भर्ना सक्रिय रहेको निश्चित गर्नुहोस्।
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="py-3 px-3 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            applications.length > 0 &&
+                            applications.every((a: any) => selectedAppIds.includes(a.id))
+                          }
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAppIds(applications.map((a: any) => a.id));
+                            } else {
+                              setSelectedAppIds([]);
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                        />
+                      </th>
+                      <th className="py-3 px-3 w-32 font-bold">सिम्बोल नं (Symbol No)</th>
+                      <th className="py-3 px-3 w-16 text-center">रोल नं</th>
+                      <th className="py-3 px-4">परीक्षार्थीको नाम (Student Name)</th>
+                      <th className="py-3 px-3 w-32">कक्षा / खण्ड</th>
+                      <th className="py-3 px-3 text-center w-28">आवेदन स्थिति</th>
+                      <th className="py-3 px-3 text-center w-28">प्रवेशपत्र मुद्रण</th>
+                      <th className="py-3 px-4 text-right w-44">कार्य (Actions)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {applications.map((app: any) => {
+                      const isSelected = selectedAppIds.includes(app.id);
+                      return (
+                        <tr
+                          key={app.id}
+                          className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
+                            isSelected ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedAppIds((prev) => [...prev, app.id]);
+                                } else {
+                                  setSelectedAppIds((prev) => prev.filter((id) => id !== app.id));
+                                }
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded border-slate-300"
+                            />
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                            {app.symbolNumber || '-'}
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
+                            {formatNumber(app.rollNumber || '-')}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-3">
+                              {app.photoUrl ? (
+                                <img
+                                  src={app.photoUrl}
+                                  alt=""
+                                  className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500 text-xs border border-slate-200 dark:border-slate-700">
+                                  {app.fullNameEn?.charAt(0) || 'S'}
+                                </div>
+                              )}
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-slate-100">
+                                  {app.fullNameNp || app.fullNameEn}
+                                </div>
+                                <div className="text-[11px] text-slate-500 font-mono">
+                                  {app.studentCode || app.admissionNo} • {app.gender}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              {app.classNameNp || app.classNameEn}
+                            </span>
+                            <span className="text-slate-500 ml-1 font-mono">
+                              ({app.sectionCode || 'A'})
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                app.applicationStatus === 'APPROVED'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : app.applicationStatus === 'REJECTED'
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300'
+                                  : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300'
+                              }`}
+                            >
+                              {app.applicationStatus === 'APPROVED'
+                                ? 'स्वीकृत (Approved)'
+                                : app.applicationStatus === 'REJECTED'
+                                ? 'अस्वीकृत'
+                                : 'विचाराधीन'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {app.admitCardPrintCount > 0 ? (
+                              <span className="text-purple-700 dark:text-purple-300 font-semibold font-mono text-[11px]">
+                                {formatNumber(app.admitCardPrintCount)} पटक
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 text-[11px] italic">मुद्रण बाँकी</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end space-x-1.5">
+                              {app.applicationStatus === 'APPROVED' ? (
+                                <>
+                                  <button
+                                    onClick={() => handlePrintAdmitCards({ studentId: app.studentId })}
+                                    className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 hover:bg-blue-100 rounded-lg text-xs font-bold transition flex items-center space-x-1"
+                                    title="यस विद्यार्थीको प्रवेशपत्र छाप्नुहोस्"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" />
+                                    <span>प्रवेशपत्र</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateAppStatus([app.id], 'REJECTED')}
+                                    className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                    title="अस्वीकृत गर्नुहोस्"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleUpdateAppStatus([app.id], 'APPROVED')}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+                                    title="आवेदन स्वीकृत गर्नुहोस्"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>स्वीकृत</span>
+                                  </button>
+                                  {app.applicationStatus !== 'REJECTED' && (
+                                    <button
+                                      onClick={() => handleUpdateAppStatus([app.id], 'REJECTED')}
+                                      className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                      title="अस्वीकृत गर्नुहोस्"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: GENERATE SYMBOL NUMBERS ================= */}
+      {isSymbolModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 bg-gradient-to-r from-indigo-900 to-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center space-x-2">
+                <Hash className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-base">सिम्बोल नम्बर स्वतः उत्पादन (Generate Symbols)</h3>
+              </div>
+              <button
+                onClick={() => setIsSymbolModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleGenerateSymbols();
+              }}
+              className="p-6 space-y-4 text-xs"
+            >
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-900 dark:text-indigo-200">
+                <b>क्षेत्र (Scope): </b>
+                {appClassId === 'ALL'
+                  ? 'सम्पूर्ण कक्षाहरूका सक्रिय परीक्षार्थीहरू'
+                  : `छानिएको कक्षा (${classes.find((c) => c.id === appClassId)?.nameNp || 'कक्षा'})`}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                  उपसर्ग (Prefix) *
+                </label>
+                <input
+                  type="text"
+                  value={symbolPrefix}
+                  onChange={(e) => setSymbolPrefix(e.target.value)}
+                  placeholder="e.g. 2083-10-"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold"
+                  required
+                />
+                <span className="text-[10px] text-slate-500">वर्ष वा कक्षा कोड (उदा: 2083-10- वा 2083-)</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                    सुरुवाती अंक (Start Number) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={symbolStart}
+                    onChange={(e) => setSymbolStart(Number(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                    अंक लम्बाइ (Zero Padding) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="6"
+                    value={symbolPad}
+                    onChange={(e) => setSymbolPad(Number(e.target.value) || 3)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-bold"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl space-y-1">
+                <span className="font-bold text-slate-700 dark:text-slate-300">ढाँचा नमुना (Format Preview):</span>
+                <div className="flex items-center space-x-2 font-mono text-sm font-black text-indigo-600 dark:text-indigo-400">
+                  <span>{`${symbolPrefix}${String(symbolStart).padStart(symbolPad, '0')}`}</span>
+                  <span className="text-slate-400">,</span>
+                  <span>{`${symbolPrefix}${String(symbolStart + 1).padStart(symbolPad, '0')}`}</span>
+                  <span className="text-slate-400">,</span>
+                  <span>{`${symbolPrefix}${String(symbolStart + 2).padStart(symbolPad, '0')}`}...</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsSymbolModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 dark:text-slate-300 font-semibold"
+                >
+                  रद्द गर्नुहोस्
+                </button>
+                <button
+                  type="submit"
+                  disabled={isGeneratingSymbols}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md disabled:opacity-50"
+                >
+                  {isGeneratingSymbols ? 'जारी गरिँदैछ...' : 'सिम्बोल नम्बर जारी गर्नुहोस्'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

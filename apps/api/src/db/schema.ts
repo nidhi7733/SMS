@@ -196,6 +196,7 @@ export const subjects = pgTable('subjects', {
   practicalFullMarks: integer('practical_full_marks').notNull().default(25),
   theoryPassMarks: integer('theory_pass_marks').notNull().default(27),
   practicalPassMarks: integer('practical_pass_marks').notNull().default(10),
+  teacherId: text('teacher_id').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -516,6 +517,7 @@ export const class1To3CasRatings = pgTable('class_1_to_3_cas_ratings', {
   themeName: text('theme_name'),
   levelRating: integer('level_rating').notNull(), // 1: कमजोर, 2: सामान्य, 3: राम्रो, 4: धेरै राम्रो
   achievementRemarks: text('achievement_remarks'),
+  entryStatus: text('entry_status').notNull().default('DRAFT'), // DRAFT, SUBMITTED
   recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -569,3 +571,24 @@ export const houseActivities = pgTable('house_activities', {
   participatingHouses: text('participating_houses'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// 32. Examination Applications & Admit Cards (परीक्षा आवेदन फाराम तथा प्रवेशपत्र)
+export const examApplications = pgTable('exam_applications', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  examId: text('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  classId: text('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
+  rollNumber: integer('roll_number'),
+  symbolNumber: text('symbol_number'), // e.g. "2083-1001"
+  applicationStatus: text('application_status').notNull().default('APPROVED'), // PENDING, APPROVED, REJECTED
+  approvedById: text('approved_by_id').references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  admitCardPrintCount: integer('admit_card_print_count').notNull().default(0),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('exam_applications_exam_student_uq').on(table.examId, table.studentId),
+]);
+

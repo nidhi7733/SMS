@@ -20,9 +20,11 @@ export async function getDb() {
     const pool = new pg.Pool({ connectionString: databaseUrl });
     dbInstance = drizzlePg(pool, { schema });
   } else {
-    // Local embedded PostgreSQL (PGlite) - persistent to disk
-    const dataDir = path.resolve(process.cwd(), 'data', 'sms_pg');
-    if (!fs.existsSync(dataDir)) {
+    let dataDir = path.resolve(process.cwd(), 'data', 'sms_pg');
+    const apiDataDir = path.resolve(process.cwd(), 'apps', 'api', 'data', 'sms_pg');
+    if (fs.existsSync(apiDataDir)) {
+      dataDir = apiDataDir;
+    } else if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     console.log(`[DB] Initializing embedded persistent PostgreSQL at ${dataDir}...`);

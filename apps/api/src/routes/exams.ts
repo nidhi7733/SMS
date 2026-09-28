@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getDb, schema } from '../db/index.js';
-import { eq, and, desc, asc, inArray } from 'drizzle-orm';
+import { eq, and, desc, asc, inArray, or, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import bs from 'bikram-sambat';
 
@@ -18,6 +18,118 @@ export function calculateGrade2078(percentage: number): { grade: string; gradePo
   return { grade: 'NG', gradePoint: 0.0, remark: 'Non-Graded' };
 }
 
+// User Role & Subject Allotment Context Helper
+export async function getUserRoleAndAllotments(db: any, currentUser: any) {
+  const currentUserId = currentUser.userId || currentUser.id;
+  const roles = Array.isArray(currentUser.roles)
+    ? currentUser.roles.map((r: any) => (typeof r === 'string' ? r : r.name))
+    : [];
+
+  const isAdmin =
+    Boolean(currentUser.isSuperAdmin) ||
+    roles.includes('SYSTEM_ADMIN') ||
+    roles.includes('PRINCIPAL') ||
+    roles.includes('ADMINISTRATIVE_STAFF');
+
+  if (isAdmin) {
+    return {
+      isAdmin: true,
+      isAllAllowed: true,
+      staffId: null,
+      teacherName: 'विद्यालय प्रशासन / व्यवस्थापक',
+      allotments: [] as Array<{ classId: string; sectionId: string | null; subjectId: string }>,
+    };
+  }
+
+  // Find linked staff member
+  const staffMember = await db.query.staff.findFirst({
+    where: (t: any, { and, eq, or }: any) => {
+      const conds = [eq(t.schoolId, currentUser.schoolId)];
+      const matchUserId = eq(t.userId, currentUserId);
+      if (currentUser.phone) {
+        conds.push(or(matchUserId, eq(t.phone, currentUser.phone)));
+      } else {
+        conds.push(matchUserId);
+      }
+      return and(...conds);
+    },
+  });
+
+  if (!staffMember) {
+    return {
+      isAdmin: false,
+      isAllAllowed: false,
+      staffId: null,
+      teacherName: currentUser.username || 'Teacher',
+      allotments: [] as Array<{ classId: string; sectionId: string | null; subjectId: string }>,
+    };
+  }
+
+  // 1. Allotments from Timetables routine
+  const timetableRecords = await db.query.timetables.findMany({
+    where: (t: any, { and, eq }: any) =>
+      and(eq(t.schoolId, currentUser.schoolId), eq(t.teacherId, staffMember.id)),
+  });
+
+  // 2. Direct Subject assignments (subjects.teacherId == staffMember.id)
+  const subjectRecords = await db.query.subjects.findMany({
+    where: (t: any, { and, eq }: any) =>
+      and(eq(t.schoolId, currentUser.schoolId), eq(t.teacherId, staffMember.id)),
+  });
+
+  const allotmentMap = new Map<string, { classId: string; sectionId: string | null; subjectId: string }>();
+
+  for (const tt of timetableRecords) {
+    if (tt.subjectId && tt.classId) {
+      allotmentMap.set(`${tt.classId}_${tt.sectionId || 'ALL'}_${tt.subjectId}`, {
+        classId: tt.classId,
+        sectionId: tt.sectionId || null,
+        subjectId: tt.subjectId,
+      });
+      allotmentMap.set(`${tt.classId}_ALL_${tt.subjectId}`, {
+        classId: tt.classId,
+        sectionId: null,
+        subjectId: tt.subjectId,
+      });
+    }
+  }
+
+  for (const sub of subjectRecords) {
+    allotmentMap.set(`${sub.classId}_${sub.sectionId || 'ALL'}_${sub.id}`, {
+      classId: sub.classId,
+      sectionId: sub.sectionId || null,
+      subjectId: sub.id,
+    });
+    allotmentMap.set(`${sub.classId}_ALL_${sub.id}`, {
+      classId: sub.classId,
+      sectionId: null,
+      subjectId: sub.id,
+    });
+  }
+
+  return {
+    isAdmin: false,
+    isAllAllowed: false,
+    staffId: staffMember.id,
+    teacherName: staffMember.fullNameNp || staffMember.fullNameEn,
+    allotments: Array.from(allotmentMap.values()),
+  };
+}
+
+export function isSubjectAllottedToTeacher(
+  allotments: Array<{ classId: string; sectionId: string | null; subjectId: string }>,
+  classId: string,
+  subjectId: string,
+  sectionId?: string | null
+): boolean {
+  return allotments.some((a) => {
+    if (a.subjectId !== subjectId) return false;
+    if (a.classId !== classId) return false;
+    if (!sectionId || sectionId === 'ALL' || !a.sectionId || a.sectionId === 'ALL') return true;
+    return a.sectionId === sectionId;
+  });
+}
+
 export default async function examRoutes(fastify: FastifyInstance) {
   const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -28,6 +140,15 @@ export default async function examRoutes(fastify: FastifyInstance) {
     }
     return true;
   };
+
+  // 0. Get My Subject Allotments & Role Context
+  fastify.get('/my-allotments', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const roleContext = await getUserRoleAndAllotments(db, currentUser);
+    return reply.send(roleContext);
+  });
 
   // 1. Get All Exams for the School
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -128,7 +249,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ message: 'classId and subjectId are required' });
     }
 
-    const [exam, cls, subject, studentsList] = await Promise.all([
+    const [exam, cls, subject, studentsList, userContext] = await Promise.all([
       db.query.exams.findFirst({
         where: (t: any, { and, eq }: any) => and(eq(t.id, examId), eq(t.schoolId, currentUser.schoolId)),
       }),
@@ -146,6 +267,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
         },
         orderBy: (t: any, { asc }: any) => [asc(t.currentRollNumber), asc(t.firstNameEn)],
       }),
+      getUserRoleAndAllotments(db, currentUser),
     ]);
 
     if (!exam) return reply.status(404).send({ message: 'Exam not found' });
@@ -164,6 +286,12 @@ export default async function examRoutes(fastify: FastifyInstance) {
             ),
         })
       : [];
+
+    const isAllotted = userContext.isAllAllowed || isSubjectAllottedToTeacher(userContext.allotments, classId, subjectId, sectionId);
+    const hasSubmitted = existingMarks.some((m: any) => m.entryStatus === 'SUBMITTED');
+    const entryStatus = hasSubmitted ? 'SUBMITTED' : (existingMarks.length > 0 ? 'DRAFT' : 'NOT_ENTERED');
+    const isLockedForUser = Boolean(exam.isMarksLocked) || (!userContext.isAllAllowed && (hasSubmitted || !isAllotted));
+    const canUnlock = Boolean(userContext.isAdmin && hasSubmitted);
 
     const marksMap = new Map<string, any>(existingMarks.map((m: any) => [m.studentId, m]));
 
@@ -208,6 +336,12 @@ export default async function examRoutes(fastify: FastifyInstance) {
         practicalPassMarks: subject.practicalPassMarks,
       },
       isLocked: exam.isMarksLocked,
+      entryStatus,
+      isLockedForUser,
+      canUnlock,
+      isAllotted,
+      userRole: userContext.isAdmin ? 'ADMIN' : 'TEACHER',
+      teacherName: userContext.teacherName,
       entries,
       students: entries,
     });
@@ -218,6 +352,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
     if (!(await authenticate(request, reply))) return;
     const db = await getDb();
     const currentUser = (request as any).user;
+    const currentUserId = currentUser.userId || currentUser.id;
     const { id: examId } = request.params as { id: string };
     const { marks, subjectId: topSubjectId } = request.body as {
       subjectId?: string;
@@ -248,9 +383,54 @@ export default async function examRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ message: 'यस परीक्षाको अंक लक भइसकेको छ। परिमार्जन गर्न सकिँदैन।' });
     }
 
+    const userContext = await getUserRoleAndAllotments(db, currentUser);
+    const effSubId = topSubjectId || (marks[0] && marks[0].subjectId);
+
+    if (!effSubId) {
+      return reply.status(400).send({ message: 'Subject ID is required' });
+    }
+
+    // Role allotment check & lock check
+    if (!userContext.isAllAllowed) {
+      const subjectRecord = await db.query.subjects.findFirst({
+        where: (t: any, { and, eq }: any) => and(eq(t.id, effSubId), eq(t.schoolId, currentUser.schoolId)),
+      });
+      if (!subjectRecord) {
+        return reply.status(404).send({ message: 'Subject not found' });
+      }
+
+      const isAllotted = isSubjectAllottedToTeacher(
+        userContext.allotments,
+        subjectRecord.classId,
+        subjectRecord.id,
+        subjectRecord.sectionId
+      );
+      if (!isAllotted) {
+        return reply.status(403).send({
+          message: 'तपाईंलाई यो विषयको प्राप्ताङ्क प्रविष्टि गर्ने अनुमति छैन। शिक्षकले आफूलाई बाँडफाँड गरिएको विषयको मात्र अंक चढाउन सक्नुहुन्छ।',
+        });
+      }
+
+      // Check if already submitted
+      const existingRecords = await db.query.examMarks.findMany({
+        where: (t: any, { and, eq }: any) =>
+          and(
+            eq(t.schoolId, currentUser.schoolId),
+            eq(t.examId, examId),
+            eq(t.subjectId, effSubId)
+          ),
+      });
+      const alreadySubmitted = existingRecords.some((m: any) => m.entryStatus === 'SUBMITTED');
+      if (alreadySubmitted) {
+        return reply.status(403).send({
+          message: 'यो विषयको प्राप्ताङ्क प्रविष्टि गरी बुझाइसकिएको छ (SUBMITTED)। शिक्षकले फेरि सम्पादन गर्न सक्नुहुन्न। परिमार्जन गर्न परेमा विद्यालय प्रशासन वा प्रधानाध्यापकसँग सम्पर्क गरी अनलक गराउनुहोस्।',
+        });
+      }
+    }
+
     for (const item of marks) {
-      const effSubId = item.subjectId || topSubjectId;
-      if (!effSubId) continue;
+      const curSubId = item.subjectId || effSubId;
+      if (!curSubId) continue;
 
       let effectivePractical = item.practicalMarks;
       // Auto-calculate practical marks if any CAS sub-component is present
@@ -275,7 +455,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
             eq(t.schoolId, currentUser.schoolId),
             eq(t.examId, examId),
             eq(t.studentId, item.studentId),
-            eq(t.subjectId, effSubId)
+            eq(t.subjectId, curSubId)
           ),
       });
 
@@ -309,8 +489,10 @@ export default async function examRoutes(fastify: FastifyInstance) {
             casDiscipline: parsedDiscipline,
             casTerminalExam: parsedTerminal,
             isAbsent: item.isAbsent ?? false,
+            entryStatus: 'SUBMITTED',
             remarks: item.remarks || null,
-            recordedById: currentUser.id,
+            recordedById: currentUserId,
+            updatedAt: new Date(),
           })
           .where(eq(schema.examMarks.id, existing.id));
       } else {
@@ -319,7 +501,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
           schoolId: currentUser.schoolId,
           examId,
           studentId: item.studentId,
-          subjectId: effSubId,
+          subjectId: curSubId,
           theoryMarks: parsedTheory,
           practicalMarks: parsedPractical,
           casParticipation: parsedParticipation,
@@ -327,13 +509,18 @@ export default async function examRoutes(fastify: FastifyInstance) {
           casDiscipline: parsedDiscipline,
           casTerminalExam: parsedTerminal,
           isAbsent: item.isAbsent ?? false,
+          entryStatus: 'SUBMITTED',
           remarks: item.remarks || null,
-          recordedById: currentUser.id,
+          recordedById: currentUserId,
         });
       }
     }
 
-    return reply.send({ message: 'अंकहरू तथा CAS उप-शीर्षकहरू सफलतापूर्वक सुरक्षित गरियो', count: marks.length });
+    return reply.send({
+      message: 'अंकहरू तथा CAS उप-शीर्षकहरू सफलतापूर्वक सुरक्षित गरी बुझाइयो (SUBMITTED)।',
+      count: marks.length,
+      entryStatus: 'SUBMITTED',
+    });
   });
 
   // 4b. Class 1-3 Continuous Assessment System (CAS) - Get Theme Ratings (Levels 1-4)
@@ -350,7 +537,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
 
     if (!classId) return reply.status(400).send({ message: 'classId is required' });
 
-    const [exam, cls, allSubjects, allStudents] = await Promise.all([
+    const [exam, cls, allSubjects, allStudents, userContext] = await Promise.all([
       db.query.exams.findFirst({
         where: (t: any, { and, eq }: any) => and(eq(t.id, examId), eq(t.schoolId, currentUser.schoolId)),
       }),
@@ -369,6 +556,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
         },
         orderBy: (t: any, { asc }: any) => [asc(t.currentRollNumber), asc(t.firstNameEn)],
       }),
+      getUserRoleAndAllotments(db, currentUser),
     ]);
 
     if (!exam) return reply.status(404).send({ message: 'Exam not found' });
@@ -389,6 +577,12 @@ export default async function examRoutes(fastify: FastifyInstance) {
         })
       : [];
 
+    const isAllotted = userContext.isAllAllowed || (subjectId ? isSubjectAllottedToTeacher(userContext.allotments, classId, subjectId, sectionId) : true);
+    const hasSubmitted = existingRatings.some((r: any) => r.entryStatus === 'SUBMITTED');
+    const entryStatus = hasSubmitted ? 'SUBMITTED' : (existingRatings.length > 0 ? 'DRAFT' : 'NOT_ENTERED');
+    const isLockedForUser = Boolean(exam.isMarksLocked) || (!userContext.isAllAllowed && (hasSubmitted || !isAllotted));
+    const canUnlock = Boolean(userContext.isAdmin && hasSubmitted);
+
     const ratingsMap = new Map<string, any>();
     for (const r of existingRatings) {
       ratingsMap.set(`${r.studentId}_${r.subjectId}`, r);
@@ -408,7 +602,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
         fullNameEn: `${st.firstNameEn} ${st.lastNameEn || ''}`.trim(),
         fullNameNp: `${st.firstNameNp} ${st.lastNameNp || ''}`.trim(),
         gender: st.gender,
-        levelRating: rec?.levelRating ?? 3, // Default to 3 (राम्रो)
+        levelRating: rec?.levelRating ?? 3,
         achievementRemarks: rec?.achievementRemarks ?? 'अपेक्षित सिकाइ उपलब्धि हासिल गरेको',
         themeName: rec?.themeName ?? '',
       };
@@ -421,6 +615,12 @@ export default async function examRoutes(fastify: FastifyInstance) {
       entries,
       students: entries,
       isLocked: exam.isMarksLocked,
+      entryStatus,
+      isLockedForUser,
+      canUnlock,
+      isAllotted,
+      userRole: userContext.isAdmin ? 'ADMIN' : 'TEACHER',
+      teacherName: userContext.teacherName,
     });
   });
 
@@ -429,6 +629,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
     if (!(await authenticate(request, reply))) return;
     const db = await getDb();
     const currentUser = (request as any).user;
+    const currentUserId = currentUser.userId || currentUser.id;
     const { id: examId } = request.params as { id: string };
     const { ratings, subjectId: topSubjectId } = request.body as {
       subjectId?: string;
@@ -454,9 +655,49 @@ export default async function examRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ message: 'यस परीक्षाको मूल्याङ्कन लक भइसकेको छ। परिमार्जन गर्न सकिँदैन।' });
     }
 
+    const userContext = await getUserRoleAndAllotments(db, currentUser);
+    const effSubId = topSubjectId || (ratings[0] && ratings[0].subjectId);
+
+    if (!effSubId) {
+      return reply.status(400).send({ message: 'Subject ID is required' });
+    }
+
+    // Role allotment check & lock check
+    if (!userContext.isAllAllowed) {
+      const subjectRecord = await db.query.subjects.findFirst({
+        where: (t: any, { and, eq }: any) => and(eq(t.id, effSubId), eq(t.schoolId, currentUser.schoolId)),
+      });
+      if (!subjectRecord) {
+        return reply.status(404).send({ message: 'Subject not found' });
+      }
+
+      const isAllotted = isSubjectAllottedToTeacher(
+        userContext.allotments,
+        subjectRecord.classId,
+        subjectRecord.id,
+        subjectRecord.sectionId
+      );
+      if (!isAllotted) {
+        return reply.status(403).send({
+          message: 'तपाईंलाई यो विषयको मूल्याङ्कन प्रविष्टि गर्ने अनुमति छैन। केवल बाँडफाँड गरिएका विषयको मात्र मूल्याङ्कन गर्न पाइन्छ।',
+        });
+      }
+
+      const existingRecords = await db.query.class1To3CasRatings.findMany({
+        where: (t: any, { and, eq }: any) =>
+          and(eq(t.schoolId, currentUser.schoolId), eq(t.examId, examId), eq(t.subjectId, effSubId)),
+      });
+      const alreadySubmitted = existingRecords.some((r: any) => r.entryStatus === 'SUBMITTED');
+      if (alreadySubmitted) {
+        return reply.status(403).send({
+          message: 'यो विषयको मूल्याङ्कन बुझाइसकिएको छ (SUBMITTED)। शिक्षकले फेरि सम्पादन गर्न सक्नुहुन्न। परिमार्जन गर्न परेमा विद्यालय प्रशासन वा प्रधानाध्यापकसँग सम्पर्क गर्नुहोस्।',
+        });
+      }
+    }
+
     for (const item of ratings) {
-      const effSubId = item.subjectId || topSubjectId;
-      if (!effSubId) continue;
+      const curSubId = item.subjectId || effSubId;
+      if (!curSubId) continue;
 
       const validLevel = [1, 2, 3, 4].includes(Number(item.levelRating)) ? Number(item.levelRating) : 3;
 
@@ -466,7 +707,7 @@ export default async function examRoutes(fastify: FastifyInstance) {
             eq(t.schoolId, currentUser.schoolId),
             eq(t.examId, examId),
             eq(t.studentId, item.studentId),
-            eq(t.subjectId, effSubId)
+            eq(t.subjectId, curSubId)
           ),
       });
 
@@ -477,7 +718,8 @@ export default async function examRoutes(fastify: FastifyInstance) {
             levelRating: validLevel,
             achievementRemarks: item.achievementRemarks || null,
             themeName: item.themeName || null,
-            recordedById: currentUser.id,
+            entryStatus: 'SUBMITTED',
+            recordedById: currentUserId,
             updatedAt: new Date(),
           })
           .where(eq(schema.class1To3CasRatings.id, existing.id));
@@ -487,16 +729,68 @@ export default async function examRoutes(fastify: FastifyInstance) {
           schoolId: currentUser.schoolId,
           examId,
           studentId: item.studentId,
-          subjectId: effSubId,
+          subjectId: curSubId,
           levelRating: validLevel,
           achievementRemarks: item.achievementRemarks || null,
           themeName: item.themeName || null,
-          recordedById: currentUser.id,
+          entryStatus: 'SUBMITTED',
+          recordedById: currentUserId,
         });
       }
     }
 
-    return reply.send({ message: 'कक्षा १-३ को मूल्याङ्कन सफलतापूर्वक सुरक्षित गरियो', count: ratings.length });
+    return reply.send({
+      message: 'कक्षा १-३ को मूल्याङ्कन सफलतापूर्वक सुरक्षित गरी बुझाइयो (SUBMITTED)।',
+      count: ratings.length,
+      entryStatus: 'SUBMITTED',
+    });
+  });
+
+  // 4d. Unlock Marks for Teacher Editing (Admin / Principal Only)
+  fastify.post('/:id/marks/unlock', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id: examId } = request.params as { id: string };
+    const { subjectId } = request.body as { subjectId: string };
+
+    const userContext = await getUserRoleAndAllotments(db, currentUser);
+    if (!userContext.isAdmin) {
+      return reply.status(403).send({
+        message: 'प्राप्ताङ्क अनलक गर्ने अधिकार विद्यालय प्रशासन वा प्रधानाध्यापकलाई मात्र छ।',
+      });
+    }
+
+    if (!subjectId) {
+      return reply.status(400).send({ message: 'subjectId is required' });
+    }
+
+    await db
+      .update(schema.examMarks)
+      .set({ entryStatus: 'DRAFT', updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.examMarks.schoolId, currentUser.schoolId),
+          eq(schema.examMarks.examId, examId),
+          eq(schema.examMarks.subjectId, subjectId)
+        )
+      );
+
+    await db
+      .update(schema.class1To3CasRatings)
+      .set({ entryStatus: 'DRAFT', updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.class1To3CasRatings.schoolId, currentUser.schoolId),
+          eq(schema.class1To3CasRatings.examId, examId),
+          eq(schema.class1To3CasRatings.subjectId, subjectId)
+        )
+      );
+
+    return reply.send({
+      message: 'यो विषयको प्राप्ताङ्क पुनः सम्पादनका लागि शिक्षकलाई सफलतापूर्वक अनलक गरियो (Reset to DRAFT)।',
+      entryStatus: 'DRAFT',
+    });
   });
 
   // 5. Lock / Unlock Marks for an Exam
@@ -1123,5 +1417,450 @@ export default async function examRoutes(fastify: FastifyInstance) {
         ? 'राम्रो नतिजा (Good Performance)'
         : 'सन्तोषजनक (Satisfactory)',
     });
+  });
+
+  // 10. Get Exam Applications List & Summary (Auto-syncs examinees)
+  fastify.get('/:id/applications', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id: examId } = request.params as { id: string };
+    const { classId, sectionId, status, search } = request.query as {
+      classId?: string;
+      sectionId?: string;
+      status?: string;
+      search?: string;
+    };
+
+    const exam = await db.query.exams.findFirst({
+      where: (t: any, { and, eq }: any) => and(eq(t.id, examId), eq(t.schoolId, currentUser.schoolId)),
+    });
+    if (!exam) return reply.status(404).send({ message: 'Exam not found' });
+
+    const [allClasses, allSections] = await Promise.all([
+      db.query.classes.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+        orderBy: (t: any, { asc }: any) => [asc(t.displayOrder)],
+      }),
+      db.query.sections.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+      }),
+    ]);
+
+    const classMap = new Map<string, any>(allClasses.map((c: any) => [c.id, c]));
+    const sectionMap = new Map<string, any>(allSections.map((s: any) => [s.id, s]));
+
+    // Query active students in scope
+    const studentsList = await db.query.students.findMany({
+      where: (t: any, { and, eq }: any) => {
+        const conds = [eq(t.schoolId, currentUser.schoolId), eq(t.status, 'ACTIVE')];
+        if (classId && classId !== 'ALL') conds.push(eq(t.currentClassId, classId));
+        if (sectionId && sectionId !== 'ALL') conds.push(eq(t.currentSectionId, sectionId));
+        return and(...conds);
+      },
+      orderBy: (t: any, { asc }: any) => [asc(t.currentRollNumber), asc(t.firstNameEn)],
+    });
+
+    // Query existing applications
+    const existingApps = await db.query.examApplications.findMany({
+      where: (t: any, { and, eq }: any) =>
+        and(eq(t.schoolId, currentUser.schoolId), eq(t.examId, examId)),
+    });
+    const appMap = new Map<string, any>(existingApps.map((a: any) => [a.studentId, a]));
+
+    const examYearBs = exam.startDateBs ? exam.startDateBs.slice(0, 4) : '2083';
+
+    // Auto-sync missing student applications
+    for (const st of studentsList) {
+      if (!appMap.has(st.id)) {
+        const clsObj = classMap.get(st.currentClassId);
+        const clsCode = clsObj?.code || '10';
+        const rollStr = String(st.currentRollNumber || 1).padStart(3, '0');
+        const defaultSymbol = `${examYearBs}-${clsCode}-${rollStr}`;
+        const newAppId = crypto.randomUUID();
+
+        await db.insert(schema.examApplications).values({
+          id: newAppId,
+          schoolId: currentUser.schoolId,
+          examId,
+          studentId: st.id,
+          classId: st.currentClassId,
+          sectionId: st.currentSectionId || null,
+          rollNumber: st.currentRollNumber,
+          symbolNumber: defaultSymbol,
+          applicationStatus: 'APPROVED',
+          admitCardPrintCount: 0,
+        });
+
+        appMap.set(st.id, {
+          id: newAppId,
+          schoolId: currentUser.schoolId,
+          examId,
+          studentId: st.id,
+          classId: st.currentClassId,
+          sectionId: st.currentSectionId || null,
+          rollNumber: st.currentRollNumber,
+          symbolNumber: defaultSymbol,
+          applicationStatus: 'APPROVED',
+          admitCardPrintCount: 0,
+        });
+      }
+    }
+
+    // Re-fetch all applications for accurate listing
+    const allApps = await db.query.examApplications.findMany({
+      where: (t: any, { and, eq }: any) =>
+        and(eq(t.schoolId, currentUser.schoolId), eq(t.examId, examId)),
+    });
+
+    const studentMap = new Map<string, any>(studentsList.map((s: any) => [s.id, s]));
+
+    // Format examinees list
+    let applications = allApps
+      .map((app: any) => {
+        const st = studentMap.get(app.studentId);
+        if (!st && classId && classId !== 'ALL') return null; // Outside query filter
+        const cls = classMap.get(app.classId || st?.currentClassId);
+        const sec = sectionMap.get(app.sectionId || st?.currentSectionId);
+
+        return {
+          id: app.id,
+          examId: app.examId,
+          studentId: app.studentId,
+          studentCode: st?.studentId || '',
+          admissionNo: st?.admissionNo || '',
+          rollNumber: app.rollNumber || st?.currentRollNumber || null,
+          symbolNumber: app.symbolNumber || '',
+          applicationStatus: app.applicationStatus || 'APPROVED',
+          admitCardPrintCount: app.admitCardPrintCount || 0,
+          approvedAt: app.approvedAt,
+          remarks: app.remarks || '',
+          fullNameEn: st ? `${st.firstNameEn} ${st.lastNameEn || ''}`.trim() : 'Unknown',
+          fullNameNp: st ? `${st.firstNameNp} ${st.lastNameNp || ''}`.trim() : 'अज्ञात',
+          gender: st?.gender || 'OTHER',
+          dobBs: st?.dobBs || '',
+          photoUrl: st?.photoUrl || null,
+          classId: app.classId || st?.currentClassId,
+          classNameEn: cls?.nameEn || 'Class',
+          classNameNp: cls?.nameNp || 'कक्षा',
+          classCode: cls?.code || '',
+          sectionId: app.sectionId || st?.currentSectionId,
+          sectionCode: sec?.code || 'A',
+          sectionNameNp: sec?.nameNp || 'खण्ड क',
+        };
+      })
+      .filter(Boolean);
+
+    // Apply query filters
+    if (classId && classId !== 'ALL') {
+      applications = applications.filter((a: any) => a.classId === classId);
+    }
+    if (sectionId && sectionId !== 'ALL') {
+      applications = applications.filter((a: any) => a.sectionId === sectionId);
+    }
+    if (status && status !== 'ALL') {
+      applications = applications.filter((a: any) => a.applicationStatus === status);
+    }
+    if (search && search.trim()) {
+      const q = search.toLowerCase().trim();
+      applications = applications.filter(
+        (a: any) =>
+          a.fullNameEn.toLowerCase().includes(q) ||
+          a.fullNameNp.toLowerCase().includes(q) ||
+          a.symbolNumber.toLowerCase().includes(q) ||
+          (a.rollNumber && String(a.rollNumber).includes(q))
+      );
+    }
+
+    // Sort by roll number, then name
+    applications.sort((a: any, b: any) => {
+      const rA = a.rollNumber || 9999;
+      const rB = b.rollNumber || 9999;
+      if (rA !== rB) return rA - rB;
+      return a.fullNameEn.localeCompare(b.fullNameEn);
+    });
+
+    // Summary counts for this exam
+    const totalCount = allApps.length;
+    const approvedCount = allApps.filter((a: any) => a.applicationStatus === 'APPROVED').length;
+    const pendingCount = allApps.filter((a: any) => a.applicationStatus === 'PENDING').length;
+    const rejectedCount = allApps.filter((a: any) => a.applicationStatus === 'REJECTED').length;
+    const printedCount = allApps.filter((a: any) => (a.admitCardPrintCount || 0) > 0).length;
+
+    return reply.send({
+      exam,
+      applications,
+      summary: {
+        totalCount,
+        approvedCount,
+        pendingCount,
+        rejectedCount,
+        printedCount,
+      },
+    });
+  });
+
+  // 11. Update Application Status (Bulk or Single: APPROVED / PENDING / REJECTED)
+  fastify.post('/:id/applications/status', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const currentUserId = currentUser.userId || currentUser.id;
+    const { id: examId } = request.params as { id: string };
+    const { applicationIds, status, remarks } = request.body as {
+      applicationIds: string[];
+      status: 'APPROVED' | 'PENDING' | 'REJECTED';
+      remarks?: string;
+    };
+
+    if (!applicationIds || !Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return reply.status(400).send({ message: 'applicationIds array is required' });
+    }
+    if (!['APPROVED', 'PENDING', 'REJECTED'].includes(status)) {
+      return reply.status(400).send({ message: 'Valid status (APPROVED, PENDING, REJECTED) is required' });
+    }
+
+    await db
+      .update(schema.examApplications)
+      .set({
+        applicationStatus: status,
+        approvedById: status === 'APPROVED' ? currentUserId : null,
+        approvedAt: status === 'APPROVED' ? new Date() : null,
+        remarks: remarks || null,
+      })
+      .where(
+        and(
+          eq(schema.examApplications.schoolId, currentUser.schoolId),
+          eq(schema.examApplications.examId, examId),
+          inArray(schema.examApplications.id, applicationIds)
+        )
+      );
+
+    return reply.send({
+      message: `आवेदन फाराम स्थिति सफलतापूर्वक '${status}' मा अद्यावधिक गरियो।`,
+      count: applicationIds.length,
+      status,
+    });
+  });
+
+  // 12. Auto-Generate Sequential Symbol Numbers for Examinees
+  fastify.post('/:id/applications/generate-symbols', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id: examId } = request.params as { id: string };
+    const { classId, prefix, startFrom, padLength } = request.body as {
+      classId?: string;
+      prefix?: string;
+      startFrom?: number;
+      padLength?: number;
+    };
+
+    const exam = await db.query.exams.findFirst({
+      where: (t: any, { and, eq }: any) => and(eq(t.id, examId), eq(t.schoolId, currentUser.schoolId)),
+    });
+    if (!exam) return reply.status(404).send({ message: 'Exam not found' });
+
+    const apps = await db.query.examApplications.findMany({
+      where: (t: any, { and, eq }: any) => {
+        const conds = [eq(t.schoolId, currentUser.schoolId), eq(t.examId, examId)];
+        if (classId && classId !== 'ALL') conds.push(eq(t.classId, classId));
+        return and(...conds);
+      },
+      orderBy: (t: any, { asc }: any) => [asc(t.rollNumber)],
+    });
+
+    const examYearBs = exam.startDateBs ? exam.startDateBs.slice(0, 4) : '2083';
+    let seq = Number(startFrom) || 1001;
+    const padding = Number(padLength) || 4;
+
+    for (const app of apps) {
+      const effPrefix = prefix || `${examYearBs}-`;
+      const symbolNum = `${effPrefix}${String(seq).padStart(padding, '0')}`;
+
+      await db
+        .update(schema.examApplications)
+        .set({ symbolNumber: symbolNum })
+        .where(eq(schema.examApplications.id, app.id));
+
+      seq++;
+    }
+
+    return reply.send({
+      message: 'सिम्बोल नम्बरहरू सफलतापूर्वक क्रमबद्ध रूपमा जारी गरियो।',
+      updatedCount: apps.length,
+    });
+  });
+
+  // 13. Get Admit Cards Data (For Printing Approved Examinees)
+  fastify.get('/:id/admit-cards', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id: examId } = request.params as { id: string };
+    const { classId, sectionId, studentId } = request.query as {
+      classId?: string;
+      sectionId?: string;
+      studentId?: string;
+    };
+
+    const [school, exam, allClasses, allSections, allSubjects] = await Promise.all([
+      db.query.schools.findFirst({
+        where: (t: any, { eq }: any) => eq(t.id, currentUser.schoolId),
+      }),
+      db.query.exams.findFirst({
+        where: (t: any, { and, eq }: any) => and(eq(t.id, examId), eq(t.schoolId, currentUser.schoolId)),
+      }),
+      db.query.classes.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+      }),
+      db.query.sections.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+      }),
+      db.query.subjects.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+        orderBy: (t: any, { asc }: any) => [asc(t.code)],
+      }),
+    ]);
+
+    if (!school) return reply.status(404).send({ message: 'School not found' });
+    if (!exam) return reply.status(404).send({ message: 'Exam not found' });
+
+    const classMap = new Map<string, any>(allClasses.map((c: any) => [c.id, c]));
+    const sectionMap = new Map<string, any>(allSections.map((s: any) => [s.id, s]));
+
+    // Query approved exam applications
+    const apps = await db.query.examApplications.findMany({
+      where: (t: any, { and, eq }: any) => {
+        const conds = [
+          eq(t.schoolId, currentUser.schoolId),
+          eq(t.examId, examId),
+          eq(t.applicationStatus, 'APPROVED'),
+        ];
+        if (classId && classId !== 'ALL') conds.push(eq(t.classId, classId));
+        if (sectionId && sectionId !== 'ALL') conds.push(eq(t.sectionId, sectionId));
+        if (studentId) conds.push(eq(t.studentId, studentId));
+        return and(...conds);
+      },
+      orderBy: (t: any, { asc }: any) => [asc(t.rollNumber)],
+    });
+
+    const appStudentIds = apps.map((a: any) => a.studentId);
+    const studentsList = appStudentIds.length > 0
+      ? await db.query.students.findMany({
+          where: (t: any, { and, eq, inArray }: any) =>
+            and(eq(t.schoolId, currentUser.schoolId), inArray(t.id, appStudentIds)),
+        })
+      : [];
+
+    const studentMap = new Map<string, any>(studentsList.map((s: any) => [s.id, s]));
+
+    // CDC Standard Examinee instructions
+    const instructionsNp = [
+      '१. परीक्षा हलमा प्रवेश गर्न प्रवेश-पत्र (Admit Card) अनिवार्य रूपमा साथमा हुनुपर्दछ।',
+      '२. परीक्षा सुरु हुनुभन्दा कम्तीमा १५ मिनेट अगावै परीक्षा हलमा आफ्नो सिटमा बसिसक्नुपर्नेछ।',
+      '३. मोबाइल, स्मार्ट घडी वा कुनै पनि प्रकारका अनाधिकृत इलेक्ट्रोनिक उपकरण परीक्षा हलभित्र निषेध गरिएको छ।',
+      '४. उत्तरपुस्तिकाको मुख्य पृष्ठमा आफ्नो नाम, सिम्बोल नं, कक्षा र विषय स्पष्ट अक्षरमा लेख्नुपर्दछ।',
+      '५. परीक्षा हलमा अनुशासनहीन वा अमर्यादित गतिविधि गरेको पाइएमा परीक्षा रद्द गरिनेछ।',
+    ];
+
+    const examinees = apps.map((app: any) => {
+      const st = studentMap.get(app.studentId);
+      const cls = classMap.get(app.classId || st?.currentClassId);
+      const sec = sectionMap.get(app.sectionId || st?.currentSectionId);
+      const classSubjects = allSubjects.filter((sub: any) => sub.classId === (app.classId || st?.currentClassId));
+
+      return {
+        applicationId: app.id,
+        studentId: app.studentId,
+        studentCode: st?.studentId || '',
+        admissionNo: st?.admissionNo || '',
+        rollNumber: app.rollNumber || st?.currentRollNumber || 1,
+        symbolNumber: app.symbolNumber || `${st?.currentRollNumber || 1}`,
+        admitCardPrintCount: app.admitCardPrintCount || 0,
+        fullNameEn: st ? `${st.firstNameEn} ${st.lastNameEn || ''}`.trim() : 'Unknown Examinee',
+        fullNameNp: st ? `${st.firstNameNp} ${st.lastNameNp || ''}`.trim() : 'परीक्षार्थी',
+        gender: st?.gender || 'OTHER',
+        dobBs: st?.dobBs || '',
+        dobAd: st?.dobAd || '',
+        fatherNameEn: st?.fatherNameEn || '',
+        fatherNameNp: st?.fatherNameNp || '',
+        motherNameEn: st?.motherNameEn || '',
+        motherNameNp: st?.motherNameNp || '',
+        guardianName: st?.fatherNameNp || st?.fatherNameEn || st?.motherNameNp || st?.motherNameEn || '',
+        phone: st?.emergencyContactPhone || '',
+        photoUrl: st?.photoUrl || null,
+        classNameEn: cls?.nameEn || 'Class',
+        classNameNp: cls?.nameNp || 'कक्षा',
+        classCode: cls?.code || '',
+        sectionCode: sec?.code || 'A',
+        sectionNameNp: sec?.nameNp || 'खण्ड क',
+        subjects: classSubjects.map((sub: any, idx: number) => ({
+          sn: idx + 1,
+          code: sub.code,
+          nameEn: sub.nameEn,
+          nameNp: sub.nameNp,
+          creditHours: sub.creditHours,
+          theoryFullMarks: sub.theoryFullMarks,
+          practicalFullMarks: sub.practicalFullMarks,
+          examDateBs: exam.startDateBs,
+          examTime: '10:00 AM - 01:00 PM',
+        })),
+        instructionsNp,
+      };
+    });
+
+    return reply.send({
+      school,
+      exam,
+      examinees,
+      count: examinees.length,
+    });
+  });
+
+  // 14. Record Admit Card Printing Event (Increments print count)
+  fastify.post('/:id/admit-cards/record-print', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id: examId } = request.params as { id: string };
+    const { applicationIds, studentIds } = request.body as {
+      applicationIds?: string[];
+      studentIds?: string[];
+    };
+
+    if ((!applicationIds || applicationIds.length === 0) && (!studentIds || studentIds.length === 0)) {
+      return reply.status(400).send({ message: 'applicationIds or studentIds are required' });
+    }
+
+    if (applicationIds && applicationIds.length > 0) {
+      await db
+        .update(schema.examApplications)
+        .set({
+          admitCardPrintCount: sql`COALESCE(admit_card_print_count, 0) + 1`,
+        })
+        .where(
+          and(
+            eq(schema.examApplications.schoolId, currentUser.schoolId),
+            eq(schema.examApplications.examId, examId),
+            inArray(schema.examApplications.id, applicationIds)
+          )
+        );
+    } else if (studentIds && studentIds.length > 0) {
+      await db
+        .update(schema.examApplications)
+        .set({
+          admitCardPrintCount: sql`COALESCE(admit_card_print_count, 0) + 1`,
+        })
+        .where(
+          and(
+            eq(schema.examApplications.schoolId, currentUser.schoolId),
+            eq(schema.examApplications.examId, examId),
+            inArray(schema.examApplications.studentId, studentIds)
+          )
+        );
+    }
+
+    return reply.send({ message: 'प्रवेशपत्र प्रिन्ट गणना अभिलेख गरियो।' });
   });
 }

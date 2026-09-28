@@ -564,6 +564,7 @@ export async function runMigrationsAndSeed() {
 
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS exam_marks_exam_student_subject_uq ON exam_marks(exam_id, student_id, subject_id);`);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS class_1_to_3_cas_exam_student_subject_uq ON class_1_to_3_cas_ratings(exam_id, student_id, subject_id);`);
+  await db.execute(sql`ALTER TABLE class_1_to_3_cas_ratings ADD COLUMN IF NOT EXISTS entry_status TEXT NOT NULL DEFAULT 'DRAFT';`);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS student_certificates (
@@ -619,6 +620,28 @@ export async function runMigrationsAndSeed() {
       created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await db.execute(sql`ALTER TABLE subjects ADD COLUMN IF NOT EXISTS teacher_id TEXT REFERENCES staff(id) ON DELETE SET NULL;`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS exam_applications (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      exam_id TEXT NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      section_id TEXT REFERENCES sections(id) ON DELETE SET NULL,
+      roll_number INTEGER,
+      symbol_number TEXT,
+      application_status TEXT NOT NULL DEFAULT 'APPROVED',
+      approved_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      approved_at TIMESTAMP WITH TIME ZONE,
+      admit_card_print_count INTEGER NOT NULL DEFAULT 0,
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS exam_applications_exam_student_uq ON exam_applications(exam_id, student_id);`);
 
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
