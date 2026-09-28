@@ -167,10 +167,10 @@ export const SchoolCalendar: React.FC = () => {
     setIsLoading(true);
     try {
       const [eventsRes, statsRes] = await Promise.all([
-        fetch(`http://localhost:4000/api/calendar/events?yearBs=2083&monthBs=${selectedMonthBs}`, {
+        fetch(`/api/calendar/events?yearBs=2083&monthBs=${selectedMonthBs}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:4000/api/calendar/stats', {
+        fetch('/api/calendar/stats', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -230,7 +230,7 @@ export const SchoolCalendar: React.FC = () => {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:4000/api/calendar/events', {
+      const res = await fetch('/api/calendar/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ export const SchoolCalendar: React.FC = () => {
     e.preventDefault();
     if (!selectedEvent) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/calendar/events/${selectedEvent.id}`, {
+      const res = await fetch(`/api/calendar/events/${selectedEvent.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -282,7 +282,7 @@ export const SchoolCalendar: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:4000/api/calendar/events/${id}`, {
+      const res = await fetch(`/api/calendar/events/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -439,12 +439,12 @@ export const SchoolCalendar: React.FC = () => {
                   : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50'
               }`}
             >
-              <span>{m.nameNp} ({m.nameEn})</span>
+              <span>{isNp ? `${m.nameNp} (${m.nameEn})` : m.nameEn}</span>
               {isTodayMonth && (
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                   isCurrentActive ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
                 }`}>
-                  आज
+                  {isNp ? 'आज' : 'Today'}
                 </span>
               )}
             </button>
@@ -460,7 +460,9 @@ export const SchoolCalendar: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center space-x-2">
               <Sun className="w-5 h-5 text-amber-500" />
               <span>
-                {currentMonthInfo.nameNp} २०८३ ({currentMonthInfo.nameEn} 2083 BS)
+                {isNp
+                  ? `${currentMonthInfo.nameNp} २०८३ (${currentMonthInfo.nameEn} 2083 BS)`
+                  : `${currentMonthInfo.nameEn} 2083 BS`}
               </span>
             </h2>
             <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500">
@@ -472,17 +474,17 @@ export const SchoolCalendar: React.FC = () => {
           <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold">
             {/* SUNDAY - RED */}
             <div className="py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30">
-              आइत (Sun) ★
+              {isNp ? 'आइत (Sun) ★' : 'Sun ★'}
             </div>
             {/* Monday to Friday */}
-            <div className="py-1.5 text-slate-600 dark:text-slate-400">सोम (Mon)</div>
-            <div className="py-1.5 text-slate-600 dark:text-slate-400">मंगल (Tue)</div>
-            <div className="py-1.5 text-slate-600 dark:text-slate-400">बुध (Wed)</div>
-            <div className="py-1.5 text-slate-600 dark:text-slate-400">बिही (Thu)</div>
-            <div className="py-1.5 text-slate-600 dark:text-slate-400">शुक्र (Fri)</div>
+            <div className="py-1.5 text-slate-600 dark:text-slate-400">{isNp ? 'सोम (Mon)' : 'Mon'}</div>
+            <div className="py-1.5 text-slate-600 dark:text-slate-400">{isNp ? 'मंगल (Tue)' : 'Tue'}</div>
+            <div className="py-1.5 text-slate-600 dark:text-slate-400">{isNp ? 'बुध (Wed)' : 'Wed'}</div>
+            <div className="py-1.5 text-slate-600 dark:text-slate-400">{isNp ? 'बिही (Thu)' : 'Thu'}</div>
+            <div className="py-1.5 text-slate-600 dark:text-slate-400">{isNp ? 'शुक्र (Fri)' : 'Fri'}</div>
             {/* SATURDAY - RED */}
             <div className="py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30">
-              शनि (Sat) ★
+              {isNp ? 'शनि (Sat) ★' : 'Sat ★'}
             </div>
           </div>
 
@@ -546,14 +548,14 @@ export const SchoolCalendar: React.FC = () => {
                     {/* Today Badge */}
                     {isToday && (
                       <span className="text-[10px] px-1.5 py-0.5 font-bold rounded-full bg-blue-600 text-white shadow-xs animate-pulse">
-                        आज
+                        {isNp ? 'आज' : 'Today'}
                       </span>
                     )}
 
                     {/* Subtle weekend label if no events */}
                     {!isToday && isWeekendHoliday && dayEvents.length === 0 && (
                       <span className="text-[9px] font-semibold text-rose-500 dark:text-rose-400">
-                        बिदा
+                        {isNp ? 'बिदा' : 'Holiday'}
                       </span>
                     )}
                   </div>
@@ -572,9 +574,9 @@ export const SchoolCalendar: React.FC = () => {
                           className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate transition shadow-xs flex items-center justify-between ${cfg.pillBg} ${
                             isPrincipalOrAdmin ? 'hover:opacity-90' : ''
                           }`}
-                          title={`${ev.titleNp || ev.titleEn} (${cfg.labelNp})`}
+                          title={`${isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp} (${isNp ? cfg.labelNp : cfg.labelEn})`}
                         >
-                          <span className="truncate">{ev.titleNp || ev.titleEn}</span>
+                          <span className="truncate">{isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp}</span>
                           {isPrincipalOrAdmin && <Edit2 className="w-2.5 h-2.5 shrink-0 opacity-75 ml-1" />}
                         </div>
                       );
@@ -615,11 +617,11 @@ export const SchoolCalendar: React.FC = () => {
                         <div className="flex items-center space-x-1.5">
                           <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotBg} shrink-0`} />
                           <span className="font-bold text-sm text-slate-900 dark:text-white">
-                            {ev.titleNp || ev.titleEn}
+                            {isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp}
                           </span>
                         </div>
                         <div className="text-xs font-mono font-medium text-slate-500">
-                          {ev.startDateBs} {ev.endDateBs && ev.endDateBs !== ev.startDateBs ? `देखि ${ev.endDateBs}` : ''}
+                          {ev.startDateBs} {ev.endDateBs && ev.endDateBs !== ev.startDateBs ? `${isNp ? 'देखि' : 'to'} ${ev.endDateBs}` : ''}
                         </div>
                       </div>
 

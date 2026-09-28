@@ -226,6 +226,16 @@ const nepaliDaysMap: Record<string, string> = {
   SATURDAY: 'शनिबार',
 };
 
+const englishDaysMap: Record<string, string> = {
+  SUNDAY: 'Sunday',
+  MONDAY: 'Monday',
+  TUESDAY: 'Tuesday',
+  WEDNESDAY: 'Wednesday',
+  THURSDAY: 'Thursday',
+  FRIDAY: 'Friday',
+  SATURDAY: 'Saturday',
+};
+
 const periodNamesNp: Record<number, string> = {
   1: 'पहिलो घण्टी',
   2: 'दोस्रो घण्टी',
@@ -1194,7 +1204,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </span>
                 {substituteOverview?.dayOfWeek && (
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-                    {nepaliDaysMap[substituteOverview.dayOfWeek] || substituteOverview.dayOfWeek}
+                    {isNp
+                      ? nepaliDaysMap[substituteOverview.dayOfWeek] || substituteOverview.dayOfWeek
+                      : englishDaysMap[substituteOverview.dayOfWeek] || substituteOverview.dayOfWeek}
                   </span>
                 )}
               </h4>

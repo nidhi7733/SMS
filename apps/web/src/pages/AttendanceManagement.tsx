@@ -177,7 +177,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const res = await fetch('http://localhost:4000/api/academic/classes', {
+        const res = await fetch('/api/academic/classes', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -217,7 +217,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
         params.append('sectionId', selectedSectionId);
       }
 
-      const res = await fetch(`http://localhost:4000/api/attendance/daily?${params.toString()}`, {
+      const res = await fetch(`/api/attendance/daily?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -287,7 +287,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
         remarks: s.remarks,
       }));
 
-      const res = await fetch('http://localhost:4000/api/attendance/daily', {
+      const res = await fetch('/api/attendance/daily', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -332,7 +332,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
         params.append('sectionId', selectedSectionId);
       }
 
-      const res = await fetch(`http://localhost:4000/api/attendance/monthly-register?${params.toString()}`, {
+      const res = await fetch(`/api/attendance/monthly-register?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -357,7 +357,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
     setIsStaffLoading(true);
     setStaffSuccessMsg('');
     try {
-      const res = await fetch(`http://localhost:4000/api/staff-attendance/daily?dateBs=${staffDateBs}`, {
+      const res = await fetch(`/api/staff-attendance/daily?dateBs=${staffDateBs}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -390,7 +390,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
         remarks: s.remarks,
       }));
 
-      const res = await fetch('http://localhost:4000/api/staff-attendance/daily', {
+      const res = await fetch('/api/staff-attendance/daily', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -421,7 +421,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
     setIsStaffMonthlyLoading(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/staff-attendance/monthly-register?yearBs=${staffMonthlyYearBs}&monthBs=${staffMonthlyMonthBs}&category=${staffCategoryFilter}`,
+        `/api/staff-attendance/monthly-register?yearBs=${staffMonthlyYearBs}&monthBs=${staffMonthlyMonthBs}&category=${staffCategoryFilter}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

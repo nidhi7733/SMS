@@ -120,7 +120,7 @@ export const StaffManagement: React.FC = () => {
       if (selectedAppointment !== 'ALL') params.append('appointmentType', selectedAppointment);
       if (searchQuery.trim()) params.append('q', searchQuery.trim());
 
-      const res = await fetch(`http://localhost:4000/api/staff?${params.toString()}`, {
+      const res = await fetch(`/api/staff?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -151,7 +151,7 @@ export const StaffManagement: React.FC = () => {
     reader.onload = async () => {
       const base64 = (reader.result as string).split(',')[1];
       try {
-        const res = await fetch('http://localhost:4000/api/staff/preview-iemis', {
+        const res = await fetch('/api/staff/preview-iemis', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -181,7 +181,7 @@ export const StaffManagement: React.FC = () => {
     setIsBulkUploading(true);
     setBulkErrorMsg('');
     try {
-      const res = await fetch('http://localhost:4000/api/staff/bulk-import-iemis', {
+      const res = await fetch('/api/staff/bulk-import-iemis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ export const StaffManagement: React.FC = () => {
   };
 
   const handleDownloadTemplate = () => {
-    window.open('http://localhost:4000/api/staff/template', '_blank');
+    window.open('/api/staff/template', '_blank');
   };
 
   const handleOpenAdd = () => {
@@ -243,7 +243,7 @@ export const StaffManagement: React.FC = () => {
   const handleSaveStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:4000/api/staff', {
+      const res = await fetch('/api/staff', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -295,7 +295,7 @@ export const StaffManagement: React.FC = () => {
     e.preventDefault();
     if (!selectedStaff) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/staff/${selectedStaff.id}`, {
+      const res = await fetch(`/api/staff/${selectedStaff.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -318,7 +318,7 @@ export const StaffManagement: React.FC = () => {
   const handleDeleteStaff = async () => {
     if (!selectedStaff) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/staff/${selectedStaff.id}`, {
+      const res = await fetch(`/api/staff/${selectedStaff.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

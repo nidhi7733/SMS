@@ -73,10 +73,10 @@ export const RoutineManagement: React.FC = () => {
     const fetchData = async () => {
       try {
         const [clsRes, staffRes] = await Promise.all([
-          fetch('http://localhost:4000/api/academic/classes', {
+          fetch('/api/academic/classes', {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch('http://localhost:4000/api/staff?category=TEACHING', {
+          fetch('/api/staff?category=TEACHING', {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -125,7 +125,7 @@ export const RoutineManagement: React.FC = () => {
         if (selectedTeacherId) params.append('teacherId', selectedTeacherId);
       }
 
-      const res = await fetch(`http://localhost:4000/api/routine?${params.toString()}`, {
+      const res = await fetch(`/api/routine?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -167,7 +167,7 @@ export const RoutineManagement: React.FC = () => {
     setIsSavingSlot(true);
     setConflictError('');
     try {
-      const res = await fetch('http://localhost:4000/api/routine', {
+      const res = await fetch('/api/routine', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +199,7 @@ export const RoutineManagement: React.FC = () => {
 
   const handleDeleteSlot = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/routine/${id}`, {
+      const res = await fetch(`/api/routine/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });

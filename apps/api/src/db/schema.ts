@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb, primaryKey, real } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, jsonb, primaryKey, real, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // 1. Schools (Tenant)
 export const schools = pgTable('schools', {
@@ -471,6 +471,14 @@ export const exams = pgTable('exams', {
   endDateBs: text('end_date_bs').notNull(),
   isResultPublished: boolean('is_result_published').notNull().default(false),
   isMarksLocked: boolean('is_marks_locked').notNull().default(false),
+  workflowStatus: text('workflow_status').notNull().default('DRAFT'), // DRAFT, SUBMITTED, VERIFIED, PUBLISHED
+  gradingPolicyCode: text('grading_policy_code').notNull().default('CDC_LG_2078_A4_2081'),
+  submittedById: text('submitted_by_id').references(() => users.id, { onDelete: 'set null' }),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  verifiedById: text('verified_by_id').references(() => users.id, { onDelete: 'set null' }),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  publishedById: text('published_by_id').references(() => users.id, { onDelete: 'set null' }),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
   description: text('description'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -489,10 +497,14 @@ export const examMarks = pgTable('exam_marks', {
   casDiscipline: real('cas_discipline'), // आचरण तथा अनुशासन (Max 2)
   casTerminalExam: real('cas_terminal_exam'), // त्रैमासिक परीक्षा (Max 3 / 6)
   isAbsent: boolean('is_absent').notNull().default(false),
+  entryStatus: text('entry_status').notNull().default('DRAFT'), // DRAFT, SUBMITTED, VERIFIED
   remarks: text('remarks'),
   recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex('exam_marks_exam_student_subject_uq').on(table.examId, table.studentId, table.subjectId),
+]);
 
 // 29. Class 1-3 Continuous Assessment System (एकीकृत पाठ्यक्रम CAS - थिम तथा स्तर १-४ मूल्याङ्कन)
 export const class1To3CasRatings = pgTable('class_1_to_3_cas_ratings', {
@@ -507,7 +519,9 @@ export const class1To3CasRatings = pgTable('class_1_to_3_cas_ratings', {
   recordedById: text('recorded_by_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => [
+  uniqueIndex('class_1_to_3_cas_exam_student_subject_uq').on(table.examId, table.studentId, table.subjectId),
+]);
 
 // 30. Student Certificates (Class 10 & 12 School Leaving Certificate - SLC, Character & Transfer Certificates)
 export const studentCertificates = pgTable('student_certificates', {

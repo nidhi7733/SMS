@@ -108,6 +108,16 @@ const nepaliDaysMap: Record<string, string> = {
   SATURDAY: 'शनिबार',
 };
 
+const englishDaysMap: Record<string, string> = {
+  SUNDAY: 'Sunday',
+  MONDAY: 'Monday',
+  TUESDAY: 'Tuesday',
+  WEDNESDAY: 'Wednesday',
+  THURSDAY: 'Thursday',
+  FRIDAY: 'Friday',
+  SATURDAY: 'Saturday',
+};
+
 const periodNamesNp: Record<number, string> = {
   1: 'पहिलो घण्टी',
   2: 'दोस्रो घण्टी',
@@ -322,7 +332,7 @@ export const SubstituteManagement: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700">
             <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-xs font-bold text-slate-500">मिति:</span>
+            <span className="text-xs font-bold text-slate-500">{isNp ? 'मिति:' : 'Date:'}</span>
             <input
               type="text"
               value={selectedDateBs}
@@ -336,7 +346,7 @@ export const SubstituteManagement: React.FC = () => {
                 onClick={() => setSelectedDateBs(initialDateBs)}
                 className="text-[10px] text-blue-600 dark:text-blue-400 hover:underline font-bold"
               >
-                (आज)
+                ({isNp ? 'आज' : 'Today'})
               </button>
             )}
           </div>
@@ -383,7 +393,7 @@ export const SubstituteManagement: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">कुल प्रभावित कक्षा</span>
+            <span className="text-xs font-semibold text-slate-500">{isNp ? 'कुल प्रभावित कक्षा' : 'Total Affected Classes'}</span>
             <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600">
               <Layers className="w-4 h-4" />
             </div>
@@ -392,13 +402,17 @@ export const SubstituteManagement: React.FC = () => {
             {formatNumber(overview?.totalAffected ?? 0)}
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">
-            {overview?.dayOfWeek ? nepaliDaysMap[overview.dayOfWeek] || overview.dayOfWeek : '—'}
+            {overview?.dayOfWeek
+              ? isNp
+                ? nepaliDaysMap[overview.dayOfWeek] || overview.dayOfWeek
+                : englishDaysMap[overview.dayOfWeek] || overview.dayOfWeek
+              : '—'}
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">खाली पिरियड (Vacant)</span>
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">{isNp ? 'खाली पिरियड' : 'Vacant Periods'}</span>
             <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -406,12 +420,12 @@ export const SubstituteManagement: React.FC = () => {
           <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">
             {formatNumber(overview?.vacantCount ?? 0)}
           </div>
-          <div className="text-[11px] text-rose-500/80 mt-0.5">सट्टा शिक्षक तोक्न बाँकी</div>
+          <div className="text-[11px] text-rose-500/80 mt-0.5">{isNp ? 'सट्टा शिक्षक तोक्न बाँकी' : 'Awaiting substitute assignment'}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">सट्टा तोकिएको (Assigned)</span>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{isNp ? 'सट्टा तोकिएको' : 'Assigned'}</span>
             <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
               <CheckCircle2 className="w-4 h-4" />
             </div>
@@ -419,12 +433,12 @@ export const SubstituteManagement: React.FC = () => {
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
             {formatNumber(overview?.assignedCount ?? 0)}
           </div>
-          <div className="text-[11px] text-emerald-500/80 mt-0.5">सफलतापूर्वक खटाइएको</div>
+          <div className="text-[11px] text-emerald-500/80 mt-0.5">{isNp ? 'सफलतापूर्वक खटाइएको' : 'Successfully assigned'}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">कार्य सम्पन्न दर</span>
+            <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{isNp ? 'कार्य सम्पन्न दर' : 'Coverage Rate'}</span>
             <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600">
               <BookOpen className="w-4 h-4" />
             </div>
@@ -434,7 +448,7 @@ export const SubstituteManagement: React.FC = () => {
               ? `${Math.round((overview.assignedCount / overview.totalAffected) * 100)}%`
               : '100%'}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">कक्षा सञ्चालन सुनिश्चितता</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">{isNp ? 'कक्षा सञ्चालन सुनिश्चितता' : 'Class coverage completion'}</div>
         </div>
       </div>
 
@@ -474,7 +488,7 @@ export const SubstituteManagement: React.FC = () => {
       {activeTab === 'TODAY' && (
         <div className="space-y-4">
           {isLoading ? (
-            <div className="p-12 text-center text-slate-500 font-semibold">विवरण लोड हुँदैछ...</div>
+            <div className="p-12 text-center text-slate-500 font-semibold">{isNp ? 'विवरण लोड हुँदैछ...' : 'Loading details...'}</div>
           ) : !overview || overview.periods.length === 0 ? (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-2">
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />

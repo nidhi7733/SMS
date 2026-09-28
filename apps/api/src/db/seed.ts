@@ -534,6 +534,16 @@ export async function runMigrationsAndSeed() {
   await db.execute(sql`ALTER TABLE exam_marks ADD COLUMN IF NOT EXISTS cas_project_practical REAL;`);
   await db.execute(sql`ALTER TABLE exam_marks ADD COLUMN IF NOT EXISTS cas_discipline REAL;`);
   await db.execute(sql`ALTER TABLE exam_marks ADD COLUMN IF NOT EXISTS cas_terminal_exam REAL;`);
+  await db.execute(sql`ALTER TABLE exam_marks ADD COLUMN IF NOT EXISTS entry_status TEXT NOT NULL DEFAULT 'DRAFT';`);
+  await db.execute(sql`ALTER TABLE exam_marks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS workflow_status TEXT NOT NULL DEFAULT 'DRAFT';`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS grading_policy_code TEXT NOT NULL DEFAULT 'CDC_LG_2078_A4_2081';`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS submitted_by_id TEXT REFERENCES users(id) ON DELETE SET NULL;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP WITH TIME ZONE;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS verified_by_id TEXT REFERENCES users(id) ON DELETE SET NULL;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP WITH TIME ZONE;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS published_by_id TEXT REFERENCES users(id) ON DELETE SET NULL;`);
+  await db.execute(sql`ALTER TABLE exams ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE;`);
 
   // Table for Class 1-3 Integrated Curriculum CAS Ratings (Levels 1-4)
   await db.execute(sql`
@@ -551,6 +561,9 @@ export async function runMigrationsAndSeed() {
       updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS exam_marks_exam_student_subject_uq ON exam_marks(exam_id, student_id, subject_id);`);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS class_1_to_3_cas_exam_student_subject_uq ON class_1_to_3_cas_ratings(exam_id, student_id, subject_id);`);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS student_certificates (
