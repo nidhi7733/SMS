@@ -108,6 +108,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       visible: true,
     },
     {
+      id: 'fees',
+      label: t('nav.fees') || 'शुल्क तथा लेखा',
+      icon: ReceiptText,
+      visible: true,
+    },
+    {
       id: 'school_settings',
       label: t('nav.school_settings'),
       icon: Settings,
@@ -122,7 +128,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const upcomingStages = [
-    { id: 'fees', label: t('nav.fees'), icon: ReceiptText, stage: 'Stage 4' },
     { id: 'accounts', label: t('nav.accounts'), icon: Landmark, stage: 'Stage 4' },
     { id: 'library', label: t('nav.library'), icon: BookOpen, stage: 'Stage 5' },
     { id: 'documents', label: t('nav.documents'), icon: FileCheck2, stage: 'Stage 7' },

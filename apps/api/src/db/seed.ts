@@ -643,6 +643,118 @@ export async function runMigrationsAndSeed() {
   `);
   await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS exam_applications_exam_student_uq ON exam_applications(exam_id, student_id);`);
 
+  // Fee Management Migrations
+  await db.execute(sql`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_qr_code_url TEXT;`);
+  await db.execute(sql`ALTER TABLE schools ADD COLUMN IF NOT EXISTS fee_merchant_name TEXT;`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS fee_heads (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      fee_type TEXT NOT NULL DEFAULT 'MONTHLY',
+      description TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS fee_structures (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      academic_year_id TEXT NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      stream_id TEXT REFERENCES streams(id) ON DELETE SET NULL,
+      fee_head_id TEXT NOT NULL REFERENCES fee_heads(id) ON DELETE CASCADE,
+      amount REAL NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS fee_structures_class_head_year_uq ON fee_structures(academic_year_id, class_id, fee_head_id);`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS student_fee_discounts (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      academic_year_id TEXT NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE,
+      fee_head_id TEXT REFERENCES fee_heads(id) ON DELETE CASCADE,
+      discount_type TEXT NOT NULL DEFAULT 'PERCENTAGE',
+      discount_value REAL NOT NULL DEFAULT 0,
+      reason TEXT NOT NULL DEFAULT 'MERIT',
+      document_url TEXT,
+      document_name TEXT,
+      uploaded_at TIMESTAMP WITH TIME ZONE,
+      approved_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS student_fee_bills (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      bill_number TEXT NOT NULL UNIQUE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      section_id TEXT REFERENCES sections(id) ON DELETE SET NULL,
+      academic_year_id TEXT NOT NULL REFERENCES academic_years(id) ON DELETE CASCADE,
+      month_bs INTEGER NOT NULL,
+      year_bs INTEGER NOT NULL DEFAULT 2083,
+      title_en TEXT NOT NULL,
+      title_np TEXT NOT NULL,
+      sub_total REAL NOT NULL DEFAULT 0,
+      discount_amount REAL NOT NULL DEFAULT 0,
+      previous_due REAL NOT NULL DEFAULT 0,
+      total_amount REAL NOT NULL DEFAULT 0,
+      paid_amount REAL NOT NULL DEFAULT 0,
+      due_amount REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'UNPAID',
+      due_date_bs TEXT,
+      generated_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS student_fee_bills_student_month_year_uq ON student_fee_bills(student_id, academic_year_id, month_bs);`);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS student_fee_bill_items (
+      id TEXT PRIMARY KEY,
+      bill_id TEXT NOT NULL REFERENCES student_fee_bills(id) ON DELETE CASCADE,
+      fee_head_id TEXT NOT NULL REFERENCES fee_heads(id) ON DELETE CASCADE,
+      head_name_en TEXT NOT NULL,
+      head_name_np TEXT NOT NULL,
+      amount REAL NOT NULL DEFAULT 0,
+      discount_amount REAL NOT NULL DEFAULT 0,
+      net_amount REAL NOT NULL DEFAULT 0
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS fee_payments (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      receipt_number TEXT NOT NULL UNIQUE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      bill_id TEXT REFERENCES student_fee_bills(id) ON DELETE SET NULL,
+      amount_paid REAL NOT NULL,
+      payment_mode TEXT NOT NULL DEFAULT 'CASH',
+      transaction_ref TEXT,
+      qr_bank_provider TEXT,
+      payment_date_bs TEXT NOT NULL,
+      payment_date_ad TEXT NOT NULL,
+      remarks TEXT,
+      received_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      printed_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -1950,6 +2062,129 @@ export async function runMigrationsAndSeed() {
         .set({ houseId: h.id })
         .where(eq(schema.students.id, unassignedStudents[i].id));
     }
+  }
+
+  // 32. Seed Default Fee Heads & Fee Structures
+  const existingHeads = await db.query.feeHeads.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  let feeHeadTuitionId: string = '';
+  let feeHeadExamId: string = '';
+  let feeHeadLabId: string = '';
+
+  if (existingHeads.length === 0) {
+    console.log('[Seed] Seeding default Fee Heads...');
+    const defaultHeads = [
+      { code: 'TUITION', nameEn: 'Monthly Tuition Fee', nameNp: 'मासिक पढाइ शुल्क', feeType: 'MONTHLY', displayOrder: 1, description: 'Standard monthly instruction and academic fee' },
+      { code: 'ADMISSION', nameEn: 'Annual Admission Fee', nameNp: 'वार्षिक भर्ना/नवीकरण शुल्क', feeType: 'ANNUAL', displayOrder: 2, description: 'Annual session registration and admission fee' },
+      { code: 'EXAM', nameEn: 'Terminal Examination Fee', nameNp: 'त्रैमासिक परीक्षा शुल्क', feeType: 'TERM', displayOrder: 3, description: 'Examination papers, answer sheets, and result processing' },
+      { code: 'COMPUTER', nameEn: 'Computer & Lab Fee', nameNp: 'कम्प्युटर तथा प्रयोगशाला शुल्क', feeType: 'MONTHLY', displayOrder: 4, description: 'Practical lab and digital classroom usage' },
+      { code: 'BUS', nameEn: 'Transportation / Bus Fee', nameNp: 'यातायात तथा बस सेवा शुल्क', feeType: 'MONTHLY', displayOrder: 5, description: 'School bus pick-up and drop-off facility' },
+      { code: 'ECA', nameEn: 'Sports & ECA Fee', nameNp: 'खेलकुद तथा अतिरिक्त क्रियाकलाप', feeType: 'ANNUAL', displayOrder: 6, description: 'Annual sports meet and inter-house events' },
+      { code: 'MISC', nameEn: 'ID Card & Library Fee', nameNp: 'परिचयपत्र तथा पुस्तकालय शुल्क', feeType: 'ONE_TIME', displayOrder: 7, description: 'Student identity card and library registration' },
+    ];
+
+    for (const h of defaultHeads) {
+      const headId = crypto.randomUUID();
+      if (h.code === 'TUITION') feeHeadTuitionId = headId;
+      if (h.code === 'EXAM') feeHeadExamId = headId;
+      if (h.code === 'COMPUTER') feeHeadLabId = headId;
+      await db.insert(schema.feeHeads).values({
+        id: headId,
+        schoolId,
+        ...h,
+      });
+    }
+  } else {
+    feeHeadTuitionId = existingHeads.find((h: any) => h.code === 'TUITION')?.id || existingHeads[0].id;
+    feeHeadExamId = existingHeads.find((h: any) => h.code === 'EXAM')?.id || existingHeads[0].id;
+    feeHeadLabId = existingHeads.find((h: any) => h.code === 'COMPUTER')?.id || existingHeads[0].id;
+  }
+
+  // Set default QR code and merchant info on school if not set
+  await db.update(schema.schools).set({
+    feeMerchantName: 'श्री ज्ञानोदय नमूना माध्यमिक विद्यालय',
+    feeQrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=fonepay://merchant?pan=9800000000&name=Shree+Gyanodaya+School',
+  }).where(eq(schema.schools.id, schoolId));
+
+  // Seed Fee Structures for classes if none exist
+  const existingStructures = await db.query.feeStructures.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const currentYear = await db.query.academicYears.findFirst({
+    where: (table: any, { and, eq }: any) => and(eq(table.schoolId, schoolId), eq(table.isCurrent, true)),
+  });
+
+  const allClasses = await db.query.classes.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (existingStructures.length === 0 && currentYear && allClasses.length > 0 && feeHeadTuitionId) {
+    console.log('[Seed] Seeding sample Fee Structures for classes...');
+    for (const cls of allClasses) {
+      const classNum = parseInt(cls.code.replace(/\D/g, ''), 10) || 1;
+      const tuitionAmt = classNum >= 9 ? 1600 : classNum >= 6 ? 1200 : 800;
+      const examAmt = classNum >= 6 ? 500 : 350;
+
+      await db.insert(schema.feeStructures).values({
+        id: crypto.randomUUID(),
+        schoolId,
+        academicYearId: currentYear.id,
+        classId: cls.id,
+        feeHeadId: feeHeadTuitionId,
+        amount: tuitionAmt,
+      });
+
+      if (feeHeadExamId) {
+        await db.insert(schema.feeStructures).values({
+          id: crypto.randomUUID(),
+          schoolId,
+          academicYearId: currentYear.id,
+          classId: cls.id,
+          feeHeadId: feeHeadExamId,
+          amount: examAmt,
+        });
+      }
+
+      if (feeHeadLabId && classNum >= 4) {
+        await db.insert(schema.feeStructures).values({
+          id: crypto.randomUUID(),
+          schoolId,
+          academicYearId: currentYear.id,
+          classId: cls.id,
+          feeHeadId: feeHeadLabId,
+          amount: 250,
+        });
+      }
+    }
+  }
+
+  // Seed a sample discount with supporting document for demonstration
+  const sampleStudent = await db.query.students.findFirst({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const existingDiscounts = await db.query.studentFeeDiscounts.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (existingDiscounts.length === 0 && sampleStudent && currentYear) {
+    console.log('[Seed] Seeding sample Student Fee Discount with document...');
+    await db.insert(schema.studentFeeDiscounts).values({
+      id: crypto.randomUUID(),
+      schoolId,
+      studentId: sampleStudent.id,
+      academicYearId: currentYear.id,
+      feeHeadId: feeHeadTuitionId || null,
+      discountType: 'PERCENTAGE',
+      discountValue: 50,
+      reason: 'MERIT',
+      documentUrl: 'data:text/plain;base64,U2FtcGxlIE1lcml0IFNjaG9sYXJzaGlwIFJlY29tbWVuZGF0aW9uIExldHRlcg==',
+      documentName: 'merit_scholarship_recommendation_2083.pdf',
+      uploadedAt: new Date(),
+    });
   }
 
   console.log('[Seed] Seeding completed successfully!');

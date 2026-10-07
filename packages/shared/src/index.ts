@@ -7,5 +7,6 @@ export * from './types/staff.js';
 export * from './types/attendance.js';
 export * from './types/calendar.js';
 export * from './types/routine.js';
+export * from './types/fee.js';
 export * from './constants/roles.js';
 export * from './constants/bs-calendar.js';

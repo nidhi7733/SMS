@@ -26,6 +26,8 @@ export const schools = pgTable('schools', {
   activeAcademicYearBs: integer('active_academic_year_bs').notNull().default(2083),
   fiscalYearBs: text('fiscal_year_bs').notNull().default('2082/083'),
   isOfflineCapable: boolean('is_offline_capable').notNull().default(true),
+  feeQrCodeUrl: text('fee_qr_code_url'),
+  feeMerchantName: text('fee_merchant_name'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -591,4 +593,108 @@ export const examApplications = pgTable('exam_applications', {
 }, (table) => [
   uniqueIndex('exam_applications_exam_student_uq').on(table.examId, table.studentId),
 ]);
+
+// 33. Fee Heads (शुल्कका शीर्षकहरू)
+export const feeHeads = pgTable('fee_heads', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(), // TUITION, ADMISSION, EXAM, LAB, BUS, ECA, MISC
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  feeType: text('fee_type').notNull().default('MONTHLY'), // MONTHLY, ANNUAL, TERM, ONE_TIME, OPTIONAL
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 34. Fee Structures (कक्षागत शुल्क दर तालिका)
+export const feeStructures = pgTable('fee_structures', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  academicYearId: text('academic_year_id').notNull().references(() => academicYears.id, { onDelete: 'cascade' }),
+  classId: text('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  streamId: text('stream_id').references(() => streams.id, { onDelete: 'set null' }),
+  feeHeadId: text('fee_head_id').notNull().references(() => feeHeads.id, { onDelete: 'cascade' }),
+  amount: real('amount').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('fee_structures_class_head_year_uq').on(table.academicYearId, table.classId, table.feeHeadId),
+]);
+
+// 35. Student Fee Discounts & Scholarships with Verification Document Upload (छात्रवृत्ति तथा छुट र प्रमाणिक कागजात)
+export const studentFeeDiscounts = pgTable('student_fee_discounts', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  academicYearId: text('academic_year_id').notNull().references(() => academicYears.id, { onDelete: 'cascade' }),
+  feeHeadId: text('fee_head_id').references(() => feeHeads.id, { onDelete: 'cascade' }), // null means applicable to all/tuition
+  discountType: text('discount_type').notNull().default('PERCENTAGE'), // PERCENTAGE, FIXED_AMOUNT, FULL_WAIVER
+  discountValue: real('discount_value').notNull().default(0), // e.g. 50 (for 50%) or 1000 (for Rs. 1000)
+  reason: text('reason').notNull().default('MERIT'), // MERIT, NEED_BASED, SIBLING, STAFF_CHILD, OTHER
+  documentUrl: text('document_url'), // Uploaded proof document (image or pdf)
+  documentName: text('document_name'),
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true }),
+  approvedById: text('approved_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 36. Student Fee Bills (मासिक तथा आवधिक शुल्क बिलहरू)
+export const studentFeeBills = pgTable('student_fee_bills', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  billNumber: text('bill_number').notNull().unique(), // e.g. "INV-2083-01-0001"
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  classId: text('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
+  academicYearId: text('academic_year_id').notNull().references(() => academicYears.id, { onDelete: 'cascade' }),
+  monthBs: integer('month_bs').notNull(), // 1 to 12 (Baisakh=1, Chaitra=12)
+  yearBs: integer('year_bs').notNull().default(2083),
+  titleEn: text('title_en').notNull(),
+  titleNp: text('title_np').notNull(),
+  subTotal: real('sub_total').notNull().default(0),
+  discountAmount: real('discount_amount').notNull().default(0),
+  previousDue: real('previous_due').notNull().default(0),
+  totalAmount: real('total_amount').notNull().default(0),
+  paidAmount: real('paid_amount').notNull().default(0),
+  dueAmount: real('due_amount').notNull().default(0),
+  status: text('status').notNull().default('UNPAID'), // UNPAID, PARTIAL, PAID, CANCELLED
+  dueDateBs: text('due_date_bs'),
+  generatedById: text('generated_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('student_fee_bills_student_month_year_uq').on(table.studentId, table.academicYearId, table.monthBs),
+]);
+
+// 37. Student Fee Bill Items (बिल भित्रका शीर्षकगत आइटमहरू)
+export const studentFeeBillItems = pgTable('student_fee_bill_items', {
+  id: text('id').primaryKey(),
+  billId: text('bill_id').notNull().references(() => studentFeeBills.id, { onDelete: 'cascade' }),
+  feeHeadId: text('fee_head_id').notNull().references(() => feeHeads.id, { onDelete: 'cascade' }),
+  headNameEn: text('head_name_en').notNull(),
+  headNameNp: text('head_name_np').notNull(),
+  amount: real('amount').notNull().default(0),
+  discountAmount: real('discount_amount').notNull().default(0),
+  netAmount: real('net_amount').notNull().default(0),
+});
+
+// 38. Fee Payments & Receipts (शुल्क भुक्तानी तथा रसिद कारोबार)
+export const feePayments = pgTable('fee_payments', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  receiptNumber: text('receipt_number').notNull().unique(), // e.g. "REC-2083-0001"
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  billId: text('bill_id').references(() => studentFeeBills.id, { onDelete: 'set null' }),
+  amountPaid: real('amount_paid').notNull(),
+  paymentMode: text('payment_mode').notNull().default('CASH'), // CASH, QR_CODE, BANK_TRANSFER, CHEQUE
+  transactionRef: text('transaction_ref'), // UTR / Trx ID / Cheque No
+  qrBankProvider: text('qr_bank_provider'), // Fonepay, NepalPay, eSewa, GlobalIME, Nabil, etc.
+  paymentDateBs: text('payment_date_bs').notNull(), // e.g. "2083-01-20"
+  paymentDateAd: text('payment_date_ad').notNull(),
+  remarks: text('remarks'),
+  receivedById: text('received_by_id').references(() => users.id, { onDelete: 'set null' }),
+  printedCount: integer('printed_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
 

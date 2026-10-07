@@ -18,15 +18,71 @@ import { RoutineManagement } from './pages/RoutineManagement';
 import { ExaminationManagement } from './pages/ExaminationManagement';
 import { CertificateManagement } from './pages/CertificateManagement';
 import { SubstituteManagement } from './pages/SubstituteManagement';
+import { FeeManagement } from './pages/FeeManagement';
+
+const VALID_TABS = [
+  'dashboard',
+  'academic',
+  'students',
+  'staff',
+  'attendance',
+  'calendar',
+  'routine',
+  'substitute',
+  'exams',
+  'certificates',
+  'fees',
+  'school_settings',
+  'users_roles',
+];
+
+const parseCurrentTab = (): string => {
+  try {
+    const path = window.location.pathname.replace(/^\/+/, '').split('/')[0].trim().toLowerCase();
+    if (path === 'fees' || path === 'fee' || path === 'billing') return 'fees';
+    if (VALID_TABS.includes(path)) return path;
+
+    const hash = window.location.hash.replace(/^#+/, '').trim().toLowerCase();
+    if (hash === 'fees' || hash === 'fee' || hash === 'billing') return 'fees';
+    if (VALID_TABS.includes(hash)) return hash;
+  } catch {
+    // ignore
+  }
+  return 'dashboard';
+};
 
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
-  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [currentTab, setCurrentTabState] = useState<string>(parseCurrentTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [attendanceSubTab, setAttendanceSubTab] = useState<
     'DAILY' | 'MONTHLY_REGISTER' | 'STAFF_ATTENDANCE' | 'STAFF_MONTHLY_REGISTER'
   >('DAILY');
   const [attendanceClassId, setAttendanceClassId] = useState<string | undefined>(undefined);
+
+  const setCurrentTab = (tab: string) => {
+    setCurrentTabState(tab);
+    try {
+      if (window.location.pathname !== `/${tab}`) {
+        window.history.pushState(null, '', `/${tab}`);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const tab = parseCurrentTab();
+      setCurrentTabState(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
 
   const handleNavigate = (tab: string, subTab?: string, classId?: string) => {
     setCurrentTab(tab);
@@ -83,6 +139,7 @@ const AppContent: React.FC = () => {
           {currentTab === 'substitute' && <SubstituteManagement />}
           {currentTab === 'exams' && <ExaminationManagement />}
           {currentTab === 'certificates' && <CertificateManagement />}
+          {currentTab === 'fees' && <FeeManagement />}
           {currentTab === 'school_settings' && <SchoolSettings />}
           {currentTab === 'users_roles' && <UsersManagement />}
         </main>
