@@ -258,14 +258,14 @@ export const LearningManagement: React.FC = () => {
         body: JSON.stringify(assignmentForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'गृहकार्य सिर्जना गर्न सकिएन');
+      if (!res.ok) throw new Error(data.message || (isNp ? 'गृहकार्य सिर्जना गर्न सकिएन' : 'Failed to create assignment'));
 
-      setSuccess('नयाँ गृहकार्य सफलतापूर्वक सिर्जना गरियो।');
+      setSuccess(isNp ? 'नयाँ गृहकार्य सफलतापूर्वक सिर्जना गरियो।' : 'New homework assignment created successfully.');
       setShowAddAssignmentModal(false);
       setAssignmentForm((prev) => ({ ...prev, title: '', description: '', attachmentUrl: '' }));
       await fetchAssignments();
     } catch (err: any) {
-      setError(err.message || 'गृहकार्य सिर्जना असफल');
+      setError(err.message || (isNp ? 'गृहकार्य सिर्जना असफल' : 'Assignment creation failed'));
     }
   };
 
@@ -282,14 +282,14 @@ export const LearningManagement: React.FC = () => {
         body: JSON.stringify(materialForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'पाठ्य सामग्री थप्न सकिएन');
+      if (!res.ok) throw new Error(data.message || (isNp ? 'पाठ्य सामग्री थप्न सकिएन' : 'Failed to add study material'));
 
-      setSuccess('डिजिटल पाठ्य सामग्री सफलतापूर्वक थपियो।');
+      setSuccess(isNp ? 'डिजिटल पाठ्य सामग्री सफलतापूर्वक थपियो।' : 'Digital study material added successfully.');
       setShowAddMaterialModal(false);
       setMaterialForm((prev) => ({ ...prev, title: '', fileUrl: '', description: '' }));
       await fetchMaterials();
     } catch (err: any) {
-      setError(err.message || 'पाठ्य सामग्री थप्न असफल');
+      setError(err.message || (isNp ? 'पाठ्य सामग्री थप्न असफल' : 'Failed to add study material'));
     }
   };
 
@@ -307,9 +307,9 @@ export const LearningManagement: React.FC = () => {
         body: JSON.stringify(submissionForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'समाधान बुझाउन असफल');
+      if (!res.ok) throw new Error(data.message || (isNp ? 'समाधान बुझाउन असफल' : 'Failed to submit solution'));
 
-      setSuccess('गृहकार्य समाधान सफलतापूर्वक बुझाइयो।');
+      setSuccess(isNp ? 'गृहकार्य समाधान सफलतापूर्वक बुझाइयो।' : 'Homework solution submitted successfully.');
       setShowSubmitModal(false);
       await fetchAssignmentDetails(activeAssignment.id);
       await fetchAssignments();
@@ -317,7 +317,7 @@ export const LearningManagement: React.FC = () => {
         await fetchStudentSummary(submissionForm.studentId);
       }
     } catch (err: any) {
-      setError(err.message || 'समाधान बुझाउन असफल');
+      setError(err.message || (isNp ? 'समाधान बुझाउन असफल' : 'Failed to submit solution'));
     }
   };
 
@@ -335,16 +335,16 @@ export const LearningManagement: React.FC = () => {
         body: JSON.stringify(gradeForm),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'जाँच सुरक्षित गर्न सकिएन');
+      if (!res.ok) throw new Error(data.message || (isNp ? 'जाँच सुरक्षित गर्न सकिएन' : 'Failed to save evaluation'));
 
-      setSuccess('गृहकार्य सफलतापूर्वक जाँचियो र पृष्ठपोषण सुरक्षित भयो।');
+      setSuccess(isNp ? 'गृहकार्य सफलतापूर्वक जाँचियो र पृष्ठपोषण सुरक्षित भयो।' : 'Homework evaluated and feedback saved successfully.');
       setShowEvaluationModal(false);
       await fetchAssignmentDetails(activeAssignment.id);
       if (activeSubmissionToGrade.studentId) {
         await fetchStudentSummary(activeSubmissionToGrade.studentId);
       }
     } catch (err: any) {
-      setError(err.message || 'जाँच सुरक्षित गर्न असफल');
+      setError(err.message || (isNp ? 'जाँच सुरक्षित गर्न असफल' : 'Failed to save evaluation'));
     }
   };
 
@@ -596,7 +596,7 @@ export const LearningManagement: React.FC = () => {
               <option value="">{isNp ? 'सबै कक्षाहरू (All Classes)' : 'All Classes'}</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nameNp || c.nameEn}
+                  {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                 </option>
               ))}
             </select>
@@ -611,7 +611,7 @@ export const LearningManagement: React.FC = () => {
               <option value="">{isNp ? 'सबै विषयहरू (All Subjects)' : 'All Subjects'}</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.nameNp || s.nameEn}
+                  {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                 </option>
               ))}
             </select>
@@ -637,7 +637,7 @@ export const LearningManagement: React.FC = () => {
               fetchMaterials();
             }}
             className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
-            title="रिफ्रेस गर्नुहोस्"
+            title={isNp ? 'रिफ्रेस गर्नुहोस्' : 'Refresh'}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -669,7 +669,10 @@ export const LearningManagement: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                        {assignment.className || 'कक्षा'} {assignment.sectionName ? `(${assignment.sectionName})` : ''}
+                        {isNp ? (assignment.className || 'कक्षा') : (assignment.classNameEn || assignment.className || 'Class')}{' '}
+                        {assignment.sectionName
+                          ? `(${isNp ? assignment.sectionName : (assignment.sectionNameEn || assignment.sectionName)})`
+                          : ''}
                       </span>
                       <span
                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -690,7 +693,7 @@ export const LearningManagement: React.FC = () => {
 
                     <div>
                       <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {assignment.subjectName || 'अनिवार्य विषय'}
+                        {isNp ? (assignment.subjectName || 'अनिवार्य विषय') : (assignment.subjectNameEn || assignment.subjectName || 'Subject')}
                       </div>
                       <h3 className="text-base font-extrabold text-slate-900 dark:text-white leading-tight mt-0.5">
                         {assignment.title}
@@ -717,7 +720,7 @@ export const LearningManagement: React.FC = () => {
                     {assignment.attachmentUrl && (
                       <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg flex items-center justify-between text-xs">
                         <span className="truncate max-w-[180px] text-slate-600 dark:text-slate-300 font-medium">
-                          📎 {assignment.attachmentName || 'प्रश्नपत्र / सामग्री'}
+                          📎 {assignment.attachmentName || (isNp ? 'प्रश्नपत्र / सामग्री' : 'Attachment')}
                         </span>
                         <a
                           href={assignment.attachmentUrl}
@@ -725,7 +728,7 @@ export const LearningManagement: React.FC = () => {
                           rel="noopener noreferrer"
                           className="text-indigo-600 hover:text-indigo-700 font-bold shrink-0 inline-flex items-center space-x-1"
                         >
-                          <span>हेर्नुहोस्</span>
+                          <span>{isNp ? 'हेर्नुहोस्' : 'View'}</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
@@ -762,7 +765,7 @@ export const LearningManagement: React.FC = () => {
                     <button
                       onClick={() => handleToggleAssignmentStatus(assignment)}
                       className="py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition"
-                      title={assignment.status === 'ACTIVE' ? 'बन्द गर्नुहोस्' : 'सक्रिय गर्नुहोस्'}
+                      title={assignment.status === 'ACTIVE' ? (isNp ? 'बन्द गर्नुहोस्' : 'Close Assignment') : (isNp ? 'सक्रिय गर्नुहोस्' : 'Activate Assignment')}
                     >
                       <Clock className="w-3.5 h-3.5" />
                     </button>
@@ -770,7 +773,7 @@ export const LearningManagement: React.FC = () => {
                     <button
                       onClick={() => handleDeleteAssignment(assignment.id)}
                       className="py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold transition"
-                      title="हटाउनुहोस्"
+                      title={isNp ? 'हटाउनुहोस्' : 'Delete'}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -802,7 +805,7 @@ export const LearningManagement: React.FC = () => {
                 <option value="">{isNp ? '-- गृहकार्य छान्नुहोस् --' : '-- Choose Assignment --'}</option>
                 {assignments.map((a) => (
                   <option key={a.id} value={a.id}>
-                    [{a.className} - {a.subjectName}] {a.title} (म्याद: {a.dueDateBs})
+                    [{isNp ? (a.className || 'कक्षा') : (a.classNameEn || a.className || 'Class')} - {isNp ? (a.subjectName || 'विषय') : (a.subjectNameEn || a.subjectName || 'Subject')}] {a.title} ({isNp ? 'म्याद:' : 'Due:'} {a.dueDateBs})
                   </option>
                 ))}
               </select>
@@ -815,7 +818,7 @@ export const LearningManagement: React.FC = () => {
                   className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center space-x-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{isNp ? '+ समाधान बुझाउनुहोस् (Submit)' : '+ Submit Solution'}</span>
+                  <span>{isNp ? '+ समाधान बुझाउनुहोस्' : '+ Submit Solution'}</span>
                 </button>
               </div>
             )}
@@ -853,7 +856,7 @@ export const LearningManagement: React.FC = () => {
                     {activeAssignment.title} — {isNp ? 'बुझाइएका समाधानहरूको सूची' : 'Student Submissions'}
                   </h3>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    {activeAssignment.className} • {activeAssignment.subjectName} • {isNp ? 'पूर्णांक:' : 'Total Marks:'}{' '}
+                    {isNp ? (activeAssignment.className || 'कक्षा') : (activeAssignment.classNameEn || activeAssignment.className || 'Class')} • {isNp ? (activeAssignment.subjectName || 'विषय') : (activeAssignment.subjectNameEn || activeAssignment.subjectName || 'Subject')} • {isNp ? 'पूर्णांक:' : 'Total Marks:'}{' '}
                     {formatNumber(activeAssignment.totalMarks || 10)}
                   </div>
                 </div>
@@ -869,7 +872,7 @@ export const LearningManagement: React.FC = () => {
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-extrabold text-slate-900 dark:text-white">
-                            {sub.studentName}
+                            {isNp ? (sub.studentNameNp || sub.studentName) : (sub.studentNameEn || sub.studentName)}
                           </span>
                           <span className="text-xs text-slate-500 font-mono">
                             ({sub.studentCode || 'STU-ID'})
@@ -898,7 +901,7 @@ export const LearningManagement: React.FC = () => {
                         </div>
                         <div className="text-xs text-slate-600 dark:text-slate-300 mt-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
                           <span className="font-semibold text-slate-500">{isNp ? 'समाधान / उत्तर:' : 'Answer:'} </span>
-                          <span>{sub.content || 'कुनै लिखित उत्तर छैन'}</span>
+                          <span>{sub.content || (isNp ? 'कुनै लिखित उत्तर छैन' : 'No written answer provided')}</span>
                         </div>
                       </div>
 
@@ -977,7 +980,7 @@ export const LearningManagement: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                        {mat.className || 'कक्षा'} • {mat.subjectName || 'विषय'}
+                        {isNp ? (mat.className || 'कक्षा') : (mat.classNameEn || mat.className || 'Class')} • {isNp ? (mat.subjectName || 'विषय') : (mat.subjectNameEn || mat.subjectName || 'Subject')}
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                         {mat.resourceType}
@@ -1000,7 +1003,7 @@ export const LearningManagement: React.FC = () => {
                     )}
 
                     <div className="pt-2 text-[11px] text-slate-500">
-                      {isNp ? 'अपलोडकर्ता:' : 'Uploaded by:'} {mat.uploadedByName || 'शिक्षक'}
+                      {isNp ? 'अपलोडकर्ता:' : 'Uploaded by:'} {isNp ? (mat.uploadedByName || 'शिक्षक') : (mat.uploadedByNameEn || mat.uploadedByName || 'Teacher')}
                     </div>
                   </div>
 
@@ -1018,7 +1021,7 @@ export const LearningManagement: React.FC = () => {
                     <button
                       onClick={() => handleDeleteMaterial(mat.id)}
                       className="py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 text-xs font-bold transition"
-                      title="हटाउनुहोस्"
+                      title={isNp ? 'हटाउनुहोस्' : 'Delete'}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1045,7 +1048,7 @@ export const LearningManagement: React.FC = () => {
               >
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
-                    [{s.studentId}] {s.firstNameNp || s.firstNameEn} {s.lastNameNp || s.lastNameEn}
+                    [{s.studentId}] {isNp ? (s.firstNameNp ? `${s.firstNameNp} ${s.lastNameNp || ''}`.trim() : `${s.firstNameEn} ${s.lastNameEn || ''}`.trim()) : (s.firstNameEn ? `${s.firstNameEn} ${s.lastNameEn || ''}`.trim() : `${s.firstNameNp} ${s.lastNameNp || ''}`.trim())}
                   </option>
                 ))}
               </select>
@@ -1187,7 +1190,7 @@ export const LearningManagement: React.FC = () => {
                   >
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.nameNp || c.nameEn}
+                        {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -1205,7 +1208,7 @@ export const LearningManagement: React.FC = () => {
                   >
                     {subjects.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nameNp || s.nameEn}
+                        {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -1331,7 +1334,7 @@ export const LearningManagement: React.FC = () => {
                   >
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.nameNp || c.nameEn}
+                        {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -1349,7 +1352,7 @@ export const LearningManagement: React.FC = () => {
                   >
                     {subjects.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nameNp || s.nameEn}
+                        {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -1484,7 +1487,7 @@ export const LearningManagement: React.FC = () => {
                 >
                   {students.map((s) => (
                     <option key={s.id} value={s.id}>
-                      [{s.studentId}] {s.firstNameNp || s.firstNameEn} {s.lastNameNp || s.lastNameEn}
+                      [{s.studentId}] {isNp ? (s.firstNameNp ? `${s.firstNameNp} ${s.lastNameNp || ''}`.trim() : `${s.firstNameEn} ${s.lastNameEn || ''}`.trim()) : (s.firstNameEn ? `${s.firstNameEn} ${s.lastNameEn || ''}`.trim() : `${s.firstNameNp} ${s.lastNameNp || ''}`.trim())}
                     </option>
                   ))}
                 </select>
@@ -1557,10 +1560,10 @@ export const LearningManagement: React.FC = () => {
             <form onSubmit={handleSaveEvaluation} className="p-5 space-y-4">
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
                 <div className="font-extrabold text-slate-900 dark:text-white">
-                  विद्यार्थी: {activeSubmissionToGrade.studentName} ({activeSubmissionToGrade.studentCode})
+                  {isNp ? 'विद्यार्थी:' : 'Student:'} {isNp ? (activeSubmissionToGrade.studentNameNp || activeSubmissionToGrade.studentName) : (activeSubmissionToGrade.studentNameEn || activeSubmissionToGrade.studentName)} ({activeSubmissionToGrade.studentCode})
                 </div>
                 <div className="text-slate-600 dark:text-slate-300 mt-1">
-                  <b>विद्यार्थीको उत्तर:</b> {activeSubmissionToGrade.content}
+                  <b>{isNp ? 'विद्यार्थीको उत्तर:' : "Student's Answer:"}</b> {activeSubmissionToGrade.content}
                 </div>
               </div>
 
@@ -1580,7 +1583,7 @@ export const LearningManagement: React.FC = () => {
                     className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 font-extrabold text-base"
                   />
                   <span className="text-[10px] text-slate-500">
-                    पूर्णांक: {activeAssignment.totalMarks || 10}
+                    {isNp ? 'पूर्णांक:' : 'Total Marks:'} {formatNumber(activeAssignment.totalMarks || 10)}
                   </span>
                 </div>
 

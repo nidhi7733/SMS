@@ -91,16 +91,37 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu, isMenuOpen }) => {
           )}
         </button>
 
-        {/* Language Toggle */}
-        <button
-          onClick={() => setLanguage(language === 'en' ? 'np' : 'en')}
-          className="inline-flex items-center space-x-1 sm:space-x-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-2xs"
-          title="Switch Language / भाषा परिवर्तन गर्नुहोस्"
+        {/* Language Selector (Segmented Bilingual Switcher) */}
+        <div
+          className="inline-flex items-center p-0.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-xs shadow-2xs"
+          role="group"
+          aria-label="Language selector"
         >
-          <Globe className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-          <span className="hidden sm:inline">{language === 'en' ? 'नेपाली' : 'English'}</span>
-          <span className="sm:hidden">{language === 'en' ? 'ने' : 'EN'}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('np')}
+            className={`px-2 py-1 rounded-md transition font-bold flex items-center space-x-1 ${
+              language === 'np'
+                ? 'bg-blue-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+            title="नेपाली भाषा छनोट (Select Nepali)"
+          >
+            <span>नेपाली</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setLanguage('en')}
+            className={`px-2 py-1 rounded-md transition font-bold flex items-center space-x-1 ${
+              language === 'en'
+                ? 'bg-blue-600 text-white shadow-xs font-black'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+            title="Select English (अंग्रेजी भाषा छनोट)"
+          >
+            <span>English</span>
+          </button>
+        </div>
 
         {/* User Badge */}
         {user && (

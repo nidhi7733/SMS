@@ -65,6 +65,7 @@ export default async function learningRoutes(fastify: FastifyInstance) {
         className: schema.classes.nameNp,
         classNameEn: schema.classes.nameEn,
         sectionName: schema.sections.nameNp,
+        sectionNameEn: schema.sections.nameEn,
         subjectName: schema.subjects.nameNp,
         subjectNameEn: schema.subjects.nameEn,
         teacherFullNameNp: schema.staff.fullNameNp,
@@ -200,6 +201,8 @@ export default async function learningRoutes(fastify: FastifyInstance) {
     const formattedSubmissions = submissions.map((s: any) => ({
       ...s,
       studentName: `${s.studentNameNp || s.studentNameEn || ''} ${s.studentLastNameNp || s.studentLastNameEn || ''}`.trim() || 'विद्यार्थी',
+      studentNameNp: `${s.studentNameNp || ''} ${s.studentLastNameNp || ''}`.trim() || undefined,
+      studentNameEn: `${s.studentNameEn || ''} ${s.studentLastNameEn || ''}`.trim() || undefined,
     }));
 
     return reply.send({
@@ -402,6 +405,7 @@ export default async function learningRoutes(fastify: FastifyInstance) {
         subjectName: schema.subjects.nameNp,
         subjectNameEn: schema.subjects.nameEn,
         uploadedByName: schema.users.fullNameNp,
+        uploadedByNameEn: schema.users.fullNameEn,
       })
       .from(schema.lmsStudyMaterials)
       .leftJoin(schema.classes, eq(schema.lmsStudyMaterials.classId, schema.classes.id))
@@ -522,12 +526,16 @@ export default async function learningRoutes(fastify: FastifyInstance) {
       .filter((s: any) => s.teacherFeedback && s.teacherFeedback.trim().length > 0)
       .map((s: any) => s.teacherFeedback);
 
-    const studentName = `${student.firstNameNp || student.firstNameEn} ${student.lastNameNp || student.lastNameEn}`.trim();
+    const studentNameNp = `${student.firstNameNp || ''} ${student.lastNameNp || ''}`.trim();
+    const studentNameEn = `${student.firstNameEn || ''} ${student.lastNameEn || ''}`.trim();
+    const studentName = studentNameNp || studentNameEn;
 
     return reply.send({
       summary: {
         studentId,
         studentName,
+        studentNameNp,
+        studentNameEn,
         studentCode: student.studentId,
         totalAssignments,
         submittedCount,

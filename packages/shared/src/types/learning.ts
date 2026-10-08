@@ -23,8 +23,13 @@ export interface LmsAssignment {
   createdAt?: string;
   // Joined details
   className?: string;
+  classNameEn?: string;
   sectionName?: string;
+  sectionNameEn?: string;
   subjectName?: string;
+  subjectNameEn?: string;
+  teacherFullNameNp?: string;
+  teacherFullNameEn?: string;
   teacherName?: string;
   submissionsCount?: number;
 }
@@ -44,6 +49,8 @@ export interface LmsSubmission {
   evaluatedById?: string | null;
   // Joined details
   studentName?: string;
+  studentNameNp?: string;
+  studentNameEn?: string;
   studentCode?: string;
   rollNumber?: number | string;
 }
@@ -63,13 +70,19 @@ export interface LmsStudyMaterial {
   createdAt?: string;
   // Joined details
   className?: string;
+  classNameEn?: string;
   subjectName?: string;
+  subjectNameEn?: string;
   uploadedByName?: string;
+  uploadedByNameEn?: string;
 }
 
 export interface StudentLearningSummary {
   studentId: string;
   studentName: string;
+  studentNameNp?: string;
+  studentNameEn?: string;
+  studentCode?: string;
   totalAssignments: number;
   submittedCount: number;
   checkedCount: number;
