@@ -11,6 +11,7 @@ export * from './types/fee.js';
 export * from './types/accounting.js';
 export * from './types/inventory.js';
 export * from './types/library.js';
+export * from './types/learning.js';
 export * from './constants/roles.js';
 export * from './constants/bs-calendar.js';
 

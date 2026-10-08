@@ -1063,6 +1063,65 @@ export async function runMigrationsAndSeed() {
     // column already exists or table freshly created
   }
 
+  // LMS Learning Management Migrations
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS lms_assignments (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      academic_year_id TEXT REFERENCES academic_years(id) ON DELETE SET NULL,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      section_id TEXT REFERENCES sections(id) ON DELETE SET NULL,
+      subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+      teacher_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      attachment_url TEXT,
+      attachment_name TEXT,
+      assigned_date_bs TEXT NOT NULL,
+      due_date_bs TEXT NOT NULL,
+      total_marks REAL,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS lms_submissions (
+      id TEXT PRIMARY KEY,
+      assignment_id TEXT NOT NULL REFERENCES lms_assignments(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      submitted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      content TEXT,
+      attachment_url TEXT,
+      attachment_name TEXT,
+      status TEXT NOT NULL DEFAULT 'SUBMITTED',
+      marks_obtained REAL,
+      teacher_feedback TEXT,
+      evaluated_at TIMESTAMP WITH TIME ZONE,
+      evaluated_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS lms_study_materials (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      class_id TEXT NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+      subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+      unit_name TEXT NOT NULL,
+      title TEXT NOT NULL,
+      resource_type TEXT NOT NULL DEFAULT 'PDF',
+      file_url TEXT NOT NULL,
+      file_name TEXT,
+      description TEXT,
+      uploaded_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({

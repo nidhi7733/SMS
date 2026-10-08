@@ -17,6 +17,7 @@ import {
   Boxes,
   Award,
   ArrowRightLeft,
+  BookMarked,
   X,
 } from 'lucide-react';
 
@@ -130,6 +131,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'library',
       label: t('nav.library') || 'पुस्तकालय व्यवस्थापन',
       icon: BookOpen,
+      visible: true,
+    },
+    {
+      id: 'learning',
+      label: t('nav.learning') || 'सिकाइ तथा गृहकार्य',
+      icon: BookMarked,
       visible: true,
     },
     {

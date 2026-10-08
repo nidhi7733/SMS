@@ -34,6 +34,7 @@ const translations: Record<string, { en: string; np: string }> = {
   'nav.accounts': { en: 'Double-Entry Accounts', np: 'दोहोरो लेखा प्रणाली' },
 
   'nav.library': { en: 'Library Management', np: 'पुस्तकालय व्यवस्थापन' },
+  'nav.learning': { en: 'Learning & Homework', np: 'सिकाइ तथा गृहकार्य' },
   'nav.exams': { en: 'Examinations (CDC)', np: 'परीक्षा (CDC/NEB)' },
   'nav.certificates': { en: 'Certificates (SLC/SEE)', np: 'प्रमाणपत्र (SLC/चारित्रिक)' },
   'nav.documents': { en: 'Documents & QR', np: 'कागजात र क्युआर' },

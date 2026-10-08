@@ -979,5 +979,60 @@ export const libraryFines = pgTable('library_fines', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 56. LMS Assignments (दैनिक गृहकार्य तथा असाइनमेन्टहरू)
+export const lmsAssignments = pgTable('lms_assignments', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  academicYearId: text('academic_year_id').references(() => academicYears.id, { onDelete: 'set null' }),
+  classId: text('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  sectionId: text('section_id').references(() => sections.id, { onDelete: 'set null' }),
+  subjectId: text('subject_id').notNull().references(() => subjects.id, { onDelete: 'cascade' }),
+  teacherId: text('teacher_id').references(() => staff.id, { onDelete: 'set null' }),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  attachmentUrl: text('attachment_url'),
+  attachmentName: text('attachment_name'),
+  assignedDateBs: text('assigned_date_bs').notNull(),
+  dueDateBs: text('due_date_bs').notNull(),
+  totalMarks: real('total_marks'),
+  status: text('status').notNull().default('ACTIVE'), // ACTIVE, EXPIRED, CLOSED
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 57. LMS Submissions (विद्यार्थीद्वारा समाधान बुझाउने र शिक्षक मूल्यांकन)
+export const lmsSubmissions = pgTable('lms_submissions', {
+  id: text('id').primaryKey(),
+  assignmentId: text('assignment_id').notNull().references(() => lmsAssignments.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+  content: text('content'),
+  attachmentUrl: text('attachment_url'),
+  attachmentName: text('attachment_name'),
+  status: text('status').notNull().default('SUBMITTED'), // SUBMITTED, CHECKED, NEEDS_REVISION, LATE, REJECTED
+  marksObtained: real('marks_obtained'),
+  teacherFeedback: text('teacher_feedback'),
+  evaluatedAt: timestamp('evaluated_at', { withTimezone: true }),
+  evaluatedById: text('evaluated_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 58. LMS Study Materials (पाठ्य सामग्री, अध्यायगत नोट तथा भिडियो स्रोतहरू)
+export const lmsStudyMaterials = pgTable('lms_study_materials', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  classId: text('class_id').notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  subjectId: text('subject_id').notNull().references(() => subjects.id, { onDelete: 'cascade' }),
+  unitName: text('unit_name').notNull(),
+  title: text('title').notNull(),
+  resourceType: text('resource_type').notNull().default('PDF'), // PDF, IMAGE, VIDEO_URL, DOCUMENT
+  fileUrl: text('file_url').notNull(),
+  fileName: text('file_name'),
+  description: text('description'),
+  uploadedById: text('uploaded_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 
 

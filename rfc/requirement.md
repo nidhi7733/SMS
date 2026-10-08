@@ -702,7 +702,7 @@ export const libraryFines = pgTable('library_fines', {
 > **प्रणाली:** हाम्रो विद्यालय व्यवस्थापन प्रणाली (Hamro SMS)  
 > **मोड्युल:** विद्यार्थी सिकाइ तथा शिक्षण व्यवस्थापन (Student Learning & LMS Management)  
 > **अन्तिम अद्यावधिक मिति:** २०८३-०६-२२ (2026-10-08)  
-> **स्वीकृति स्थिति (Acceptance Status):** 🟡 **समीक्षाधीन (PENDING ACCEPTANCE)**  
+> **स्वीकृति स्थिति (Acceptance Status):** 🟢 **स्वीकृत (ACCEPTED & SIGNED-OFF)**  
 
 ---
 
@@ -865,4 +865,4 @@ export const libraryFines = pgTable('library_fines', {
 
 | मिति (Date) | समीक्षक (Reviewer) | स्वीकृति स्थिति (Status) | प्रयोगकर्ताको टिप्पणी / पृष्ठपोषण |
 |---|---|---|---|
-| २०८३-०६-२२ (2026-10-08) | User | 🟡 **समीक्षाधीन (PENDING ACCEPTANCE)** | आवश्यकता अद्यावधिक गरिएको, प्रयोगकर्ताको योजना स्वीकृति तथा कार्यान्वयन निर्देशन प्रतिक्षारत। |
+| २०८३-०६-२२ (2026-10-08) | User | 🟢 **स्वीकृत (ACCEPTED & SIGNED-OFF)** | प्रयोगकर्ताद्वारा आधिकारिक रूपमा स्वीकृत: "Approved." (कार्यान्वयन सुरु) |
