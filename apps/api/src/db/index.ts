@@ -28,6 +28,26 @@ export async function getDb() {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     console.log(`[DB] Initializing embedded persistent PostgreSQL at ${dataDir}...`);
+    // Clean up any stale postmaster.pid or lock file left by previous process crash
+    const pidFile = path.join(dataDir, 'postmaster.pid');
+    if (fs.existsSync(pidFile)) {
+      try {
+        fs.unlinkSync(pidFile);
+        console.log(`[DB] Removed stale ${pidFile}`);
+      } catch (e) {
+        // ignore
+      }
+    }
+    const lockFile = path.join(dataDir, '.s.PGSQL.5432.lock.out');
+    if (fs.existsSync(lockFile)) {
+      try {
+        fs.unlinkSync(lockFile);
+        console.log(`[DB] Removed stale ${lockFile}`);
+      } catch (e) {
+        // ignore
+      }
+    }
+
     const pglite = new PGlite(dataDir);
     await pglite.waitReady;
     dbInstance = drizzlePglite(pglite, { schema });
