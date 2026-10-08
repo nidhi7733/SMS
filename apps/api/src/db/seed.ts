@@ -947,6 +947,113 @@ export async function runMigrationsAndSeed() {
     )
   `);
 
+  // Library Management Migrations
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_categories (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_books (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      isbn TEXT,
+      title_en TEXT NOT NULL,
+      title_np TEXT NOT NULL,
+      author TEXT NOT NULL,
+      publisher TEXT,
+      edition TEXT,
+      publication_year TEXT,
+      language TEXT NOT NULL DEFAULT 'NEPALI',
+      category_id TEXT NOT NULL REFERENCES library_categories(id) ON DELETE CASCADE,
+      rack_location TEXT NOT NULL DEFAULT 'Rack 1, Shelf A',
+      price REAL NOT NULL DEFAULT 0,
+      total_copies INTEGER NOT NULL DEFAULT 1,
+      available_copies INTEGER NOT NULL DEFAULT 1,
+      description TEXT,
+      cover_image_url TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_book_copies (
+      id TEXT PRIMARY KEY,
+      book_id TEXT NOT NULL REFERENCES library_books(id) ON DELETE CASCADE,
+      accession_number TEXT NOT NULL UNIQUE,
+      barcode TEXT,
+      condition TEXT NOT NULL DEFAULT 'GOOD',
+      status TEXT NOT NULL DEFAULT 'AVAILABLE',
+      added_date_bs TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_members (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      member_type TEXT NOT NULL DEFAULT 'STUDENT',
+      student_id TEXT REFERENCES students(id) ON DELETE CASCADE,
+      staff_id TEXT REFERENCES staff(id) ON DELETE CASCADE,
+      card_number TEXT NOT NULL UNIQUE,
+      max_allowed_books INTEGER NOT NULL DEFAULT 2,
+      max_issue_days INTEGER NOT NULL DEFAULT 14,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_circulations (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      circulation_number TEXT NOT NULL UNIQUE,
+      copy_id TEXT NOT NULL REFERENCES library_book_copies(id) ON DELETE CASCADE,
+      member_id TEXT NOT NULL REFERENCES library_members(id) ON DELETE CASCADE,
+      issue_date_bs TEXT NOT NULL,
+      issue_date_ad TEXT NOT NULL,
+      due_date_bs TEXT NOT NULL,
+      return_date_bs TEXT,
+      return_date_ad TEXT,
+      status TEXT NOT NULL DEFAULT 'ISSUED',
+      fine_amount REAL NOT NULL DEFAULT 0,
+      fine_paid BOOLEAN NOT NULL DEFAULT false,
+      remarks TEXT,
+      issued_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      returned_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS library_fines (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      circulation_id TEXT NOT NULL REFERENCES library_circulations(id) ON DELETE CASCADE,
+      member_id TEXT NOT NULL REFERENCES library_members(id) ON DELETE CASCADE,
+      overdue_days INTEGER NOT NULL DEFAULT 0,
+      rate_per_day REAL NOT NULL DEFAULT 2,
+      fine_amount REAL NOT NULL DEFAULT 0,
+      waived_amount REAL NOT NULL DEFAULT 0,
+      paid_amount REAL NOT NULL DEFAULT 0,
+      payment_status TEXT NOT NULL DEFAULT 'UNPAID',
+      receipt_number TEXT,
+      payment_date_bs TEXT,
+      collected_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -2700,6 +2807,322 @@ export async function runMigrationsAndSeed() {
       creditAmount: 25000,
       displayOrder: 2,
     });
+  }
+
+  // -------------------------------------------------------------
+  // Seed Library Management Data
+  // -------------------------------------------------------------
+  console.log('[Seed] Seeding Library Management System...');
+  const categoryDefs = [
+    { code: '010', nameEn: 'Curriculum & Textbooks', nameNp: 'पाठ्यक्रम तथा पाठ्यपुस्तक', description: 'CDC Textbooks and Grade References' },
+    { code: '020', nameEn: 'Reference & Dictionaries', nameNp: 'सन्दर्भ तथा शब्दकोश', description: 'Encyclopedias, Lexicons, and Dictionaries' },
+    { code: '100', nameEn: 'Philosophy & Psychology', nameNp: 'दर्शनशास्त्र तथा मनोविज्ञान', description: 'Moral Science, Philosophy, and Mental Wellbeing' },
+    { code: '300', nameEn: 'Social Sciences & Law', nameNp: 'सामाजिक शास्त्र तथा कानुन', description: 'Civics, Economics, Sociology, and Law' },
+    { code: '500', nameEn: 'Science & Mathematics', nameNp: 'विज्ञान तथा गणित', description: 'Physics, Chemistry, Biology, and Mathematics' },
+    { code: '600', nameEn: 'Technology & Applied Sciences', nameNp: 'प्रविधि तथा व्यवहारिक विज्ञान', description: 'Computer Science, Engineering, and Practical Tech' },
+    { code: '800', nameEn: 'Literature & Fiction', nameNp: 'साहित्य तथा कथा/उपन्यास', description: 'Nepali and World Classics, Novels, and Poetry' },
+    { code: '920', nameEn: 'History & Biographies', nameNp: 'इतिहास तथा जीवनी', description: 'National and International History and Biographies' },
+  ];
+
+  const catMap: Record<string, string> = {};
+  for (const c of categoryDefs) {
+    let cat = await db.query.libraryCategories.findFirst({
+      where: (table: any, { eq, and }: any) => and(eq(table.schoolId, schoolId), eq(table.code, c.code)),
+    });
+    if (!cat) {
+      const catId = crypto.randomUUID();
+      await db.insert(schema.libraryCategories).values({
+        id: catId,
+        schoolId,
+        code: c.code,
+        nameEn: c.nameEn,
+        nameNp: c.nameNp,
+        description: c.description,
+      });
+      catMap[c.code] = catId;
+    } else {
+      catMap[c.code] = cat.id;
+    }
+  }
+
+  // Seed Members (Student and Staff)
+  const existingMembers = await db.query.libraryMembers.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const memberMap: Record<string, string> = {};
+  if (existingMembers.length === 0) {
+    console.log('[Seed] Seeding Library Members...');
+    const allStudents = await db.query.students.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      limit: 5,
+    });
+    for (let i = 0; i < allStudents.length; i++) {
+      const s = allStudents[i];
+      const cardNum = `LIB-STU-${String(i + 1).padStart(4, '0')}`;
+      const memId = crypto.randomUUID();
+      await db.insert(schema.libraryMembers).values({
+        id: memId,
+        schoolId,
+        memberType: 'STUDENT',
+        studentId: s.id,
+        cardNumber: cardNum,
+        maxAllowedBooks: 2,
+        maxIssueDays: 14,
+        status: 'ACTIVE',
+      });
+      memberMap[cardNum] = memId;
+    }
+
+    const allStaff = await db.query.staff.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      limit: 3,
+    });
+    for (let i = 0; i < allStaff.length; i++) {
+      const st = allStaff[i];
+      const cardNum = `LIB-STF-${String(i + 1).padStart(4, '0')}`;
+      const memId = crypto.randomUUID();
+      await db.insert(schema.libraryMembers).values({
+        id: memId,
+        schoolId,
+        memberType: 'STAFF',
+        staffId: st.id,
+        cardNumber: cardNum,
+        maxAllowedBooks: 5,
+        maxIssueDays: 30,
+        status: 'ACTIVE',
+      });
+      memberMap[cardNum] = memId;
+    }
+  } else {
+    for (const m of existingMembers) {
+      memberMap[m.cardNumber] = m.id;
+    }
+  }
+
+  // Seed Books & Copies
+  const existingBooks = await db.query.libraryBooks.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (existingBooks.length === 0) {
+    console.log('[Seed] Seeding Library Books and Copies...');
+    const booksData = [
+      {
+        titleEn: 'Muna Madan',
+        titleNp: 'मुना मदन',
+        author: 'Laxmi Prasad Devkota',
+        publisher: 'Sajha Prakashan',
+        edition: '25th',
+        publicationYear: '2080',
+        language: 'NEPALI',
+        catCode: '800',
+        rackLocation: 'Rack 1, Shelf A',
+        price: 150,
+        copiesCount: 5,
+        accStart: 1,
+      },
+      {
+        titleEn: 'Basain',
+        titleNp: 'बसाइँ',
+        author: 'Lil Bahadur Chhetri',
+        publisher: 'Sajha Prakashan',
+        edition: '18th',
+        publicationYear: '2079',
+        language: 'NEPALI',
+        catCode: '800',
+        rackLocation: 'Rack 1, Shelf B',
+        price: 180,
+        copiesCount: 4,
+        accStart: 6,
+      },
+      {
+        titleEn: 'Shirishko Phool',
+        titleNp: 'शिरीषको फूल',
+        author: 'Parijat',
+        publisher: 'Sajha Prakashan',
+        edition: '12th',
+        publicationYear: '2081',
+        language: 'NEPALI',
+        catCode: '800',
+        rackLocation: 'Rack 1, Shelf C',
+        price: 220,
+        copiesCount: 3,
+        accStart: 10,
+      },
+      {
+        titleEn: 'Nepali Brihat Shabdakosh',
+        titleNp: 'नेपाली बृहत् शब्दकोश',
+        author: 'Nepal Academy',
+        publisher: 'Nepal Pragya Pratishthan',
+        edition: '10th',
+        publicationYear: '2079',
+        language: 'NEPALI',
+        catCode: '020',
+        rackLocation: 'Rack 2, Shelf A',
+        price: 1200,
+        copiesCount: 2,
+        accStart: 13,
+      },
+      {
+        titleEn: 'Science & Technology Grade 10',
+        titleNp: 'विज्ञान तथा प्रविधि कक्षा १०',
+        author: 'CDC Nepal',
+        publisher: 'Janak Shiksha Samagri Kendra',
+        edition: 'New Curriculum',
+        publicationYear: '2081',
+        language: 'NEPALI',
+        catCode: '010',
+        rackLocation: 'Rack 3, Shelf A',
+        price: 250,
+        copiesCount: 6,
+        accStart: 15,
+      },
+      {
+        titleEn: 'Compulsory Mathematics Grade 10',
+        titleNp: 'अनिवार्य गणित कक्षा १०',
+        author: 'CDC Nepal',
+        publisher: 'Janak Shiksha Samagri Kendra',
+        edition: 'New Curriculum',
+        publicationYear: '2081',
+        language: 'NEPALI',
+        catCode: '010',
+        rackLocation: 'Rack 3, Shelf B',
+        price: 280,
+        copiesCount: 6,
+        accStart: 21,
+      },
+      {
+        titleEn: 'Principles of Computer Science',
+        titleNp: 'कम्प्युटर विज्ञानका सिद्धान्तहरू',
+        author: 'Herbert Schildt',
+        publisher: 'McGraw Hill',
+        edition: '8th',
+        publicationYear: '2080',
+        language: 'ENGLISH',
+        catCode: '600',
+        rackLocation: 'Rack 4, Shelf A',
+        price: 650,
+        copiesCount: 3,
+        accStart: 27,
+      },
+    ];
+
+    const copyMap: Record<string, string> = {};
+
+    for (const b of booksData) {
+      const bookId = crypto.randomUUID();
+      await db.insert(schema.libraryBooks).values({
+        id: bookId,
+        schoolId,
+        titleEn: b.titleEn,
+        titleNp: b.titleNp,
+        author: b.author,
+        publisher: b.publisher,
+        edition: b.edition,
+        publicationYear: b.publicationYear,
+        language: b.language,
+        categoryId: catMap[b.catCode],
+        rackLocation: b.rackLocation,
+        price: b.price,
+        totalCopies: b.copiesCount,
+        availableCopies: b.copiesCount,
+      });
+
+      for (let i = 0; i < b.copiesCount; i++) {
+        const copyNum = b.accStart + i;
+        const accNum = `ACC-2083-${String(copyNum).padStart(4, '0')}`;
+        const copyId = crypto.randomUUID();
+        await db.insert(schema.libraryBookCopies).values({
+          id: copyId,
+          bookId,
+          accessionNumber: accNum,
+          barcode: accNum,
+          condition: 'GOOD',
+          status: 'AVAILABLE',
+          addedDateBs: '2083-01-01',
+        });
+        copyMap[accNum] = copyId;
+      }
+    }
+
+    // Seed sample circulations if members exist
+    if (memberMap['LIB-STU-0001'] && copyMap['ACC-2083-0001']) {
+      console.log('[Seed] Seeding sample Active & Overdue Circulations...');
+      // 1. Regular active issue
+      const cir1Id = crypto.randomUUID();
+      await db.insert(schema.libraryCirculations).values({
+        id: cir1Id,
+        schoolId,
+        circulationNumber: 'CIR-2083-0001',
+        copyId: copyMap['ACC-2083-0001'],
+        memberId: memberMap['LIB-STU-0001'],
+        issueDateBs: '2083-01-05',
+        issueDateAd: '2026-04-18',
+        dueDateBs: '2083-01-19',
+        status: 'ISSUED',
+        fineAmount: 0,
+        finePaid: false,
+        remarks: 'Semester Reference',
+      });
+      await db.execute(sql`UPDATE library_book_copies SET status = 'ISSUED' WHERE accession_number = 'ACC-2083-0001';`);
+      await db.execute(sql`UPDATE library_books SET available_copies = available_copies - 1 WHERE title_en = 'Muna Madan';`);
+
+      // 2. Staff issue
+      if (memberMap['LIB-STF-0001'] && copyMap['ACC-2083-0027']) {
+        const cir2Id = crypto.randomUUID();
+        await db.insert(schema.libraryCirculations).values({
+          id: cir2Id,
+          schoolId,
+          circulationNumber: 'CIR-2083-0002',
+          copyId: copyMap['ACC-2083-0027'],
+          memberId: memberMap['LIB-STF-0001'],
+          issueDateBs: '2083-01-02',
+          issueDateAd: '2026-04-15',
+          dueDateBs: '2083-02-02',
+          status: 'ISSUED',
+          fineAmount: 0,
+          finePaid: false,
+          remarks: 'Teacher lesson planning',
+        });
+        await db.execute(sql`UPDATE library_book_copies SET status = 'ISSUED' WHERE accession_number = 'ACC-2083-0027';`);
+        await db.execute(sql`UPDATE library_books SET available_copies = available_copies - 1 WHERE title_en = 'Principles of Computer Science';`);
+      }
+
+      // 3. Overdue Issue with fine
+      if (memberMap['LIB-STU-0002'] && copyMap['ACC-2083-0006']) {
+        const cir3Id = crypto.randomUUID();
+        await db.insert(schema.libraryCirculations).values({
+          id: cir3Id,
+          schoolId,
+          circulationNumber: 'CIR-2083-0003',
+          copyId: copyMap['ACC-2083-0006'],
+          memberId: memberMap['LIB-STU-0002'],
+          issueDateBs: '2082-12-10',
+          issueDateAd: '2026-03-24',
+          dueDateBs: '2082-12-24',
+          status: 'OVERDUE',
+          fineAmount: 28,
+          finePaid: false,
+          remarks: 'Overdue 14 days, NPR 2/day',
+        });
+        await db.execute(sql`UPDATE library_book_copies SET status = 'ISSUED' WHERE accession_number = 'ACC-2083-0006';`);
+        await db.execute(sql`UPDATE library_books SET available_copies = available_copies - 1 WHERE title_en = 'Basain';`);
+
+        await db.insert(schema.libraryFines).values({
+          id: crypto.randomUUID(),
+          schoolId,
+          circulationId: cir3Id,
+          memberId: memberMap['LIB-STU-0002'],
+          overdueDays: 14,
+          ratePerDay: 2,
+          fineAmount: 28,
+          waivedAmount: 0,
+          paidAmount: 0,
+          paymentStatus: 'UNPAID',
+        });
+      }
+    }
   }
 
   console.log('[Seed] Seeding completed successfully!');

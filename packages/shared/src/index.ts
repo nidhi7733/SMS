@@ -10,6 +10,7 @@ export * from './types/routine.js';
 export * from './types/fee.js';
 export * from './types/accounting.js';
 export * from './types/inventory.js';
+export * from './types/library.js';
 export * from './constants/roles.js';
 export * from './constants/bs-calendar.js';
 

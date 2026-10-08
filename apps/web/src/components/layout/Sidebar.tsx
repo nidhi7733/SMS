@@ -127,6 +127,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       visible: true,
     },
     {
+      id: 'library',
+      label: t('nav.library') || 'पुस्तकालय व्यवस्थापन',
+      icon: BookOpen,
+      visible: true,
+    },
+    {
       id: 'school_settings',
       label: t('nav.school_settings'),
       icon: Settings,
@@ -141,7 +147,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const upcomingStages = [
-    { id: 'library', label: t('nav.library'), icon: BookOpen, stage: 'Stage 5' },
     { id: 'documents', label: t('nav.documents'), icon: FileCheck2, stage: 'Stage 7' },
   ];
 
@@ -197,6 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <button
                     key={item.id}
+                    data-tab={item.id}
                     onClick={() => {
                       setCurrentTab(item.id);
                       if (onClose) onClose();

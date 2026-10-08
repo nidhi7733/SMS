@@ -21,6 +21,7 @@ import { SubstituteManagement } from './pages/SubstituteManagement';
 import { FeeManagement } from './pages/FeeManagement';
 import { AccountingManagement } from './pages/AccountingManagement';
 import { InventoryManagement } from './pages/InventoryManagement';
+import { LibraryManagement } from './pages/LibraryManagement';
 
 const VALID_TABS = [
   'dashboard',
@@ -36,6 +37,7 @@ const VALID_TABS = [
   'fees',
   'accounting',
   'inventory',
+  'library',
   'school_settings',
   'users_roles',
 ];
@@ -148,6 +150,7 @@ const AppContent: React.FC = () => {
           {currentTab === 'fees' && <FeeManagement />}
           {currentTab === 'accounting' && <AccountingManagement />}
           {currentTab === 'inventory' && <InventoryManagement />}
+          {currentTab === 'library' && <LibraryManagement />}
           {currentTab === 'school_settings' && <SchoolSettings />}
           {currentTab === 'users_roles' && <UsersManagement />}
         </main>

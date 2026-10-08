@@ -33,7 +33,7 @@ const translations: Record<string, { en: string; np: string }> = {
   'nav.inventory': { en: 'Inventory & Assets', np: 'जिन्सी तथा सम्पत्ति' },
   'nav.accounts': { en: 'Double-Entry Accounts', np: 'दोहोरो लेखा प्रणाली' },
 
-  'nav.library': { en: 'Library Management', np: 'पुस्तकालय' },
+  'nav.library': { en: 'Library Management', np: 'पुस्तकालय व्यवस्थापन' },
   'nav.exams': { en: 'Examinations (CDC)', np: 'परीक्षा (CDC/NEB)' },
   'nav.certificates': { en: 'Certificates (SLC/SEE)', np: 'प्रमाणपत्र (SLC/चारित्रिक)' },
   'nav.documents': { en: 'Documents & QR', np: 'कागजात र क्युआर' },

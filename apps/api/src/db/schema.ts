@@ -878,4 +878,105 @@ export const fixedAssets = pgTable('fixed_assets', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 50. Library Categories (पुस्तकालय पुस्तक विधा/वर्गीकरण)
+export const libraryCategories = pgTable('library_categories', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(), // e.g. "010", "800", "500"
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 51. Library Books (पुस्तकहरूको क्याटलग तथा मूल विवरण)
+export const libraryBooks = pgTable('library_books', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  isbn: text('isbn'),
+  titleEn: text('title_en').notNull(),
+  titleNp: text('title_np').notNull(),
+  author: text('author').notNull(),
+  publisher: text('publisher'),
+  edition: text('edition'),
+  publicationYear: text('publication_year'),
+  language: text('language').notNull().default('NEPALI'), // NEPALI, ENGLISH, SANSKRIT, MAITHILI
+  categoryId: text('category_id').notNull().references(() => libraryCategories.id, { onDelete: 'cascade' }),
+  rackLocation: text('rack_location').notNull().default('Rack 1, Shelf A'),
+  price: real('price').notNull().default(0),
+  totalCopies: integer('total_copies').notNull().default(1),
+  availableCopies: integer('available_copies').notNull().default(1),
+  description: text('description'),
+  coverImageUrl: text('cover_image_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 52. Library Book Copies (पुस्तकका भौतिक प्रतिहरू र दर्ता/Accession नम्बर)
+export const libraryBookCopies = pgTable('library_book_copies', {
+  id: text('id').primaryKey(),
+  bookId: text('book_id').notNull().references(() => libraryBooks.id, { onDelete: 'cascade' }),
+  accessionNumber: text('accession_number').notNull().unique(), // e.g. "ACC-2083-0001"
+  barcode: text('barcode'),
+  condition: text('condition').notNull().default('GOOD'), // GOOD, FAIR, DAMAGED
+  status: text('status').notNull().default('AVAILABLE'), // AVAILABLE, ISSUED, LOST, RESERVED
+  addedDateBs: text('added_date_bs').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 53. Library Members (पुस्तकालय सदस्यता नीति - विद्यार्थी र शिक्षक/कर्मचारी)
+export const libraryMembers = pgTable('library_members', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  memberType: text('member_type').notNull().default('STUDENT'), // STUDENT, STAFF
+  studentId: text('student_id').references(() => students.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staff.id, { onDelete: 'cascade' }),
+  cardNumber: text('card_number').notNull().unique(), // e.g. "LIB-STU-0012", "LIB-STF-0005"
+  maxAllowedBooks: integer('max_allowed_books').notNull().default(2), // 2 for student, 5 for staff
+  maxIssueDays: integer('max_issue_days').notNull().default(14), // 14 for student, 30 for staff
+  status: text('status').notNull().default('ACTIVE'), // ACTIVE, SUSPENDED
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 54. Library Circulations (पुस्तक जारी तथा फिर्ता कारोबार)
+export const libraryCirculations = pgTable('library_circulations', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  circulationNumber: text('circulation_number').notNull().unique(), // e.g. "CIR-2083-0001"
+  copyId: text('copy_id').notNull().references(() => libraryBookCopies.id, { onDelete: 'cascade' }),
+  memberId: text('member_id').notNull().references(() => libraryMembers.id, { onDelete: 'cascade' }),
+  issueDateBs: text('issue_date_bs').notNull(),
+  issueDateAd: text('issue_date_ad').notNull(),
+  dueDateBs: text('due_date_bs').notNull(),
+  returnDateBs: text('return_date_bs'),
+  returnDateAd: text('return_date_ad'),
+  status: text('status').notNull().default('ISSUED'), // ISSUED, RETURNED, OVERDUE, LOST
+  fineAmount: real('fine_amount').notNull().default(0),
+  finePaid: boolean('fine_paid').notNull().default(false),
+  remarks: text('remarks'),
+  issuedById: text('issued_by_id').references(() => users.id, { onDelete: 'set null' }),
+  returnedById: text('returned_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 55. Library Fines (विलम्ब शुल्क तथा जरिवाना लगत)
+export const libraryFines = pgTable('library_fines', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  circulationId: text('circulation_id').notNull().references(() => libraryCirculations.id, { onDelete: 'cascade' }),
+  memberId: text('member_id').notNull().references(() => libraryMembers.id, { onDelete: 'cascade' }),
+  overdueDays: integer('overdue_days').notNull().default(0),
+  ratePerDay: real('rate_per_day').notNull().default(2), // e.g. NPR 2 per day
+  fineAmount: real('fine_amount').notNull().default(0),
+  waivedAmount: real('waived_amount').notNull().default(0),
+  paidAmount: real('paid_amount').notNull().default(0),
+  paymentStatus: text('payment_status').notNull().default('UNPAID'), // UNPAID, PAID, WAIVED
+  receiptNumber: text('receipt_number'),
+  paymentDateBs: text('payment_date_bs'),
+  collectedById: text('collected_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+
 
