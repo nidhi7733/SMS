@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'substitute',
-      label: t('nav.substitute'),
+      label: t('nav.substitute') || 'Substitute Teacher',
       icon: ArrowRightLeft,
       visible: true,
     },

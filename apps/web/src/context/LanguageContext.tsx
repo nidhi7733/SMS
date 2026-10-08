@@ -27,6 +27,7 @@ const translations: Record<string, { en: string; np: string }> = {
   'nav.attendance': { en: 'Attendance & Register', np: 'हाजिरी तथा खाता' },
   'nav.calendar': { en: 'School Calendar', np: 'शैक्षिक क्यालेन्डर' },
   'nav.timetable': { en: 'Weekly Routine', np: 'कक्षा समय-तालिका' },
+  'nav.substitute': { en: 'Substitute Teacher', np: 'सट्टा शिक्षक व्यवस्थापन' },
   'nav.fees': { en: 'Fee Collection', np: 'शुल्क संकलन' },
   'nav.accounting': { en: 'Double-Entry Accounting', np: 'दोहोरो लेखा प्रणाली' },
   'nav.inventory': { en: 'Inventory & Assets', np: 'जिन्सी तथा सम्पत्ति' },
