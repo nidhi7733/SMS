@@ -755,6 +755,198 @@ export async function runMigrationsAndSeed() {
     )
   `);
 
+  // Accounting & Inventory Migrations
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS account_groups (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      nature TEXT NOT NULL,
+      parent_group_id TEXT,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS chart_of_accounts (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      group_id TEXT NOT NULL REFERENCES account_groups(id) ON DELETE CASCADE,
+      opening_balance_dr REAL NOT NULL DEFAULT 0,
+      opening_balance_cr REAL NOT NULL DEFAULT 0,
+      current_balance_dr REAL NOT NULL DEFAULT 0,
+      current_balance_cr REAL NOT NULL DEFAULT 0,
+      is_system_account BOOLEAN NOT NULL DEFAULT false,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      description TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS journal_vouchers (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      voucher_number TEXT NOT NULL UNIQUE,
+      voucher_type TEXT NOT NULL DEFAULT 'JV',
+      voucher_date_bs TEXT NOT NULL,
+      voucher_date_ad TEXT NOT NULL,
+      fiscal_year_bs TEXT NOT NULL DEFAULT '2082/083',
+      narration TEXT NOT NULL,
+      total_debit REAL NOT NULL DEFAULT 0,
+      total_credit REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'POSTED',
+      attachment_url TEXT,
+      reference_module TEXT,
+      reference_id TEXT,
+      created_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      approved_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS journal_voucher_items (
+      id TEXT PRIMARY KEY,
+      voucher_id TEXT NOT NULL REFERENCES journal_vouchers(id) ON DELETE CASCADE,
+      account_id TEXT NOT NULL REFERENCES chart_of_accounts(id) ON DELETE CASCADE,
+      particulars TEXT,
+      debit_amount REAL NOT NULL DEFAULT 0,
+      credit_amount REAL NOT NULL DEFAULT 0,
+      display_order INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_categories (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_items (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      category_id TEXT NOT NULL REFERENCES inventory_categories(id) ON DELETE CASCADE,
+      item_code TEXT NOT NULL UNIQUE,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      item_type TEXT NOT NULL DEFAULT 'CONSUMABLE',
+      unit TEXT NOT NULL DEFAULT 'PCS',
+      reorder_level REAL NOT NULL DEFAULT 5,
+      current_stock REAL NOT NULL DEFAULT 0,
+      last_purchase_price REAL DEFAULT 0,
+      description TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_purchases (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      grn_number TEXT NOT NULL UNIQUE,
+      vendor_name TEXT NOT NULL,
+      vendor_pan TEXT,
+      bill_number TEXT NOT NULL,
+      purchase_date_bs TEXT NOT NULL,
+      purchase_date_ad TEXT NOT NULL,
+      sub_total REAL NOT NULL DEFAULT 0,
+      discount_amount REAL NOT NULL DEFAULT 0,
+      vat_amount REAL NOT NULL DEFAULT 0,
+      total_amount REAL NOT NULL DEFAULT 0,
+      payment_type TEXT NOT NULL DEFAULT 'CASH',
+      credit_account_id TEXT REFERENCES chart_of_accounts(id) ON DELETE SET NULL,
+      voucher_id TEXT REFERENCES journal_vouchers(id) ON DELETE SET NULL,
+      remarks TEXT,
+      status TEXT NOT NULL DEFAULT 'RECEIVED',
+      received_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_purchase_items (
+      id TEXT PRIMARY KEY,
+      purchase_id TEXT NOT NULL REFERENCES inventory_purchases(id) ON DELETE CASCADE,
+      item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+      quantity REAL NOT NULL,
+      unit_price REAL NOT NULL,
+      total_price REAL NOT NULL,
+      remarks TEXT
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_issues (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      issue_number TEXT NOT NULL UNIQUE,
+      issue_date_bs TEXT NOT NULL,
+      issue_date_ad TEXT NOT NULL,
+      issued_to_staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      issued_to_name TEXT NOT NULL,
+      department TEXT,
+      purpose TEXT NOT NULL,
+      voucher_id TEXT REFERENCES journal_vouchers(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'ISSUED',
+      approved_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inventory_issue_items (
+      id TEXT PRIMARY KEY,
+      issue_id TEXT NOT NULL REFERENCES inventory_issues(id) ON DELETE CASCADE,
+      item_id TEXT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+      quantity REAL NOT NULL,
+      remarks TEXT
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS fixed_assets (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      asset_tag TEXT NOT NULL UNIQUE,
+      name_en TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      item_id TEXT REFERENCES inventory_items(id) ON DELETE SET NULL,
+      purchase_date_bs TEXT NOT NULL,
+      purchase_date_ad TEXT NOT NULL,
+      original_cost REAL NOT NULL,
+      salvage_value REAL NOT NULL DEFAULT 0,
+      useful_life_years REAL NOT NULL DEFAULT 5,
+      depreciation_method TEXT NOT NULL DEFAULT 'STRAIGHT_LINE',
+      depreciation_rate REAL NOT NULL DEFAULT 20,
+      accumulated_depreciation REAL NOT NULL DEFAULT 0,
+      current_book_value REAL NOT NULL,
+      location TEXT NOT NULL,
+      custodian_staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      condition_status TEXT NOT NULL DEFAULT 'GOOD',
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -2184,6 +2376,329 @@ export async function runMigrationsAndSeed() {
       documentUrl: 'data:text/plain;base64,U2FtcGxlIE1lcml0IFNjaG9sYXJzaGlwIFJlY29tbWVuZGF0aW9uIExldHRlcg==',
       documentName: 'merit_scholarship_recommendation_2083.pdf',
       uploadedAt: new Date(),
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Seed Account Groups & Chart of Accounts (COA)
+  // -------------------------------------------------------------
+  const existingGroups = await db.query.accountGroups.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const groupMap: Record<string, string> = {};
+
+  if (existingGroups.length === 0) {
+    console.log('[Seed] Seeding default Account Groups...');
+    const defaultGroups = [
+      { code: '1000', nameEn: 'Current Assets', nameNp: 'चालु सम्पत्ति', nature: 'ASSET', displayOrder: 1 },
+      { code: '1200', nameEn: 'Fixed Assets', nameNp: 'स्थिर सम्पत्ति', nature: 'ASSET', displayOrder: 2 },
+      { code: '1300', nameEn: 'Inventory Assets', nameNp: 'जिन्सी मौज्दात सम्पत्ति', nature: 'ASSET', displayOrder: 3 },
+      { code: '2000', nameEn: 'Current Liabilities', nameNp: 'चालु दायित्व', nature: 'LIABILITY', displayOrder: 4 },
+      { code: '3000', nameEn: 'Equity & Funds', nameNp: 'पुँजी तथा कोष', nature: 'EQUITY', displayOrder: 5 },
+      { code: '4000', nameEn: 'Direct Educational Revenue', nameNp: 'प्रत्यक्ष शैक्षिक आम्दानी', nature: 'REVENUE', displayOrder: 6 },
+      { code: '4100', nameEn: 'Grants & Other Income', nameNp: 'अनुदान तथा अन्य आम्दानी', nature: 'REVENUE', displayOrder: 7 },
+      { code: '5000', nameEn: 'Operational & Academic Expenses', nameNp: 'प्रशासनिक तथा शैक्षिक खर्च', nature: 'EXPENSE', displayOrder: 8 },
+      { code: '5100', nameEn: 'Depreciation & Maintenance', nameNp: 'मर्मत तथा ह्रासकट्टी खर्च', nature: 'EXPENSE', displayOrder: 9 },
+    ];
+
+    for (const g of defaultGroups) {
+      const gid = crypto.randomUUID();
+      await db.insert(schema.accountGroups).values({
+        id: gid,
+        schoolId,
+        code: g.code,
+        nameEn: g.nameEn,
+        nameNp: g.nameNp,
+        nature: g.nature,
+        displayOrder: g.displayOrder,
+      });
+      groupMap[g.code] = gid;
+    }
+  } else {
+    for (const g of existingGroups) {
+      groupMap[g.code] = g.id;
+    }
+  }
+
+  const existingCoa = await db.query.chartOfAccounts.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const coaMap: Record<string, string> = {};
+
+  if (existingCoa.length === 0 && groupMap['1000']) {
+    console.log('[Seed] Seeding standard Chart of Accounts (COA)...');
+    const defaultAccounts = [
+      { code: '1001', nameEn: 'Cash in Hand (Counter)', nameNp: 'नगद मौज्दात (काउन्टर)', groupCode: '1000', isSystemAccount: true, openingDr: 25000, currentDr: 25000 },
+      { code: '1002', nameEn: 'Rastriya Banijya Bank (A/C: 1040012345)', nameNp: 'राष्ट्रिय वाणिज्य बैंक (खाता: १०४००१२३४५)', groupCode: '1000', isSystemAccount: true, openingDr: 540000, currentDr: 540000 },
+      { code: '1003', nameEn: 'Global IME Bank (A/C: 0250098765)', nameNp: 'ग्लोबल आइएमई बैंक (खाता: ०२५००९८७६५)', groupCode: '1000', isSystemAccount: false, openingDr: 180000, currentDr: 180000 },
+      { code: '1010', nameEn: 'Student Fee Receivables', nameNp: 'विद्यार्थी बक्यौता शुल्क हिसाब', groupCode: '1000', isSystemAccount: true, openingDr: 45000, currentDr: 45000 },
+      { code: '1201', nameEn: 'Furniture & Fixtures', nameNp: 'फर्निचर तथा फिक्चर्स', groupCode: '1200', isSystemAccount: false, openingDr: 350000, currentDr: 350000 },
+      { code: '1202', nameEn: 'Computer & IT Equipment', nameNp: 'कम्प्युटर तथा आइटी उपकरण', groupCode: '1200', isSystemAccount: false, openingDr: 480000, currentDr: 480000 },
+      { code: '1203', nameEn: 'Science Lab Equipment', nameNp: 'विज्ञान प्रयोगशाला उपकरण', groupCode: '1200', isSystemAccount: false, openingDr: 150000, currentDr: 150000 },
+      { code: '1301', nameEn: 'Stationery Stock Account', nameNp: 'स्टेसनरी मौज्दात हिसाब', groupCode: '1300', isSystemAccount: true, openingDr: 45000, currentDr: 45000 },
+      { code: '1302', nameEn: 'Sports & General Inventory', nameNp: 'खेलकुद तथा अन्य जिन्सी मौज्दात', groupCode: '1300', isSystemAccount: false, openingDr: 25000, currentDr: 25000 },
+      { code: '2001', nameEn: 'Accounts Payable (Vendors/Suppliers)', nameNp: 'साहु हिसाब (आपूर्तिकर्ता भुक्तानी)', groupCode: '2000', isSystemAccount: true, openingCr: 35000, currentCr: 35000 },
+      { code: '2002', nameEn: 'Salary Payable', nameNp: 'पारिश्रमिक भुक्तानी दायित्व', groupCode: '2000', isSystemAccount: false, openingCr: 0, currentCr: 0 },
+      { code: '3001', nameEn: 'School Capital / General Reserve', nameNp: 'विद्यालय विकास कोष तथा पुँजी', groupCode: '3000', isSystemAccount: true, openingCr: 1800000, currentCr: 1800000 },
+      { code: '4001', nameEn: 'Monthly Tuition Fee Income', nameNp: 'मासिक पढाइ शुल्क आम्दानी', groupCode: '4000', isSystemAccount: true, openingCr: 0, currentCr: 0 },
+      { code: '4002', nameEn: 'Admission & Annual Fee Income', nameNp: 'भर्ना तथा वार्षिक शुल्क आम्दानी', groupCode: '4000', isSystemAccount: false, openingCr: 0, currentCr: 0 },
+      { code: '4003', nameEn: 'Examination Fee Income', nameNp: 'परीक्षा शुल्क आम्दानी', groupCode: '4000', isSystemAccount: false, openingCr: 0, currentCr: 0 },
+      { code: '4101', nameEn: 'Government Grants & Aid', nameNp: 'सरकारी अनुदान तथा राहत', groupCode: '4100', isSystemAccount: false, openingCr: 0, currentCr: 0 },
+      { code: '5001', nameEn: 'Staff Salary & Allowance Expense', nameNp: 'शिक्षक तथा कर्मचारी पारिश्रमिक खर्च', groupCode: '5000', isSystemAccount: false, openingDr: 0, currentDr: 0 },
+      { code: '5002', nameEn: 'Office Stationery & Printing Expense', nameNp: 'कार्यालय स्टेसनरी तथा छपाइ खर्च', groupCode: '5000', isSystemAccount: false, openingDr: 0, currentDr: 0 },
+      { code: '5003', nameEn: 'Electricity, Water & Utilities', nameNp: 'विद्युत, खानेपानी तथा महसुल खर्च', groupCode: '5000', isSystemAccount: false, openingDr: 0, currentDr: 0 },
+      { code: '5101', nameEn: 'Fixed Asset Depreciation Expense', nameNp: 'स्थिर सम्पत्ति ह्रासकट्टी खर्च', groupCode: '5100', isSystemAccount: false, openingDr: 0, currentDr: 0 },
+      { code: '5102', nameEn: 'Building & IT Maintenance Expense', nameNp: 'भवन तथा कम्प्युटर मर्मत खर्च', groupCode: '5100', isSystemAccount: false, openingDr: 0, currentDr: 0 },
+    ];
+
+    for (const a of defaultAccounts) {
+      const gid = groupMap[a.groupCode];
+      if (gid) {
+        const accId = crypto.randomUUID();
+        await db.insert(schema.chartOfAccounts).values({
+          id: accId,
+          schoolId,
+          code: a.code,
+          nameEn: a.nameEn,
+          nameNp: a.nameNp,
+          groupId: gid,
+          openingBalanceDr: a.openingDr || 0,
+          openingBalanceCr: a.openingCr || 0,
+          currentBalanceDr: a.currentDr || 0,
+          currentBalanceCr: a.currentCr || 0,
+          isSystemAccount: a.isSystemAccount,
+          isActive: true,
+        });
+        coaMap[a.code] = accId;
+      }
+    }
+  } else {
+    for (const a of existingCoa) {
+      coaMap[a.code] = a.id;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Seed Inventory Categories, Items & Fixed Assets
+  // -------------------------------------------------------------
+  const existingCategories = await db.query.inventoryCategories.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const categoryMap: Record<string, string> = {};
+
+  if (existingCategories.length === 0) {
+    console.log('[Seed] Seeding Inventory Categories...');
+    const defaultCategories = [
+      { code: 'STN', nameEn: 'Stationery & Paper', nameNp: 'स्टेसनरी तथा कागज पत्र', description: 'चक, डस्टर, मार्कर, फोटोकपी पेपर, खाता' },
+      { code: 'LAB', nameEn: 'Science & Lab Supplies', nameNp: 'विज्ञान तथा प्रयोगशाला सामग्री', description: 'केमिकल, टेस्टट्युब, माइक्रोस्कोप' },
+      { code: 'IT', nameEn: 'IT & Electronic Equipment', nameNp: 'कम्प्युटर तथा विद्युत सामग्री', description: 'कम्प्युटर, प्रिन्टर, प्रोजेक्टर, केबल' },
+      { code: 'FUR', nameEn: 'Furniture & Fixtures', nameNp: 'फर्निचर तथा फिक्चर्स', description: 'डेस्क, बेन्च, दराज, कुर्सी, टेबल' },
+      { code: 'SPT', nameEn: 'Sports & Games Equipment', nameNp: 'खेलकुद सामग्री', description: 'भलिबल, फुटबल, ब्याडमिन्टन, चेस' },
+    ];
+
+    for (const c of defaultCategories) {
+      const cid = crypto.randomUUID();
+      await db.insert(schema.inventoryCategories).values({
+        id: cid,
+        schoolId,
+        code: c.code,
+        nameEn: c.nameEn,
+        nameNp: c.nameNp,
+        description: c.description,
+      });
+      categoryMap[c.code] = cid;
+    }
+  } else {
+    for (const c of existingCategories) {
+      categoryMap[c.code] = c.id;
+    }
+  }
+
+  const existingItems = await db.query.inventoryItems.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const itemMap: Record<string, string> = {};
+
+  if (existingItems.length === 0 && categoryMap['STN']) {
+    console.log('[Seed] Seeding Inventory Items...');
+    const defaultItems = [
+      { itemCode: 'ITM-STN-001', nameEn: 'Whiteboard Marker (Doms/Camlin)', nameNp: 'ह्वाइटबोर्ड मार्कर (कालो/नीलो)', catCode: 'STN', itemType: 'CONSUMABLE', unit: 'PCS', reorderLevel: 10, currentStock: 65, lastPurchasePrice: 60 },
+      { itemCode: 'ITM-STN-002', nameEn: 'A4 Photocopy Paper 75GSM (Century/JK)', nameNp: 'A4 फोटोकपी पेपर रिम (७५ जीएसएम)', catCode: 'STN', itemType: 'CONSUMABLE', unit: 'PKT', reorderLevel: 5, currentStock: 24, lastPurchasePrice: 420 },
+      { itemCode: 'ITM-STN-003', nameEn: 'Student Attendance Register', nameNp: 'विद्यार्थी हाजिरी खाता (५० पाने)', catCode: 'STN', itemType: 'CONSUMABLE', unit: 'PCS', reorderLevel: 8, currentStock: 30, lastPurchasePrice: 150 },
+      { itemCode: 'ITM-IT-001', nameEn: 'Desktop PC (Core i5 12th Gen, 16GB)', nameNp: 'डेस्कटप कम्प्युटर सेट (आइ५, १६ जिबी)', catCode: 'IT', itemType: 'NON_CONSUMABLE', unit: 'SET', reorderLevel: 2, currentStock: 25, lastPurchasePrice: 48000 },
+      { itemCode: 'ITM-IT-002', nameEn: 'HP LaserJet Pro MFP Printer M126a', nameNp: 'एचपी लेजरजेट प्रिन्टर', catCode: 'IT', itemType: 'NON_CONSUMABLE', unit: 'SET', reorderLevel: 1, currentStock: 3, lastPurchasePrice: 28500 },
+      { itemCode: 'ITM-FUR-001', nameEn: 'Dual Metal Desk & Bench (High School)', nameNp: '२-सिटे विद्यार्थी डेस्क तथा बेन्च सेट', catCode: 'FUR', itemType: 'NON_CONSUMABLE', unit: 'SET', reorderLevel: 5, currentStock: 80, lastPurchasePrice: 4200 },
+      { itemCode: 'ITM-SPT-001', nameEn: 'Cosco Volleyball Super Volley', nameNp: 'कस्को भलिबल (सुपर भली)', catCode: 'SPT', itemType: 'NON_CONSUMABLE', unit: 'PCS', reorderLevel: 3, currentStock: 6, lastPurchasePrice: 1650 },
+    ];
+
+    for (const item of defaultItems) {
+      const cid = categoryMap[item.catCode];
+      if (cid) {
+        const itemId = crypto.randomUUID();
+        await db.insert(schema.inventoryItems).values({
+          id: itemId,
+          schoolId,
+          categoryId: cid,
+          itemCode: item.itemCode,
+          nameEn: item.nameEn,
+          nameNp: item.nameNp,
+          itemType: item.itemType,
+          unit: item.unit,
+          reorderLevel: item.reorderLevel,
+          currentStock: item.currentStock,
+          lastPurchasePrice: item.lastPurchasePrice,
+          isActive: true,
+        });
+        itemMap[item.itemCode] = itemId;
+      }
+    }
+  } else {
+    for (const item of existingItems) {
+      itemMap[item.itemCode] = item.id;
+    }
+  }
+
+  // Seed Fixed Assets Register
+  const existingAssets = await db.query.fixedAssets.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (existingAssets.length === 0) {
+    console.log('[Seed] Seeding Fixed Assets Register...');
+    const defaultAssets = [
+      {
+        assetTag: 'AST-IT-001',
+        nameEn: 'HP ProDesk Lab Computer #01',
+        nameNp: 'एचपी कम्प्युटर - कम्प्युटर ल्याब १',
+        itemCode: 'ITM-IT-001',
+        purchaseDateBs: '2081-04-10',
+        purchaseDateAd: '2024-07-26',
+        originalCost: 48000,
+        depreciationMethod: 'STRAIGHT_LINE',
+        depreciationRate: 20,
+        accumulatedDepreciation: 9600,
+        currentBookValue: 38400,
+        location: 'कम्प्युटर ल्याब १ (Room 201)',
+        conditionStatus: 'GOOD',
+      },
+      {
+        assetTag: 'AST-IT-002',
+        nameEn: 'HP ProDesk Lab Computer #02',
+        nameNp: 'एचपी कम्प्युटर - कम्प्युटर ल्याब २',
+        itemCode: 'ITM-IT-001',
+        purchaseDateBs: '2081-04-10',
+        purchaseDateAd: '2024-07-26',
+        originalCost: 48000,
+        depreciationMethod: 'STRAIGHT_LINE',
+        depreciationRate: 20,
+        accumulatedDepreciation: 9600,
+        currentBookValue: 38400,
+        location: 'कम्प्युटर ल्याब १ (Room 201)',
+        conditionStatus: 'GOOD',
+      },
+      {
+        assetTag: 'AST-IT-003',
+        nameEn: 'HP LaserJet Printer (Admin)',
+        nameNp: 'एचपी लेजरजेट प्रिन्टर - प्रशासन',
+        itemCode: 'ITM-IT-002',
+        purchaseDateBs: '2082-01-15',
+        purchaseDateAd: '2025-04-28',
+        originalCost: 28500,
+        depreciationMethod: 'STRAIGHT_LINE',
+        depreciationRate: 20,
+        accumulatedDepreciation: 2850,
+        currentBookValue: 25650,
+        location: 'प्रशासन शाखा (Admin Room)',
+        conditionStatus: 'GOOD',
+      },
+      {
+        assetTag: 'AST-FUR-001',
+        nameEn: 'Executive Principal Desk with 3 Drawers',
+        nameNp: 'प्रधानाध्यापक मुख्य कार्यकक्ष टेबल',
+        itemCode: 'ITM-FUR-001',
+        purchaseDateBs: '2080-05-12',
+        purchaseDateAd: '2023-08-28',
+        originalCost: 25000,
+        depreciationMethod: 'STRAIGHT_LINE',
+        depreciationRate: 10,
+        accumulatedDepreciation: 5000,
+        currentBookValue: 20000,
+        location: 'प्रधानाध्यापक कार्यकक्ष',
+        conditionStatus: 'GOOD',
+      },
+    ];
+
+    for (const a of defaultAssets) {
+      const itemId = itemMap[a.itemCode] || null;
+      await db.insert(schema.fixedAssets).values({
+        id: crypto.randomUUID(),
+        schoolId,
+        assetTag: a.assetTag,
+        nameEn: a.nameEn,
+        nameNp: a.nameNp,
+        itemId,
+        purchaseDateBs: a.purchaseDateBs,
+        purchaseDateAd: a.purchaseDateAd,
+        originalCost: a.originalCost,
+        salvageValue: 0,
+        usefulLifeYears: 5,
+        depreciationMethod: a.depreciationMethod,
+        depreciationRate: a.depreciationRate,
+        accumulatedDepreciation: a.accumulatedDepreciation,
+        currentBookValue: a.currentBookValue,
+        location: a.location,
+        conditionStatus: a.conditionStatus,
+      });
+    }
+  }
+
+  // Seed a sample balanced Journal Voucher (JV-2083-0001)
+  const existingVouchers = await db.query.journalVouchers.findMany({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (existingVouchers.length === 0 && coaMap['1001'] && coaMap['3001']) {
+    console.log('[Seed] Seeding sample balanced Journal Voucher (JV-2083-0001)...');
+    const sampleVoucherId = crypto.randomUUID();
+    await db.insert(schema.journalVouchers).values({
+      id: sampleVoucherId,
+      schoolId,
+      voucherNumber: 'JV-2083-0001',
+      voucherType: 'JV',
+      voucherDateBs: '2083-01-01',
+      voucherDateAd: '2026-04-14',
+      fiscalYearBs: '2082/083',
+      narration: 'आर्थिक वर्ष २०८२/०८३ को सुरुवाती नगद मौज्दात प्रविष्टि (Opening Cash Balance Entry)',
+      totalDebit: 25000,
+      totalCredit: 25000,
+      status: 'POSTED',
+      referenceModule: 'MANUAL',
+    });
+
+    // Debit Cash in Hand
+    await db.insert(schema.journalVoucherItems).values({
+      id: crypto.randomUUID(),
+      voucherId: sampleVoucherId,
+      accountId: coaMap['1001'],
+      particulars: 'To Opening Cash in Hand at Counter',
+      debitAmount: 25000,
+      creditAmount: 0,
+      displayOrder: 1,
+    });
+
+    // Credit Capital / Reserve
+    await db.insert(schema.journalVoucherItems).values({
+      id: crypto.randomUUID(),
+      voucherId: sampleVoucherId,
+      accountId: coaMap['3001'],
+      particulars: 'By General Capital / Reserve Fund',
+      debitAmount: 0,
+      creditAmount: 25000,
+      displayOrder: 2,
     });
   }
 

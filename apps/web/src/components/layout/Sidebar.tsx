@@ -14,6 +14,7 @@ import {
   FileCheck2,
   Clock,
   Landmark,
+  Boxes,
   Award,
   ArrowRightLeft,
   X,
@@ -109,8 +110,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'fees',
-      label: t('nav.fees') || 'शुल्क तथा लेखा',
+      label: t('nav.fees') || 'शुल्क संकलन',
       icon: ReceiptText,
+      visible: true,
+    },
+    {
+      id: 'accounting',
+      label: t('nav.accounting') || 'दोहोरो लेखा प्रणाली',
+      icon: Landmark,
+      visible: true,
+    },
+    {
+      id: 'inventory',
+      label: t('nav.inventory') || 'जिन्सी तथा सम्पत्ति',
+      icon: Boxes,
       visible: true,
     },
     {
@@ -128,10 +141,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const upcomingStages = [
-    { id: 'accounts', label: t('nav.accounts'), icon: Landmark, stage: 'Stage 4' },
     { id: 'library', label: t('nav.library'), icon: BookOpen, stage: 'Stage 5' },
     { id: 'documents', label: t('nav.documents'), icon: FileCheck2, stage: 'Stage 7' },
   ];
+
 
   return (
     <>

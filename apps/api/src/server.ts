@@ -21,6 +21,9 @@ import substituteRoutes from './routes/substitute.js';
 import examRoutes from './routes/exams.js';
 import certificateRoutes from './routes/certificates.js';
 import feeRoutes from './routes/fees.js';
+import accountingRoutes from './routes/accounting.js';
+import inventoryRoutes from './routes/inventory.js';
+
 
 // Load environment variables from cwd or parent directories
 dotenv.config();
@@ -125,6 +128,9 @@ async function main() {
     await fastify.register(examRoutes, { prefix: '/api/exams' });
     await fastify.register(certificateRoutes, { prefix: '/api/certificates' });
     await fastify.register(feeRoutes, { prefix: '/api/fees' });
+    await fastify.register(accountingRoutes, { prefix: '/api/accounting' });
+    await fastify.register(inventoryRoutes, { prefix: '/api/inventory' });
+
 
     // 8. Auto-run database seed and migration
     console.log('[Server] Checking and initializing database schema...');

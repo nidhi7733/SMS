@@ -19,6 +19,8 @@ import { ExaminationManagement } from './pages/ExaminationManagement';
 import { CertificateManagement } from './pages/CertificateManagement';
 import { SubstituteManagement } from './pages/SubstituteManagement';
 import { FeeManagement } from './pages/FeeManagement';
+import { AccountingManagement } from './pages/AccountingManagement';
+import { InventoryManagement } from './pages/InventoryManagement';
 
 const VALID_TABS = [
   'dashboard',
@@ -32,6 +34,8 @@ const VALID_TABS = [
   'exams',
   'certificates',
   'fees',
+  'accounting',
+  'inventory',
   'school_settings',
   'users_roles',
 ];
@@ -40,6 +44,8 @@ const parseCurrentTab = (): string => {
   try {
     const path = window.location.pathname.replace(/^\/+/, '').split('/')[0].trim().toLowerCase();
     if (path === 'fees' || path === 'fee' || path === 'billing') return 'fees';
+    if (path === 'accounting' || path === 'accounts' || path === 'ledger') return 'accounting';
+    if (path === 'inventory' || path === 'assets' || path === 'stock') return 'inventory';
     if (VALID_TABS.includes(path)) return path;
 
     const hash = window.location.hash.replace(/^#+/, '').trim().toLowerCase();
@@ -140,6 +146,8 @@ const AppContent: React.FC = () => {
           {currentTab === 'exams' && <ExaminationManagement />}
           {currentTab === 'certificates' && <CertificateManagement />}
           {currentTab === 'fees' && <FeeManagement />}
+          {currentTab === 'accounting' && <AccountingManagement />}
+          {currentTab === 'inventory' && <InventoryManagement />}
           {currentTab === 'school_settings' && <SchoolSettings />}
           {currentTab === 'users_roles' && <UsersManagement />}
         </main>

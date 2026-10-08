@@ -57,6 +57,11 @@ export const SYSTEM_PERMISSIONS = [
   // Documents & Certificates
   { code: 'DOCUMENTS_ISSUE', module: 'Documents', descriptionEn: 'Generate ID cards and certificates with QR', descriptionNp: 'परिचयपत्र तथा क्युआर कोडसहित प्रमाणपत्र जारी' },
 
+  // Inventory & Assets
+  { code: 'INVENTORY_VIEW', module: 'Inventory', descriptionEn: 'View stock, inventory items, and asset register', descriptionNp: 'जिन्सी मौज्दात, सामान र सम्पत्ति विवरण हेर्ने' },
+  { code: 'INVENTORY_MANAGE', module: 'Inventory', descriptionEn: 'Manage purchases, stock issues, and fixed assets', descriptionNp: 'जिन्सी खरिद, माग-फारम तथा सम्पत्ति व्यवस्थापन' },
+
   // Audit Logs
   { code: 'AUDIT_LOGS_VIEW', module: 'Audit', descriptionEn: 'Inspect permanent system audit logs', descriptionNp: 'प्रणालीको अडिट लग निरीक्षण गर्ने' },
 ] as const;
+

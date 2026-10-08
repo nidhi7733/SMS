@@ -773,6 +773,83 @@ export default async function feeRoutes(fastify: FastifyInstance) {
       printedCount: 0,
     });
 
+    // Auto-post double entry Journal Voucher for fee collection:
+    // Debit: Cash (1001) or Bank (1002)
+    // Credit: Tuition/Fee Revenue (4001)
+    try {
+      const coaList = await db.query.chartOfAccounts.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+      });
+
+      const isBank = (body.paymentMode === 'QR_CODE' || body.paymentMode === 'BANK_TRANSFER');
+      const debitAcc = isBank
+        ? (coaList.find((a: any) => a.code === '1002') || coaList.find((a: any) => a.code === '1001'))
+        : (coaList.find((a: any) => a.code === '1001') || coaList.find((a: any) => a.code === '1002'));
+      const creditAcc = coaList.find((a: any) => a.code === '4001') || coaList.find((a: any) => a.code.startsWith('40')) || coaList[0];
+
+      const amt = Number(body.amountPaid);
+      if (debitAcc && creditAcc && amt > 0) {
+        const vouchers = await db.query.journalVouchers.findMany({
+          where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+        });
+        const vSeq = vouchers.length + 1;
+        const vType = isBank ? 'BR' : 'CR';
+        const vNum = `${vType}-${yearPrefix}-${String(vSeq).padStart(4, '0')}`;
+
+        const vId = crypto.randomUUID();
+        await db.insert(schema.journalVouchers).values({
+          id: vId,
+          schoolId: currentUser.schoolId,
+          voucherNumber: vNum,
+          voucherType: vType,
+          voucherDateBs: payDateBs,
+          voucherDateAd: payDateAd,
+          fiscalYearBs: '2082/083',
+          narration: `शुल्क संकलन रसिद नं. ${receiptNumber} (${body.paymentMode || 'CASH'})`,
+          totalDebit: amt,
+          totalCredit: amt,
+          status: 'POSTED',
+          referenceModule: 'FEE_COLLECTION',
+          referenceId: paymentId,
+          createdById: currentUser.userId || currentUser.id,
+          approvedById: currentUser.userId || currentUser.id,
+        });
+
+        // Dr Cash / Bank
+        await db.insert(schema.journalVoucherItems).values({
+          id: crypto.randomUUID(),
+          voucherId: vId,
+          accountId: debitAcc.id,
+          particulars: `To Cash/Bank received for Fee Receipt ${receiptNumber}`,
+          debitAmount: amt,
+          creditAmount: 0,
+          displayOrder: 1,
+        });
+
+        // Cr Fee Revenue
+        await db.insert(schema.journalVoucherItems).values({
+          id: crypto.randomUUID(),
+          voucherId: vId,
+          accountId: creditAcc.id,
+          particulars: `By Fee Income against Student Receipt ${receiptNumber}`,
+          debitAmount: 0,
+          creditAmount: amt,
+          displayOrder: 2,
+        });
+
+        // Update running balances
+        await db.update(schema.chartOfAccounts).set({
+          currentBalanceDr: (debitAcc.currentBalanceDr || 0) + amt,
+        }).where(eq(schema.chartOfAccounts.id, debitAcc.id));
+
+        await db.update(schema.chartOfAccounts).set({
+          currentBalanceCr: (creditAcc.currentBalanceCr || 0) + amt,
+        }).where(eq(schema.chartOfAccounts.id, creditAcc.id));
+      }
+    } catch (autoJvErr) {
+      console.error('[Fee Auto-JV Error]', autoJvErr);
+    }
+
     const payment = await db.query.feePayments.findFirst({
       where: (t: any, { eq }: any) => eq(t.id, paymentId),
     });

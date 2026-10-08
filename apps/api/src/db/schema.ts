@@ -698,3 +698,184 @@ export const feePayments = pgTable('fee_payments', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 39. Account Groups (लेखा वर्ग तथा समूह)
+export const accountGroups = pgTable('account_groups', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(), // e.g. 1000, 2000, 3000, 4000, 5000
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  nature: text('nature').notNull(), // ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+  parentGroupId: text('parent_group_id'),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 40. Chart of Accounts (खाता सूची - COA)
+export const chartOfAccounts = pgTable('chart_of_accounts', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(), // e.g. "1001", "1002", "4001"
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  groupId: text('group_id').notNull().references(() => accountGroups.id, { onDelete: 'cascade' }),
+  openingBalanceDr: real('opening_balance_dr').notNull().default(0),
+  openingBalanceCr: real('opening_balance_cr').notNull().default(0),
+  currentBalanceDr: real('current_balance_dr').notNull().default(0),
+  currentBalanceCr: real('current_balance_cr').notNull().default(0),
+  isSystemAccount: boolean('is_system_account').notNull().default(false), // e.g. Cash, Main Bank, Tuition Fee Income, Accounts Payable
+  isActive: boolean('is_active').notNull().default(true),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 41. Journal Vouchers (गोश्वारा भौचर)
+export const journalVouchers = pgTable('journal_vouchers', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  voucherNumber: text('voucher_number').notNull().unique(), // e.g. "JV-2083-0001", "CR-2083-0001"
+  voucherType: text('voucher_type').notNull().default('JV'), // JV, CR (Cash Receipt), BR (Bank Receipt), CP (Cash Payment), BP (Bank Payment), CV (Contra)
+  voucherDateBs: text('voucher_date_bs').notNull(), // "2083-01-20"
+  voucherDateAd: text('voucher_date_ad').notNull(),
+  fiscalYearBs: text('fiscal_year_bs').notNull().default('2082/083'),
+  narration: text('narration').notNull(),
+  totalDebit: real('total_debit').notNull().default(0),
+  totalCredit: real('total_credit').notNull().default(0),
+  status: text('status').notNull().default('POSTED'), // DRAFT, POSTED, CANCELLED
+  attachmentUrl: text('attachment_url'),
+  referenceModule: text('reference_module'), // MANUAL, FEE_COLLECTION, INVENTORY_PURCHASE, INVENTORY_ISSUE, DEPRECIATION
+  referenceId: text('reference_id'),
+  createdById: text('created_by_id').references(() => users.id, { onDelete: 'set null' }),
+  approvedById: text('approved_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 42. Journal Voucher Items (भौचर विवरण - डेबिट/क्रेडिट पंक्तिहरू)
+export const journalVoucherItems = pgTable('journal_voucher_items', {
+  id: text('id').primaryKey(),
+  voucherId: text('voucher_id').notNull().references(() => journalVouchers.id, { onDelete: 'cascade' }),
+  accountId: text('account_id').notNull().references(() => chartOfAccounts.id, { onDelete: 'cascade' }),
+  particulars: text('particulars'),
+  debitAmount: real('debit_amount').notNull().default(0),
+  creditAmount: real('credit_amount').notNull().default(0),
+  displayOrder: integer('display_order').notNull().default(0),
+});
+
+// 43. Inventory Categories (जिन्सी वर्गीकरण)
+export const inventoryCategories = pgTable('inventory_categories', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(), // STN, LAB, IT, FUR, SPT, MED
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 44. Inventory Items (जिन्सी सामग्री सूची)
+export const inventoryItems = pgTable('inventory_items', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  categoryId: text('category_id').notNull().references(() => inventoryCategories.id, { onDelete: 'cascade' }),
+  itemCode: text('item_code').notNull().unique(), // e.g. "ITM-STN-001"
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  itemType: text('item_type').notNull().default('CONSUMABLE'), // CONSUMABLE, NON_CONSUMABLE
+  unit: text('unit').notNull().default('PCS'), // PCS, SET, PKT, KG, BOX, ROLL, DOZEN
+  reorderLevel: real('reorder_level').notNull().default(5),
+  currentStock: real('current_stock').notNull().default(0),
+  lastPurchasePrice: real('last_purchase_price').default(0),
+  description: text('description'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 45. Inventory Purchases / GRN (जिन्सी खरिद तथा दाखिला)
+export const inventoryPurchases = pgTable('inventory_purchases', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  grnNumber: text('grn_number').notNull().unique(), // e.g. "GRN-2083-0001"
+  vendorName: text('vendor_name').notNull(),
+  vendorPan: text('vendor_pan'),
+  billNumber: text('bill_number').notNull(),
+  purchaseDateBs: text('purchase_date_bs').notNull(),
+  purchaseDateAd: text('purchase_date_ad').notNull(),
+  subTotal: real('sub_total').notNull().default(0),
+  discountAmount: real('discount_amount').notNull().default(0),
+  vatAmount: real('vat_amount').notNull().default(0),
+  totalAmount: real('total_amount').notNull().default(0),
+  paymentType: text('payment_type').notNull().default('CASH'), // CASH, CREDIT, BANK
+  creditAccountId: text('credit_account_id').references(() => chartOfAccounts.id, { onDelete: 'set null' }),
+  voucherId: text('voucher_id').references(() => journalVouchers.id, { onDelete: 'set null' }),
+  remarks: text('remarks'),
+  status: text('status').notNull().default('RECEIVED'), // RECEIVED, CANCELLED
+  receivedById: text('received_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 46. Inventory Purchase Items (खरिद दाखिलाका सामानहरू)
+export const inventoryPurchaseItems = pgTable('inventory_purchase_items', {
+  id: text('id').primaryKey(),
+  purchaseId: text('purchase_id').notNull().references(() => inventoryPurchases.id, { onDelete: 'cascade' }),
+  itemId: text('item_id').notNull().references(() => inventoryItems.id, { onDelete: 'cascade' }),
+  quantity: real('quantity').notNull(),
+  unitPrice: real('unit_price').notNull(),
+  totalPrice: real('total_price').notNull(),
+  remarks: text('remarks'),
+});
+
+// 47. Inventory Issues (जिन्सी निकासी तथा माग)
+export const inventoryIssues = pgTable('inventory_issues', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  issueNumber: text('issue_number').notNull().unique(), // e.g. "ISS-2083-0001"
+  issueDateBs: text('issue_date_bs').notNull(),
+  issueDateAd: text('issue_date_ad').notNull(),
+  issuedToStaffId: text('issued_to_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  issuedToName: text('issued_to_name').notNull(),
+  department: text('department'), // e.g. "Administration", "Science Lab", "Primary Section"
+  purpose: text('purpose').notNull(),
+  voucherId: text('voucher_id').references(() => journalVouchers.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('ISSUED'), // ISSUED, CANCELLED
+  approvedById: text('approved_by_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 48. Inventory Issue Items (निकासी गरिएका सामानहरू)
+export const inventoryIssueItems = pgTable('inventory_issue_items', {
+  id: text('id').primaryKey(),
+  issueId: text('issue_id').notNull().references(() => inventoryIssues.id, { onDelete: 'cascade' }),
+  itemId: text('item_id').notNull().references(() => inventoryItems.id, { onDelete: 'cascade' }),
+  quantity: real('quantity').notNull(),
+  remarks: text('remarks'),
+});
+
+// 49. Fixed Assets (स्थिर सम्पत्ति दर्ता तथा ह्रासकट्टी)
+export const fixedAssets = pgTable('fixed_assets', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  assetTag: text('asset_tag').notNull().unique(), // e.g. "AST-IT-001"
+  nameEn: text('name_en').notNull(),
+  nameNp: text('name_np').notNull(),
+  itemId: text('item_id').references(() => inventoryItems.id, { onDelete: 'set null' }),
+  purchaseDateBs: text('purchase_date_bs').notNull(),
+  purchaseDateAd: text('purchase_date_ad').notNull(),
+  originalCost: real('original_cost').notNull(),
+  salvageValue: real('salvage_value').notNull().default(0),
+  usefulLifeYears: real('useful_life_years').notNull().default(5),
+  depreciationMethod: text('depreciation_method').notNull().default('STRAIGHT_LINE'), // STRAIGHT_LINE, WDV
+  depreciationRate: real('depreciation_rate').notNull().default(20), // percent
+  accumulatedDepreciation: real('accumulated_depreciation').notNull().default(0),
+  currentBookValue: real('current_book_value').notNull(),
+  location: text('location').notNull(), // e.g. "Computer Lab 1", "Admin Office"
+  custodianStaffId: text('custodian_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  conditionStatus: text('condition_status').notNull().default('GOOD'), // GOOD, REPAIR_NEEDED, SCRAPPED, DISPOSED
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+
