@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useSchool } from '../context/SchoolContext';
 import { toBik, toGreg, daysInMonth } from 'bikram-sambat';
 import {
   CalendarCheck2,
@@ -36,6 +37,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
 }) => {
   const { token, user } = useAuth();
   const { language } = useLanguage();
+  const { school } = useSchool();
   const isNp = language === 'np';
 
   // Tabs
@@ -1233,10 +1235,12 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
             {/* Official Print Header */}
             <div className="border-b-2 border-slate-900 dark:border-slate-300 pb-3 mb-4 text-center">
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white uppercase tracking-wide">
-                श्री शान्ति माध्यमिक विद्यालय
+                {isNp ? (school?.nameNp || school?.nameEn || 'विद्यालय') : (school?.nameEn || school?.nameNp || 'School')}
               </h2>
               <div className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                काठमाडौं, नेपाल | सम्पर्क: ०१-४XXXXXX | IEMIS कोड: 270010001
+                {isNp ? (school?.addressNp || school?.addressEn || '') : (school?.addressEn || school?.addressNp || '')}
+                {school?.phone ? ` | ${isNp ? 'सम्पर्क:' : 'Phone:'} ${school.phone}` : ''}
+                {school?.iemisCode ? ` | IEMIS ${isNp ? 'कोड:' : 'Code:'} ${school.iemisCode}` : ''}
               </div>
               <div className="text-sm font-black text-indigo-700 dark:text-indigo-400 mt-1 uppercase tracking-wider">
                 शिक्षक तथा कर्मचारी मासिक हाजिरी खाता (Teachers & Staff Monthly Attendance Register)

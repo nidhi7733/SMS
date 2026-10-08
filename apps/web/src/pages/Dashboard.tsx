@@ -432,7 +432,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     fetchSubstituteData();
   }, []);
 
-  const schoolCode = school?.code || (school as any)?.code || 'SHREE-SHANTI-01';
+  const schoolCode = school?.code || (school as any)?.code || '—';
   const iemisCode = school?.iemisCode || (school as any)?.iemis_code || '—';
   const academicYearBs = school?.activeAcademicYearBs || (school as any)?.active_academic_year_bs || 2083;
   const fiscalYearBs = school?.fiscalYearBs || (school as any)?.fiscal_year_bs || '2082/083';
@@ -2005,14 +2005,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               <div className="text-center border-b-2 border-slate-800 pb-3 space-y-0.5">
                 <h2 className="text-lg font-black tracking-wide">
                   {isNp
-                    ? school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय'
-                    : school?.nameEn || 'Shree Shanti Secondary School'}
+                    ? (school?.nameNp || school?.nameEn || 'विद्यालय')
+                    : (school?.nameEn || school?.nameNp || 'School')}
                 </h2>
                 <div className="text-xs text-slate-600">
                   {isNp
-                    ? (school as any)?.addressNp || school?.addressEn || 'दमक, झापा, कोशी प्रदेश'
-                    : school?.addressEn || 'Damak, Jhapa, Koshi Province'}{' '}
-                  • IEMIS: {iemisCode}
+                    ? ((school as any)?.addressNp || school?.addressEn || '')
+                    : (school?.addressEn || (school as any)?.addressNp || '')}{' '}
+                  {iemisCode && iemisCode !== '—' ? `• IEMIS: ${iemisCode}` : ''}
                 </div>
                 <div className="text-sm font-black pt-1 underline">
                   {isNp ? 'दैनिक सट्टा कक्षा व्यवस्थापन पुर्जी' : 'DAILY TEACHER SUBSTITUTION ROUTINE SHEET'}

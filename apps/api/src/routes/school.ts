@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getDb, schema } from '../db/index.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 
 export async function schoolRoutes(fastify: FastifyInstance) {
@@ -70,6 +70,8 @@ export async function schoolRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ message: 'School not found' });
     }
 
+    const newActiveYear = body.activeAcademicYearBs ? parseInt(body.activeAcademicYearBs, 10) : school.activeAcademicYearBs;
+
     const updated = await db.update(schema.schools)
       .set({
         nameEn: body.nameEn ?? school.nameEn,
@@ -88,12 +90,28 @@ export async function schoolRoutes(fastify: FastifyInstance) {
         district: body.district ?? school.district,
         localLevel: body.localLevel ?? school.localLevel,
         wardNumber: body.wardNumber ? parseInt(body.wardNumber, 10) : school.wardNumber,
-        activeAcademicYearBs: body.activeAcademicYearBs ? parseInt(body.activeAcademicYearBs, 10) : school.activeAcademicYearBs,
+        activeAcademicYearBs: newActiveYear,
         fiscalYearBs: body.fiscalYearBs ?? school.fiscalYearBs,
         updatedAt: new Date(),
       })
       .where(eq(schema.schools.id, school.id))
       .returning();
+
+    // If active academic year changed, synchronize isCurrent in academic_years table
+    if (newActiveYear && newActiveYear !== school.activeAcademicYearBs) {
+      const matchingYear = await db.query.academicYears.findFirst({
+        where: (table: any, { eq, and }: any) =>
+          and(eq(table.schoolId, school.id), eq(table.yearBs, newActiveYear)),
+      });
+      if (matchingYear) {
+        await db.update(schema.academicYears)
+          .set({ isCurrent: false })
+          .where(eq(schema.academicYears.schoolId, school.id));
+        await db.update(schema.academicYears)
+          .set({ isCurrent: true })
+          .where(eq(schema.academicYears.id, matchingYear.id));
+      }
+    }
 
     // Record audit log
     const user = (request as any).user;

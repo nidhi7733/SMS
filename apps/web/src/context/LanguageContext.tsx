@@ -119,6 +119,11 @@ const translations: Record<string, { en: string; np: string }> = {
   'academic.delete_section': { en: 'Delete Section', np: 'खण्ड मेटाउनुहोस्' },
   'academic.edit_subject': { en: 'Edit Subject', np: 'विषय सम्पादन' },
   'academic.delete_subject': { en: 'Delete Subject', np: 'विषय मेटाउनुहोस्' },
+  'academic.add_year': { en: 'Add Academic Session', np: 'नयाँ शैक्षिक सत्र थप्नुहोस्' },
+  'academic.activate_session': { en: 'Activate Session', np: 'सक्रिय गर्नुहोस्' },
+  'academic.active_session': { en: 'Active Session', np: 'सक्रिय सत्र' },
+  'academic.inactive_session': { en: 'Inactive', np: 'निष्क्रिय' },
+  'academic.session_created': { en: 'Academic session created successfully', np: 'नयाँ शैक्षिक सत्र सफलतापूर्वक सिर्जना गरियो' },
 
   // Stage 2: Student Directory & Admissions
   'students.title': { en: 'Student Directory & Admissions', np: 'विद्यार्थी अभिलेख तथा भर्ना' },

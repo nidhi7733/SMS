@@ -844,10 +844,10 @@ export const SubstituteManagement: React.FC = () => {
                   नेपाल सरकार • शिक्षा, विज्ञान तथा प्रविधि मन्त्रालय
                 </div>
                 <h2 className="text-lg font-black text-slate-900">
-                  {school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय'}
+                  {school?.nameNp || school?.nameEn || 'विद्यालय'}
                 </h2>
                 <p className="text-[11px] text-slate-600">
-                  {school?.addressNp || 'टोखा-०४, काठमाडौं'} | IEMIS: {school?.iemisCode || '270010001'}
+                  {school?.addressNp || school?.addressEn || ''} {school?.iemisCode ? `| IEMIS: ${school.iemisCode}` : ''}
                 </p>
                 <div className="pt-1">
                   <span className="inline-block px-3 py-0.5 bg-slate-900 text-white text-xs font-black tracking-wider uppercase rounded">

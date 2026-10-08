@@ -1291,7 +1291,7 @@ export const FeeManagement: React.FC = () => {
                       {/* QR Display Frame */}
                       <div className="flex flex-col items-center bg-white dark:bg-slate-900 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs">
                         <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 text-center mb-1.5">
-                          {qrSettingsForm.feeMerchantName || (isNp ? school?.nameNp : school?.nameEn) || 'Shree Gyanodaya Secondary School'}
+                          {qrSettingsForm.feeMerchantName || (isNp ? school?.nameNp : school?.nameEn) || (isNp ? 'विद्यालय' : 'School')}
                         </p>
 
                         <div className="relative p-2 bg-white rounded-lg border-2 border-dashed border-blue-400">
@@ -1988,7 +1988,7 @@ export const FeeManagement: React.FC = () => {
                             {printableReceipt.school.nameEn} | {isNp ? (printableReceipt.school.addressNp || printableReceipt.school.addressEn) : (printableReceipt.school.addressEn || printableReceipt.school.addressNp)}
                           </p>
                           <p className="text-2xs text-slate-500">
-                            {isNp ? 'फोन:' : 'Phone:'} {printableReceipt.school.phone} | IEMIS: {printableReceipt.school.iemisCode || '270010001'}
+                            {isNp ? 'फोन:' : 'Phone:'} {printableReceipt.school.phone} | IEMIS: {printableReceipt.school.iemisCode || school?.iemisCode || '—'}
                           </p>
                         </div>
                       </div>

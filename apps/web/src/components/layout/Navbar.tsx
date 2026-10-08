@@ -16,8 +16,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMenu, isMenuOpen }) => {
   const { theme, toggleTheme } = useTheme();
   const { school } = useSchool();
 
-  const schoolNameEn = school?.nameEn || 'Shree Shanti Secondary School';
-  const schoolNameNp = school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय';
+  const schoolNameEn = school?.nameEn || school?.nameNp || 'School Management System';
+  const schoolNameNp = school?.nameNp || school?.nameEn || 'विद्यालय व्यवस्थापन प्रणाली';
   const logoUrl = school?.logoUrl || (school as any)?.logo_url;
   const academicYearBs = school?.activeAcademicYearBs || 2083;
   const [imgError, setImgError] = React.useState(false);

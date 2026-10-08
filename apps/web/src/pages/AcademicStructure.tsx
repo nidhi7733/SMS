@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useSchool } from '../context/SchoolContext';
 import {
   GraduationCap,
   Layers,
@@ -25,11 +26,13 @@ import {
   Shuffle,
   Eye,
   Activity,
+  Save,
 } from 'lucide-react';
 
 export const AcademicStructure: React.FC = () => {
   const { language, t, formatNumber } = useLanguage();
   const { hasRole } = useAuth();
+  const { refreshSchool } = useSchool();
   const isPrincipalOrAdmin = hasRole('PRINCIPAL') || hasRole('SYSTEM_ADMIN');
 
   const [activeTab, setActiveTab] = useState<'classes' | 'subjects' | 'houses' | 'years'>('classes');
@@ -41,6 +44,72 @@ export const AcademicStructure: React.FC = () => {
   const [years, setYears] = useState<any[]>([]);
   const [teachersList, setTeachersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Academic Year Modal State
+  const [showAddYear, setShowAddYear] = useState(false);
+  const [yearSaving, setYearSaving] = useState(false);
+  const [yearForm, setYearForm] = useState({
+    yearBs: 2084,
+    startDateBs: '2084-01-01',
+    endDateBs: '2084-12-30',
+    startDateAd: '2027-04-14',
+    endDateAd: '2028-04-13',
+    isCurrent: false,
+  });
+
+  const handleYearBsChange = (year: number) => {
+    setYearForm({
+      yearBs: year,
+      startDateBs: `${year}-01-01`,
+      endDateBs: `${year}-12-30`,
+      startDateAd: `${year - 57}-04-14`,
+      endDateAd: `${year - 56}-04-13`,
+      isCurrent: false,
+    });
+  };
+
+  const handleCreateYear = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setYearSaving(true);
+    try {
+      const token = localStorage.getItem('sms_token');
+      const res = await fetch('/api/academic/years', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(yearForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create academic year');
+      setShowAddYear(false);
+      fetchAcademicData();
+      if (yearForm.isCurrent) {
+        await refreshSchool();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to create academic year');
+    } finally {
+      setYearSaving(false);
+    }
+  };
+
+  const handleActivateYear = async (year: any) => {
+    try {
+      const token = localStorage.getItem('sms_token');
+      const res = await fetch(`/api/academic/years/${year.id}/activate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to activate academic year');
+      fetchAcademicData();
+      await refreshSchool();
+    } catch (err: any) {
+      alert(err.message || 'Failed to activate academic year');
+    }
+  };
 
   // Modal states
   const [showAddSection, setShowAddSection] = useState(false);
@@ -1739,38 +1808,208 @@ export const AcademicStructure: React.FC = () => {
 
       {/* Tab 5: Academic Sessions */}
       {activeTab === 'years' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {years.map((y) => (
-            <div
-              key={y.id}
-              className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-lg font-black text-slate-900 dark:text-white">
-                  {formatNumber(y.yearBs)} BS ({formatNumber(y.yearBs - 57)} AD)
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              {language === 'np'
+                ? 'विद्यालयका दर्ता भएका शैक्षिक सत्रहरू तथा चालु सत्र व्यवस्थापन'
+                : 'Configured academic sessions and active session management'}
+            </p>
+            {isPrincipalOrAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  const maxYear = years.reduce((max, y) => Math.max(max, y.yearBs || 0), 2083);
+                  handleYearBsChange(maxYear + 1);
+                  setShowAddYear(true);
+                }}
+                className="inline-flex items-center px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                {t('academic.add_year')}
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {years.map((y) => (
+              <div
+                key={y.id}
+                className={`bg-white dark:bg-slate-900 rounded-xl border p-5 shadow-2xs space-y-3 transition ${
+                  y.isCurrent
+                    ? 'border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-black text-slate-900 dark:text-white">
+                    {formatNumber(y.yearBs)} BS ({formatNumber(y.yearBs - 57)} AD)
+                  </div>
+                  {y.isCurrent ? (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      {t('academic.active_session')}
+                    </span>
+                  ) : (
+                    isPrincipalOrAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleActivateYear(y)}
+                        className="px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 border border-blue-300 dark:border-blue-800 rounded-lg transition"
+                      >
+                        {t('academic.activate_session')}
+                      </button>
+                    )
+                  )}
                 </div>
-                {y.isCurrent && (
-                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                    Active Session
-                  </span>
-                )}
+                <div className="text-xs space-y-1 text-slate-600 dark:text-slate-400 font-medium">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Bikram Sambat: </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {y.startDateBs} to {y.endDateBs}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Gregorian (AD): </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {y.startDateAd} to {y.endDateAd}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="text-xs space-y-1 text-slate-600 dark:text-slate-400 font-medium">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Bikram Sambat: </span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {y.startDateBs} to {y.endDateBs}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Gregorian (AD): </span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {y.startDateAd} to {y.endDateAd}
-                  </span>
-                </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add Academic Year Modal */}
+      {showAddYear && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in zoom-in-95">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-950/40">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {t('academic.add_year')}
+                </h3>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowAddYear(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          ))}
+
+            <form onSubmit={handleCreateYear} className="p-6 space-y-4 text-xs font-medium">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  शैक्षिक वर्ष वि.सं. (Academic Year BS) *
+                </label>
+                <input
+                  type="number"
+                  min="2080"
+                  max="2100"
+                  value={yearForm.yearBs}
+                  onChange={(e) => handleYearBsChange(Number(e.target.value))}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[11px] text-slate-500">
+                  उदा: 2084 वि.सं. ({yearForm.yearBs - 57} AD)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    सुरु मिति वि.सं. (Start Date BS) *
+                  </label>
+                  <input
+                    type="text"
+                    value={yearForm.startDateBs}
+                    onChange={(e) => setYearForm({ ...yearForm, startDateBs: e.target.value })}
+                    required
+                    placeholder="YYYY-01-01"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    अन्तिम मिति वि.सं. (End Date BS) *
+                  </label>
+                  <input
+                    type="text"
+                    value={yearForm.endDateBs}
+                    onChange={(e) => setYearForm({ ...yearForm, endDateBs: e.target.value })}
+                    required
+                    placeholder="YYYY-12-30"
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    सुरु मिति ई.सं. (Start Date AD) *
+                  </label>
+                  <input
+                    type="date"
+                    value={yearForm.startDateAd}
+                    onChange={(e) => setYearForm({ ...yearForm, startDateAd: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    अन्तिम मिति ई.सं. (End Date AD) *
+                  </label>
+                  <input
+                    type="date"
+                    value={yearForm.endDateAd}
+                    onChange={(e) => setYearForm({ ...yearForm, endDateAd: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center space-x-2 cursor-pointer p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 transition">
+                  <input
+                    type="checkbox"
+                    checked={yearForm.isCurrent}
+                    onChange={(e) => setYearForm({ ...yearForm, isCurrent: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    यस सत्रलाई तुरुन्त मुख्य चालु सत्र बनाउनुहोस् (Set as Active Session)
+                  </span>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddYear(false)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+                >
+                  रद्द गर्नुहोस् (Cancel)
+                </button>
+                <button
+                  type="submit"
+                  disabled={yearSaving}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {yearSaving ? 'सुरक्षित हुँदैछ...' : 'सत्र सुरक्षित गर्नुहोस् (Save)'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

@@ -1823,7 +1823,7 @@ export async function runMigrationsAndSeed() {
     where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
   });
 
-  if (existingStudents.length === 0 && process.env.SEED_SAMPLE_STUDENTS === 'true') {
+  if (existingStudents.length === 0) {
     console.log('[Seed] Seeding 15 realistic student profiles with Health & Guardian records...');
     const academicYear2083 = await db.query.academicYears.findFirst({
       where: (table: any, { eq, and }: any) => and(eq(table.schoolId, schoolId), eq(table.yearBs, 2083)),

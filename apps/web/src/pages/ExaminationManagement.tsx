@@ -789,11 +789,11 @@ export const ExaminationManagement: React.FC = () => {
       return;
     }
 
-    const schoolNameNp = schoolData?.nameNp || school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय';
-    const schoolNameEn = schoolData?.nameEn || school?.nameEn || 'Shree Shanti Secondary School';
-    const addressNp = schoolData?.addressNp || school?.addressNp || 'काठमाडौं, बागमती प्रदेश, नेपाल';
+    const schoolNameNp = schoolData?.nameNp || school?.nameNp || schoolData?.nameEn || school?.nameEn || 'विद्यालय';
+    const schoolNameEn = schoolData?.nameEn || school?.nameEn || schoolData?.nameNp || school?.nameNp || 'School';
+    const addressNp = schoolData?.addressNp || school?.addressNp || schoolData?.addressEn || school?.addressEn || '';
     const phone = schoolData?.phone || school?.phone || '';
-    const iemisCode = schoolData?.iemisCode || school?.iemisCode || '270010001';
+    const iemisCode = schoolData?.iemisCode || school?.iemisCode || '';
     const logoUrl = schoolData?.logoUrl || school?.logoUrl;
     const examTitle = examData?.nameNp || examData?.nameEn || 'परीक्षा २०८३';
 
@@ -2378,13 +2378,14 @@ export const ExaminationManagement: React.FC = () => {
                     नेपाल सरकार • शिक्षा, विज्ञान तथा प्रविधि मन्त्रालय
                   </div>
                   <h2 className="text-2xl font-black text-slate-950 tracking-tight">
-                    {gradesheetData.school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय'}
+                    {gradesheetData.school?.nameNp || school?.nameNp || gradesheetData.school?.nameEn || school?.nameEn || 'विद्यालय'}
                   </h2>
                   <h3 className="text-base font-bold text-slate-800 tracking-wide">
-                    {gradesheetData.school?.nameEn || 'SHREE SHANTI SECONDARY SCHOOL'}
+                    {gradesheetData.school?.nameEn || school?.nameEn || gradesheetData.school?.nameNp || school?.nameNp || ''}
                   </h3>
                   <p className="text-xs text-slate-600">
-                    {gradesheetData.school?.addressNp || 'टोखा-०४, काठमाडौं, बागमती प्रदेश, नेपाल'} | IEMIS: {gradesheetData.school?.iemisCode || '270010001'}
+                    {gradesheetData.school?.addressNp || school?.addressNp || ''}
+                    {(gradesheetData.school?.iemisCode || school?.iemisCode) ? ` | IEMIS: ${gradesheetData.school?.iemisCode || school?.iemisCode}` : ''}
                   </p>
                   <div className="pt-2">
                     <span className="inline-block px-4 py-1.5 bg-blue-900 text-white text-sm font-black tracking-wider uppercase rounded shadow-sm">
@@ -2587,13 +2588,14 @@ export const ExaminationManagement: React.FC = () => {
                     नेपाल सरकार • शिक्षा, विज्ञान तथा प्रविधि मन्त्रालय
                   </div>
                   <h2 className="text-2xl font-black text-slate-950 tracking-tight">
-                    {gradesheetData.school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय'}
+                    {gradesheetData.school?.nameNp || school?.nameNp || gradesheetData.school?.nameEn || school?.nameEn || 'विद्यालय'}
                   </h2>
                   <h3 className="text-base font-bold text-slate-800 tracking-wide">
-                    {gradesheetData.school?.nameEn || 'SHREE SHANTI SECONDARY SCHOOL'}
+                    {gradesheetData.school?.nameEn || school?.nameEn || gradesheetData.school?.nameNp || school?.nameNp || ''}
                   </h3>
                   <p className="text-xs text-slate-600">
-                    {gradesheetData.school?.addressNp || 'टोखा-०४, काठमाडौं, बागमती प्रदेश, नेपाल'} | IEMIS: {gradesheetData.school?.iemisCode || '270010001'}
+                    {gradesheetData.school?.addressNp || school?.addressNp || ''}
+                    {(gradesheetData.school?.iemisCode || school?.iemisCode) ? ` | IEMIS: ${gradesheetData.school?.iemisCode || school?.iemisCode}` : ''}
                   </p>
                   <div className="pt-2">
                     <span className="inline-block px-4 py-1 bg-slate-900 text-white text-sm font-black tracking-widest uppercase rounded">

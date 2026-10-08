@@ -846,6 +846,108 @@ export default async function academicRoutes(fastify: FastifyInstance) {
     return reply.send({ academicYears: years });
   });
 
+  fastify.post('/years', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const body = request.body as any;
+
+    const yearBs = Number(body.yearBs);
+    if (!yearBs || isNaN(yearBs) || yearBs < 2000 || yearBs > 2200) {
+      return reply.status(400).send({ message: 'Valid Bikram Sambat year (e.g. 2084) is required' });
+    }
+
+    // Check duplicate
+    const existing = await db.query.academicYears.findFirst({
+      where: (table: any, { eq, and }: any) =>
+        and(eq(table.schoolId, currentUser.schoolId), eq(table.yearBs, yearBs)),
+    });
+
+    if (existing) {
+      return reply.status(400).send({ message: `Academic Year ${yearBs} BS already exists.` });
+    }
+
+    const startDateBs = body.startDateBs || `${yearBs}-01-01`;
+    const endDateBs = body.endDateBs || `${yearBs}-12-30`;
+    const startDateAd = body.startDateAd || `${yearBs - 57}-04-14`;
+    const endDateAd = body.endDateAd || `${yearBs - 56}-04-13`;
+    const isCurrent = Boolean(body.isCurrent);
+
+    if (isCurrent) {
+      // Deactivate all others
+      await db.update(schema.academicYears)
+        .set({ isCurrent: false })
+        .where(eq(schema.academicYears.schoolId, currentUser.schoolId));
+
+      await db.update(schema.schools)
+        .set({ activeAcademicYearBs: yearBs })
+        .where(eq(schema.schools.id, currentUser.schoolId));
+    }
+
+    const id = crypto.randomUUID();
+    const newYear = {
+      id,
+      schoolId: currentUser.schoolId,
+      yearBs,
+      startDateBs,
+      endDateBs,
+      startDateAd,
+      endDateAd,
+      isCurrent,
+      isClosed: false,
+    };
+
+    await db.insert(schema.academicYears).values(newYear);
+
+    // Audit log
+    await db.insert(schema.auditLogs).values({
+      id: crypto.randomUUID(),
+      schoolId: currentUser.schoolId,
+      userId: currentUser.userId,
+      action: 'CREATE_ACADEMIC_YEAR',
+      entity: 'AcademicYear',
+      entityId: id,
+      newValues: newYear,
+      ipAddress: request.ip,
+      userAgent: request.headers['user-agent'] || '',
+    });
+
+    return reply.status(201).send({
+      message: `Academic Year ${yearBs} BS created successfully`,
+      academicYear: newYear,
+    });
+  });
+
+  fastify.put('/years/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+
+    const existing = await db.query.academicYears.findFirst({
+      where: (table: any, { eq, and }: any) =>
+        and(eq(table.id, id), eq(table.schoolId, currentUser.schoolId)),
+    });
+
+    if (!existing) {
+      return reply.status(404).send({ message: 'Academic year not found' });
+    }
+
+    const updates: any = {};
+    if (body.startDateBs) updates.startDateBs = body.startDateBs;
+    if (body.endDateBs) updates.endDateBs = body.endDateBs;
+    if (body.startDateAd) updates.startDateAd = body.startDateAd;
+    if (body.endDateAd) updates.endDateAd = body.endDateAd;
+    if (body.isClosed !== undefined) updates.isClosed = Boolean(body.isClosed);
+
+    await db.update(schema.academicYears)
+      .set(updates)
+      .where(eq(schema.academicYears.id, id));
+
+    return reply.send({ message: 'Academic year updated successfully' });
+  });
+
   fastify.post('/years/:id/activate', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!(await authenticate(request, reply))) return;
     const db = await getDb();
@@ -876,3 +978,4 @@ export default async function academicRoutes(fastify: FastifyInstance) {
     return reply.send({ message: `Academic Year ${targetYear.yearBs} BS activated successfully` });
   });
 }
+

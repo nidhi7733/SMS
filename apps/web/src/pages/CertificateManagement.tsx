@@ -402,13 +402,13 @@ export const CertificateManagement: React.FC = () => {
       console.error('Failed to log certificate print:', e);
     }
 
-    const schoolNameNp = school?.nameNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालय';
-    const schoolNameEn = school?.nameEn || 'Shree Rajeshwar Nidhi Secondary School';
-    const schoolAddressNp = school?.addressNp || 'टोखा-०४, काठमाडौं, बागमती प्रदेश, नेपाल';
-    const schoolAddressEn = school?.addressEn || 'Tokha-04, Kathmandu, Bagmati Province, Nepal';
-    const schoolPhone = school?.phone || '०१-४३५१२३४';
+    const schoolNameNp = school?.nameNp || school?.nameEn || 'विद्यालय';
+    const schoolNameEn = school?.nameEn || school?.nameNp || 'School';
+    const schoolAddressNp = school?.addressNp || school?.addressEn || '';
+    const schoolAddressEn = school?.addressEn || school?.addressNp || '';
+    const schoolPhone = school?.phone || '';
     const establishedBs = school?.establishedBsYear || 2028;
-    const iemisCode = school?.iemisCode || '170720001';
+    const iemisCode = school?.iemisCode || '';
     const logoUrl = school?.logoUrl || '';
 
     const schoolLogoHtml = logoUrl
@@ -1529,16 +1529,16 @@ export const CertificateManagement: React.FC = () => {
                         पाठ्यक्रम विकास केन्द्र (CDC) को पाठ्यक्रम तथा मूल्याङ्कन ढाँचा अनुरूप
                       </div>
                       <h1 className="text-2xl lg:text-3xl font-black text-amber-950 font-serif tracking-tight">
-                        {school?.nameNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालय'}
+                        {school?.nameNp || school?.nameEn || 'विद्यालय'}
                       </h1>
                       <h2 className="text-base lg:text-lg font-bold text-slate-800 tracking-wide font-sans">
-                        {school?.nameEn || 'Shree Rajeshwar Nidhi Secondary School'}
+                        {school?.nameEn || school?.nameNp || ''}
                       </h2>
                       <p className="text-xs text-slate-600 font-sans">
-                        {school?.addressNp || 'टोखा-०४, काठमाडौं, बागमती प्रदेश, नेपाल'} | फोन: {school?.phone || '०१-४३५१२३४'}
+                        {school?.addressNp || school?.addressEn || ''} {school?.phone ? `| फोन: ${school.phone}` : ''}
                       </p>
                       <div className="text-[11px] font-mono text-slate-500 font-sans pt-0.5">
-                        स्थापना: वि.सं. {school?.establishedBsYear || 2028} | IEMIS Code: <b>{school?.iemisCode || '170720001'}</b>
+                        {school?.establishedBsYear ? `स्थापना: वि.सं. ${school.establishedBsYear} | ` : ''}IEMIS Code: <b>{school?.iemisCode || '-'}</b>
                       </div>
                     </div>
 
