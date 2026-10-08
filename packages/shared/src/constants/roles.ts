@@ -54,8 +54,16 @@ export const SYSTEM_PERMISSIONS = [
   { code: 'EXAMS_VERIFY_RESULTS', module: 'Examinations', descriptionEn: 'Verify class tabulations as coordinator', descriptionNp: 'परीक्षा नतिजा रुजु गर्ने' },
   { code: 'EXAMS_APPROVE_PUBLISH', module: 'Examinations', descriptionEn: 'Publish examination results and report cards', descriptionNp: 'परीक्षा नतिजा प्रकाशन स्वीकृत गर्ने' },
 
-  // Documents & Certificates
+  // Documents & Archiving
+  { code: 'DOCUMENTS_VIEW', module: 'Documents', descriptionEn: 'View inward/outward registers and archive', descriptionNp: 'दर्ता, चलानी र अभिलेख हेर्ने' },
+  { code: 'DOCUMENTS_MANAGE', module: 'Documents', descriptionEn: 'Register inward/outward mails and archive files', descriptionNp: 'दर्ता, चलानी र अभिलेख कागजात व्यवस्थापन' },
   { code: 'DOCUMENTS_ISSUE', module: 'Documents', descriptionEn: 'Generate ID cards and certificates with QR', descriptionNp: 'परिचयपत्र तथा क्युआर कोडसहित प्रमाणपत्र जारी' },
+
+  // Transport & Fleet
+  { code: 'TRANSPORT_VIEW', module: 'Transport', descriptionEn: 'View vehicles, routes, and passenger list', descriptionNp: 'सवारी साधन, रुट र यात्रु सूची हेर्ने' },
+  { code: 'TRANSPORT_MANAGE_ROUTES', module: 'Transport', descriptionEn: 'Manage vehicles, drivers, routes, and stops', descriptionNp: 'सवारी, चालक, रुट र बस स्टप व्यवस्थापन' },
+  { code: 'TRANSPORT_ASSIGN_STUDENTS', module: 'Transport', descriptionEn: 'Allocate bus seats to students', descriptionNp: 'विद्यार्थीहरूलाई बस सिट र स्टप तोक्ने' },
+  { code: 'TRANSPORT_LOG_EXPENSES', module: 'Transport', descriptionEn: 'Log fuel consumption and maintenance costs', descriptionNp: 'इन्धन खपत र सवारी मर्मत खर्च प्रविष्टि गर्ने' },
 
   // Inventory & Assets
   { code: 'INVENTORY_VIEW', module: 'Inventory', descriptionEn: 'View stock, inventory items, and asset register', descriptionNp: 'जिन्सी मौज्दात, सामान र सम्पत्ति विवरण हेर्ने' },

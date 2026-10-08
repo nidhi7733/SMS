@@ -1034,5 +1034,187 @@ export const lmsStudyMaterials = pgTable('lms_study_materials', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 59. Inward Documents (दर्ता पुस्तिका - प्राप्त पत्रहरू)
+export const inwardDocuments = pgTable('inward_documents', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  dartaNo: integer('darta_no').notNull(),
+  fiscalYear: text('fiscal_year').notNull(),
+  registeredDateBs: text('registered_date_bs').notNull(),
+  senderOrganization: text('sender_organization').notNull(),
+  senderLetterNo: text('sender_letter_no'),
+  senderLetterDateBs: text('sender_letter_date_bs'),
+  subject: text('subject').notNull(),
+  category: text('category').notNull().default('GOVERNMENT'),
+  priority: text('priority').notNull().default('NORMAL'),
+  status: text('status').notNull().default('PENDING'),
+  scannedFileUrl: text('scanned_file_url'),
+  receiverStaffId: text('receiver_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 60. Outward Documents (चलानी पुस्तिका - प्रेषित पत्रहरू)
+export const outwardDocuments = pgTable('outward_documents', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  chalaniNo: integer('chalani_no').notNull(),
+  fiscalYear: text('fiscal_year').notNull(),
+  dispatchDateBs: text('dispatch_date_bs').notNull(),
+  recipientOrganization: text('recipient_organization').notNull(),
+  subject: text('subject').notNull(),
+  category: text('category').notNull().default('RECOMMENDATION'),
+  dispatchMode: text('dispatch_mode').notNull().default('HAND_DELIVERY'),
+  signatoryStaffId: text('signatory_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  scannedFileUrl: text('scanned_file_url'),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 61. Letter Templates (प्रशासनिक सिफारिस तथा आधिकारिक ढाँचाहरू)
+export const letterTemplates = pgTable('letter_templates', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(),
+  titleEn: text('title_en').notNull(),
+  titleNp: text('title_np').notNull(),
+  templateBodyHtml: text('template_body_html').notNull(),
+  category: text('category').notNull().default('GENERAL'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 62. Issued Official Letters (जारी गरिएका सिफारिस तथा प्रमाणपत्र अभिलेख)
+export const issuedOfficialLetters = pgTable('issued_official_letters', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  letterNo: text('letter_no').notNull(),
+  templateId: text('template_id').notNull().references(() => letterTemplates.id, { onDelete: 'cascade' }),
+  targetType: text('target_type').notNull().default('STUDENT'),
+  targetId: text('target_id'),
+  targetName: text('target_name'),
+  issueDateBs: text('issue_date_bs').notNull(),
+  generatedContentHtml: text('generated_content_html').notNull(),
+  signatoryStaffId: text('signatory_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 63. Institutional Archives (संस्थागत स्थायी अभिलेखालय)
+export const institutionalArchives = pgTable('institutional_archives', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  category: text('category').notNull().default('MISCELLANEOUS'),
+  documentYearBs: integer('document_year_bs'),
+  fileUrl: text('file_url').notNull(),
+  fileType: text('file_type'),
+  fileSizeBytes: integer('file_size_bytes'),
+  tags: jsonb('tags').$type<string[]>(),
+  confidentialityLevel: text('confidentiality_level').notNull().default('RESTRICTED'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 64. Transport Vehicles (सवारी साधन अभिलेखालय)
+export const transportVehicles = pgTable('transport_vehicles', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  vehicleNumber: text('vehicle_number').notNull(),
+  vehicleType: text('vehicle_type').notNull().default('BUS'),
+  capacity: integer('capacity').notNull().default(30),
+  fuelType: text('fuel_type').notNull().default('DIESEL'),
+  modelYear: text('model_year'),
+  bluebookExpiryBs: text('bluebook_expiry_bs').notNull(),
+  insuranceExpiryBs: text('insurance_expiry_bs').notNull(),
+  pollutionExpiryBs: text('pollution_expiry_bs'),
+  status: text('status').notNull().default('ACTIVE'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 65. Transport Staff (चालक तथा सह-चालकहरू)
+export const transportStaff = pgTable('transport_staff', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  staffId: text('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  role: text('role').notNull().default('DRIVER'),
+  fullName: text('full_name').notNull(),
+  phone: text('phone').notNull(),
+  licenseNo: text('license_no'),
+  licenseCategory: text('license_category'),
+  licenseExpiryBs: text('license_expiry_bs'),
+  emergencyContact: text('emergency_contact'),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 66. Transport Routes (सवारी रुट व्यवस्थापन)
+export const transportRoutes = pgTable('transport_routes', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  vehicleId: text('vehicle_id').references(() => transportVehicles.id, { onDelete: 'set null' }),
+  driverId: text('driver_id').references(() => transportStaff.id, { onDelete: 'set null' }),
+  helperId: text('helper_id').references(() => transportStaff.id, { onDelete: 'set null' }),
+  routeNameEn: text('route_name_en').notNull(),
+  routeNameNp: text('route_name_np').notNull(),
+  startPoint: text('start_point').notNull(),
+  endPoint: text('end_point').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 67. Transport Stops (बस स्टपहरू तथा भाडा दर)
+export const transportStops = pgTable('transport_stops', {
+  id: text('id').primaryKey(),
+  routeId: text('route_id').notNull().references(() => transportRoutes.id, { onDelete: 'cascade' }),
+  stopOrder: integer('stop_order').notNull(),
+  stopNameEn: text('stop_name_en').notNull(),
+  stopNameNp: text('stop_name_np').notNull(),
+  morningPickupTime: text('morning_pickup_time').notNull(),
+  eveningDropTime: text('evening_drop_time').notNull(),
+  monthlyFare: real('monthly_fare').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 68. Student Transport Allocations (विद्यार्थी बस सिट बाँडफाँड)
+export const studentTransportAllocations = pgTable('student_transport_allocations', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  studentId: text('student_id').notNull().references(() => students.id, { onDelete: 'cascade' }),
+  routeId: text('route_id').notNull().references(() => transportRoutes.id, { onDelete: 'cascade' }),
+  stopId: text('stop_id').notNull().references(() => transportStops.id, { onDelete: 'cascade' }),
+  academicYearBs: integer('academic_year_bs').notNull().default(2083),
+  startDateBs: text('start_date_bs').notNull(),
+  status: text('status').notNull().default('ACTIVE'),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 69. Transport Maintenance Logs (सवारी मर्मत तथा इन्धन लगबुक)
+export const transportMaintenanceLogs = pgTable('transport_maintenance_logs', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  vehicleId: text('vehicle_id').notNull().references(() => transportVehicles.id, { onDelete: 'cascade' }),
+  logDateBs: text('log_date_bs').notNull(),
+  logType: text('log_type').notNull().default('FUEL'),
+  odometerKm: integer('odometer_km'),
+  fuelQuantityLiters: real('fuel_quantity_liters'),
+  totalCost: real('total_cost').notNull().default(0),
+  vendorName: text('vendor_name'),
+  invoiceNo: text('invoice_no'),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+
 
 

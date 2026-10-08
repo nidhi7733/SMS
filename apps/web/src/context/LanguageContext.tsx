@@ -36,8 +36,11 @@ const translations: Record<string, { en: string; np: string }> = {
   'nav.library': { en: 'Library Management', np: 'पुस्तकालय व्यवस्थापन' },
   'nav.learning': { en: 'Learning & Homework', np: 'सिकाइ तथा गृहकार्य' },
   'nav.exams': { en: 'Examinations (CDC)', np: 'परीक्षा (CDC/NEB)' },
-  'nav.certificates': { en: 'Certificates (SLC/SEE)', np: 'प्रमाणपत्र (SLC/चारित्रिक)' },
-  'nav.documents': { en: 'Documents & QR', np: 'कागजात र क्युआर' },
+  'nav.certificates': { en: 'Certificates & Testimonials', np: 'प्रमाणपत्र तथा चारित्रिक' },
+  'nav.documents': { en: 'Document & Darta/Chalani', np: 'कागजात तथा दर्ता/चलानी' },
+  'nav.transport': { en: 'Transport & Bus Fleet', np: 'यातायात तथा बस सेवा' },
+  'nav.hostel': { en: 'Hostel & Boarding', np: 'छात्रावास व्यवस्थापन' },
+  'nav.alumni': { en: 'Alumni Network', np: 'पूर्व विद्यार्थी सञ्जाल' },
   'nav.logout': { en: 'Log Out', np: 'लग आउट' },
 
   // Login

@@ -18,6 +18,8 @@ import {
   Award,
   ArrowRightLeft,
   BookMarked,
+  FileText,
+  Bus,
   X,
 } from 'lucide-react';
 
@@ -151,6 +153,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         hasRole('STUDENT'),
     },
     {
+      id: 'documents',
+      label: t('nav.documents'),
+      icon: FileText,
+      visible:
+        hasPermission('DOCUMENTS_VIEW') ||
+        hasPermission('DOCUMENTS_MANAGE') ||
+        hasRole('PRINCIPAL') ||
+        hasRole('ADMINISTRATIVE_STAFF'),
+    },
+    {
+      id: 'transport',
+      label: t('nav.transport'),
+      icon: Bus,
+      visible:
+        hasPermission('TRANSPORT_VIEW') ||
+        hasPermission('TRANSPORT_MANAGE_ROUTES') ||
+        hasPermission('TRANSPORT_ASSIGN_STUDENTS') ||
+        hasRole('PRINCIPAL') ||
+        hasRole('ADMINISTRATIVE_STAFF') ||
+        hasRole('ACCOUNTANT'),
+    },
+    {
       id: 'school_settings',
       label: t('nav.school_settings'),
       icon: Settings,
@@ -165,7 +189,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const upcomingStages = [
-    { id: 'documents', label: t('nav.documents'), icon: FileCheck2, stage: 'Stage 7' },
+    { id: 'hostel', label: t('nav.hostel'), icon: Boxes, stage: 'Stage 12' },
+    { id: 'alumni', label: t('nav.alumni'), icon: GraduationCap, stage: 'Stage 13' },
   ];
 
 

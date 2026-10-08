@@ -1122,6 +1122,200 @@ export async function runMigrationsAndSeed() {
     )
   `);
 
+  // Document Management Migrations
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS inward_documents (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      darta_no INTEGER NOT NULL,
+      fiscal_year TEXT NOT NULL,
+      registered_date_bs TEXT NOT NULL,
+      sender_organization TEXT NOT NULL,
+      sender_letter_no TEXT,
+      sender_letter_date_bs TEXT,
+      subject TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'GOVERNMENT',
+      priority TEXT NOT NULL DEFAULT 'NORMAL',
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      scanned_file_url TEXT,
+      receiver_staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS outward_documents (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      chalani_no INTEGER NOT NULL,
+      fiscal_year TEXT NOT NULL,
+      dispatch_date_bs TEXT NOT NULL,
+      recipient_organization TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'RECOMMENDATION',
+      dispatch_mode TEXT NOT NULL DEFAULT 'HAND_DELIVERY',
+      signatory_staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      scanned_file_url TEXT,
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS letter_templates (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      title_np TEXT NOT NULL,
+      template_body_html TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'GENERAL',
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS issued_official_letters (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      letter_no TEXT NOT NULL,
+      template_id TEXT NOT NULL REFERENCES letter_templates(id) ON DELETE CASCADE,
+      target_type TEXT NOT NULL DEFAULT 'STUDENT',
+      target_id TEXT,
+      target_name TEXT,
+      issue_date_bs TEXT NOT NULL,
+      generated_content_html TEXT NOT NULL,
+      signatory_staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS institutional_archives (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'MISCELLANEOUS',
+      document_year_bs INTEGER,
+      file_url TEXT NOT NULL,
+      file_type TEXT,
+      file_size_bytes INTEGER,
+      tags JSONB,
+      confidentiality_level TEXT NOT NULL DEFAULT 'RESTRICTED',
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Transport Management Migrations
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS transport_vehicles (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      vehicle_number TEXT NOT NULL,
+      vehicle_type TEXT NOT NULL DEFAULT 'BUS',
+      capacity INTEGER NOT NULL DEFAULT 30,
+      fuel_type TEXT NOT NULL DEFAULT 'DIESEL',
+      model_year TEXT,
+      bluebook_expiry_bs TEXT NOT NULL,
+      insurance_expiry_bs TEXT NOT NULL,
+      pollution_expiry_bs TEXT,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      notes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS transport_staff (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      staff_id TEXT REFERENCES staff(id) ON DELETE SET NULL,
+      role TEXT NOT NULL DEFAULT 'DRIVER',
+      full_name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      license_no TEXT,
+      license_category TEXT,
+      license_expiry_bs TEXT,
+      emergency_contact TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS transport_routes (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      vehicle_id TEXT REFERENCES transport_vehicles(id) ON DELETE SET NULL,
+      driver_id TEXT REFERENCES transport_staff(id) ON DELETE SET NULL,
+      helper_id TEXT REFERENCES transport_staff(id) ON DELETE SET NULL,
+      route_name_en TEXT NOT NULL,
+      route_name_np TEXT NOT NULL,
+      start_point TEXT NOT NULL,
+      end_point TEXT NOT NULL,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS transport_stops (
+      id TEXT PRIMARY KEY,
+      route_id TEXT NOT NULL REFERENCES transport_routes(id) ON DELETE CASCADE,
+      stop_order INTEGER NOT NULL,
+      stop_name_en TEXT NOT NULL,
+      stop_name_np TEXT NOT NULL,
+      morning_pickup_time TEXT NOT NULL,
+      evening_drop_time TEXT NOT NULL,
+      monthly_fare REAL NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS student_transport_allocations (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      student_id TEXT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+      route_id TEXT NOT NULL REFERENCES transport_routes(id) ON DELETE CASCADE,
+      stop_id TEXT NOT NULL REFERENCES transport_stops(id) ON DELETE CASCADE,
+      academic_year_bs INTEGER NOT NULL DEFAULT 2083,
+      start_date_bs TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ACTIVE',
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS transport_maintenance_logs (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      vehicle_id TEXT NOT NULL REFERENCES transport_vehicles(id) ON DELETE CASCADE,
+      log_date_bs TEXT NOT NULL,
+      log_type TEXT NOT NULL DEFAULT 'FUEL',
+      odometer_km INTEGER,
+      fuel_quantity_liters REAL,
+      total_cost REAL NOT NULL DEFAULT 0,
+      vendor_name TEXT,
+      invoice_no TEXT,
+      remarks TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -1218,7 +1412,8 @@ export async function runMigrationsAndSeed() {
       permissions: [
         'SCHOOL_SETTINGS_VIEW', 'USERS_VIEW', 'ACADEMIC_STRUCTURE_VIEW', 'STUDENTS_VIEW',
         'STUDENTS_ADMIT', 'STUDENTS_EDIT', 'ATTENDANCE_VIEW', 'TIMETABLE_VIEW',
-        'DOCUMENTS_ISSUE',
+        'DOCUMENTS_ISSUE', 'DOCUMENTS_VIEW', 'DOCUMENTS_MANAGE',
+        'TRANSPORT_VIEW', 'TRANSPORT_MANAGE_ROUTES', 'TRANSPORT_ASSIGN_STUDENTS', 'TRANSPORT_LOG_EXPENSES',
       ],
     },
     {
@@ -1228,7 +1423,7 @@ export async function runMigrationsAndSeed() {
       description: 'Fee collection, double-entry vouchers, and financial accounting',
       permissions: [
         'FEES_STRUCTURE_MANAGE', 'FEES_COLLECT', 'ACCOUNTS_VIEW', 'ACCOUNTS_POST_VOUCHER',
-        'STUDENTS_VIEW',
+        'STUDENTS_VIEW', 'TRANSPORT_VIEW', 'TRANSPORT_LOG_EXPENSES',
       ],
     },
     {
@@ -1238,7 +1433,7 @@ export async function runMigrationsAndSeed() {
       description: 'Class attendance, marks entry, and LMS subject content',
       permissions: [
         'ATTENDANCE_RECORD', 'ATTENDANCE_VIEW', 'LMS_CONTENT_MANAGE', 'EXAMS_ENTER_MARKS',
-        'TIMETABLE_VIEW', 'STUDENTS_VIEW',
+        'TIMETABLE_VIEW', 'STUDENTS_VIEW', 'TRANSPORT_VIEW',
       ],
     },
     {
@@ -1255,7 +1450,8 @@ export async function runMigrationsAndSeed() {
       description: 'Technical configuration, user management, and audit inspection',
       permissions: [
         'SCHOOL_SETTINGS_VIEW', 'SCHOOL_SETTINGS_MANAGE', 'USERS_VIEW', 'USERS_MANAGE',
-        'ROLES_MANAGE', 'AUDIT_LOGS_VIEW',
+        'ROLES_MANAGE', 'AUDIT_LOGS_VIEW', 'DOCUMENTS_VIEW', 'DOCUMENTS_MANAGE', 'DOCUMENTS_ISSUE',
+        'TRANSPORT_VIEW', 'TRANSPORT_MANAGE_ROUTES', 'TRANSPORT_ASSIGN_STUDENTS', 'TRANSPORT_LOG_EXPENSES',
       ],
     },
     {
@@ -1263,14 +1459,14 @@ export async function runMigrationsAndSeed() {
       displayNameEn: 'Student',
       displayNameNp: 'विद्यार्थी',
       description: 'Student portal: view personal routine, attendance, exams and report card',
-      permissions: ['STUDENTS_VIEW', 'TIMETABLE_VIEW', 'CALENDAR_VIEW', 'ATTENDANCE_VIEW'],
+      permissions: ['STUDENTS_VIEW', 'TIMETABLE_VIEW', 'CALENDAR_VIEW', 'ATTENDANCE_VIEW', 'TRANSPORT_VIEW'],
     },
     {
       name: UserRoleType.PARENT,
       displayNameEn: 'Parent / Guardian',
       displayNameNp: 'अभिभावक',
       description: 'Parent portal: view ward profile, attendance, progress card and notices',
-      permissions: ['STUDENTS_VIEW', 'TIMETABLE_VIEW', 'CALENDAR_VIEW', 'ATTENDANCE_VIEW'],
+      permissions: ['STUDENTS_VIEW', 'TIMETABLE_VIEW', 'CALENDAR_VIEW', 'ATTENDANCE_VIEW', 'TRANSPORT_VIEW'],
     },
   ];
 
@@ -1302,6 +1498,22 @@ export async function runMigrationsAndSeed() {
           });
         }
       }
+    } else {
+      // Sync permissions for existing role
+      for (const pCode of r.permissions) {
+        const pId = permMap.get(pCode);
+        if (pId) {
+          const existingRP = await db.query.rolePermissions.findFirst({
+            where: (table: any, { eq, and }: any) => and(eq(table.roleId, role.id), eq(table.permissionId, pId))
+          });
+          if (!existingRP) {
+            await db.insert(schema.rolePermissions).values({
+              roleId: role.id,
+              permissionId: pId,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -1325,6 +1537,15 @@ export async function runMigrationsAndSeed() {
       email: 'admin@shreeshantischool.edu.np',
       phone: '9851000002',
       role: UserRoleType.SYSTEM_ADMIN,
+      isSuperAdmin: false,
+    },
+    {
+      username: 'admin_staff',
+      fullNameEn: 'Prakash Adhikari (Admin Officer)',
+      fullNameNp: 'प्रकाश अधिकारी (प्रशासन प्रमुख)',
+      email: 'admin.staff@shreeshantischool.edu.np',
+      phone: '9851000009',
+      role: UserRoleType.ADMINISTRATIVE_STAFF,
       isSuperAdmin: false,
     },
     {
@@ -3192,6 +3413,318 @@ export async function runMigrationsAndSeed() {
         });
       }
     }
+  }
+
+  // 17. Seed Document Management (कागजात तथा दर्ता/चलानी)
+  const existingInward = await db.query.inwardDocuments.findFirst({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+  if (!existingInward) {
+    console.log('[Seed] Seeding Document Management System...');
+    await db.insert(schema.inwardDocuments).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        dartaNo: 1,
+        fiscalYear: '2082/083',
+        registeredDateBs: '2083-05-10',
+        senderOrganization: 'शिक्षा विकास तथा समन्वय इकाई, ललितपुर',
+        senderLetterNo: 'इकाइ/०८२-८३/१०५',
+        senderLetterDateBs: '2083-05-08',
+        subject: 'शैक्षिक सत्र २०८३ को SEE परीक्षा आवेदन फारम संकलन सम्बन्धमा',
+        category: 'GOVERNMENT',
+        priority: 'URGENT',
+        status: 'IN_PROCESS',
+        remarks: 'कक्षा १० का कक्षा शिक्षकलाई फारम वितरण गर्न जिम्मा दिइएको।',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        dartaNo: 2,
+        fiscalYear: '2082/083',
+        registeredDateBs: '2083-05-18',
+        senderOrganization: 'गोदावरी नगरपालिका शिक्षा शाखा',
+        senderLetterNo: 'गो.न.पा./शिक्षा/७८',
+        senderLetterDateBs: '2083-05-16',
+        subject: 'राष्ट्रपति शैक्षिक सुधार कार्यक्रम अन्तर्गत भौतिक पूर्वाधार प्रस्तावना माग गरिएको बारे',
+        category: 'MUNICIPALITY',
+        priority: 'VERY_URGENT',
+        status: 'ACTION_TAKEN',
+        remarks: 'वि.व्य.स. को बैठक बसी विस्तृत प्रस्ताव पेश गरिसकिएको।',
+      },
+    ]);
+
+    await db.insert(schema.outwardDocuments).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        chalaniNo: 1,
+        fiscalYear: '2082/083',
+        dispatchDateBs: '2083-05-12',
+        recipientOrganization: 'शिक्षा विकास तथा समन्वय इकाई, ललितपुर',
+        subject: 'कक्षा १० का विद्यार्थीहरूको परीक्षा आवेदन फारम विवरण पठाइएको बारे',
+        category: 'REPORT',
+        dispatchMode: 'HAND_DELIVERY',
+        remarks: 'विद्यालय प्रशासन सहायकले प्रत्यक्ष बुझाएको।',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        chalaniNo: 2,
+        fiscalYear: '2082/083',
+        dispatchDateBs: '2083-05-22',
+        recipientOrganization: 'गोदावरी नगरपालिका वडा कार्यालय',
+        subject: 'दलित तथा विपन्न विद्यार्थी छात्रवृत्ति सिफारिस सूची प्रेषित गरिएको सम्बन्धमा',
+        category: 'RECOMMENDATION',
+        dispatchMode: 'PORTAL',
+        remarks: 'डिजिटल रूपमा वडा शिक्षा पोर्टलमा अपलोड गरिएको।',
+      },
+    ]);
+
+    const bonafideTemplateId = crypto.randomUUID();
+    await db.insert(schema.letterTemplates).values([
+      {
+        id: bonafideTemplateId,
+        schoolId,
+        code: 'BONAFIDE',
+        titleEn: 'Bonafide / Student Study Certificate',
+        titleNp: 'अध्ययनरत प्रमाणपत्र (Bonafide Certificate)',
+        templateBodyHtml: '<p>प्रमाणित गरिन्छ कि यस विद्यालयको कक्षा <strong>{{class}}</strong> खण्ड <strong>{{section}}</strong> मा अध्ययनरत विद्यार्थी <strong>{{studentName}}</strong> (जन्म मिति: {{dobBs}}) नियमित रूपमा यस विद्यालयमा अध्ययनरत हुनुहुन्छ। निजको चालचलन असल रहेको छ।</p>',
+        category: 'STUDENT_BONAFIDE',
+        isActive: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'SCHOLARSHIP_REC',
+        titleEn: 'Scholarship Recommendation Letter',
+        titleNp: 'छात्रवृत्ति सिफारिस पत्र (Scholarship Recommendation)',
+        templateBodyHtml: '<p>उपरोक्त सम्बन्धमा यस विद्यालयमा कक्षा <strong>{{class}}</strong> मा अध्ययनरत जेहेन्दार तथा विपन्न वर्गका विद्यार्थी <strong>{{studentName}}</strong> लाई नगरपालिका छात्रवृत्ति नियमावली अनुसार छात्रवृत्ति उपलब्ध गराउन सिफारिस गरिन्छ।</p>',
+        category: 'SCHOLARSHIP',
+        isActive: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'STAFF_EXP',
+        titleEn: 'Teaching Experience Certificate',
+        titleNp: 'शिक्षक सेवा तथा अनुभव प्रमाणपत्र',
+        templateBodyHtml: '<p>प्रमाणित गरिन्छ कि श्री <strong>{{staffName}}</strong> ले यस विद्यालयमा मिति {{startDateBs}} देखि हालसम्म <strong>{{designation}}</strong> पदमा रही सन्तोषजनक रूपमा अध्यापन गराउनुभएको छ।</p>',
+        category: 'STAFF_EXPERIENCE',
+        isActive: true,
+      },
+    ]);
+
+    await db.insert(schema.institutionalArchives).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        title: 'विद्यालय जग्गाधनी प्रमाणपुर्जा (कित्ता नं. १२४ र १२५)',
+        category: 'LAND_OWNERSHIP',
+        documentYearBs: 2045,
+        fileUrl: '/uploads/documents/lalpurja_school.pdf',
+        fileType: 'application/pdf',
+        tags: ['जग्गा', 'सम्पत्ति', 'लालपुर्जा'],
+        confidentialityLevel: 'RESTRICTED',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        title: 'वि.व्य.स. (SMC) बैठक निर्णय पुस्तिका - आर्थिक वर्ष २०८२/८३',
+        category: 'SMC_MINUTES',
+        documentYearBs: 2082,
+        fileUrl: '/uploads/documents/smc_minutes_2082.pdf',
+        fileType: 'application/pdf',
+        tags: ['वि.व्य.स.', 'निर्णय', 'माइन्युट'],
+        confidentialityLevel: 'RESTRICTED',
+      },
+    ]);
+  }
+
+  // 18. Seed Transport Management (यातायात तथा बस सेवा)
+  const existingVehicle = await db.query.transportVehicles.findFirst({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+  if (!existingVehicle) {
+    console.log('[Seed] Seeding Transport Management System...');
+    const bus1Id = crypto.randomUUID();
+    const bus2Id = crypto.randomUUID();
+
+    await db.insert(schema.transportVehicles).values([
+      {
+        id: bus1Id,
+        schoolId,
+        vehicleNumber: 'बा २ ख ३४५६',
+        vehicleType: 'BUS',
+        capacity: 32,
+        fuelType: 'DIESEL',
+        modelYear: '2020',
+        bluebookExpiryBs: '2083-11-20',
+        insuranceExpiryBs: '2083-12-15',
+        pollutionExpiryBs: '2083-09-30',
+        status: 'ACTIVE',
+        notes: 'मुख्य रुट १ मा सञ्चालित टाटा स्टारबस',
+      },
+      {
+        id: bus2Id,
+        schoolId,
+        vehicleNumber: 'बा ३ ख ७८९०',
+        vehicleType: 'MINIBUS',
+        capacity: 26,
+        fuelType: 'DIESEL',
+        modelYear: '2022',
+        bluebookExpiryBs: '2083-10-15',
+        insuranceExpiryBs: '2083-11-05',
+        pollutionExpiryBs: '2083-10-01',
+        status: 'ACTIVE',
+        notes: 'रुट २ सानेपा-पुल्चोक खण्डमा सञ्चालित',
+      },
+    ]);
+
+    const driver1Id = crypto.randomUUID();
+    const helper1Id = crypto.randomUUID();
+
+    await db.insert(schema.transportStaff).values([
+      {
+        id: driver1Id,
+        schoolId,
+        role: 'DRIVER',
+        fullName: 'राम बहादुर तामाङ',
+        phone: '9841234567',
+        licenseNo: '01-04-00987654',
+        licenseCategory: 'B, F (हेभी/बस)',
+        licenseExpiryBs: '2085-04-10',
+        emergencyContact: '9808112233 (श्रीमती)',
+        isActive: true,
+      },
+      {
+        id: helper1Id,
+        schoolId,
+        role: 'HELPER',
+        fullName: 'गोविन्द महर्जन',
+        phone: '9818987654',
+        emergencyContact: '9841009988',
+        isActive: true,
+      },
+    ]);
+
+    const route1Id = crypto.randomUUID();
+    await db.insert(schema.transportRoutes).values([
+      {
+        id: route1Id,
+        schoolId,
+        vehicleId: bus1Id,
+        driverId: driver1Id,
+        helperId: helper1Id,
+        routeNameEn: 'Route 1: Lagankhel - Jawalakhel - Ekantakuna - School',
+        routeNameNp: 'रुट १: लगनखेल - जावलाखेल - एकान्तकुना - विद्यालय',
+        startPoint: 'लगनखेल बसपार्क',
+        endPoint: 'विद्यालय मूल गेट',
+        isActive: true,
+      },
+    ]);
+
+    const stop1Id = crypto.randomUUID();
+    const stop2Id = crypto.randomUUID();
+    const stop3Id = crypto.randomUUID();
+    const stop4Id = crypto.randomUUID();
+
+    await db.insert(schema.transportStops).values([
+      {
+        id: stop1Id,
+        routeId: route1Id,
+        stopOrder: 1,
+        stopNameEn: 'Lagankhel Bus Park',
+        stopNameNp: 'लगनखेल बसपार्क',
+        morningPickupTime: '07:15',
+        eveningDropTime: '16:30',
+        monthlyFare: 1800,
+      },
+      {
+        id: stop2Id,
+        routeId: route1Id,
+        stopOrder: 2,
+        stopNameEn: 'Jawalakhel Chowk',
+        stopNameNp: 'जावलाखेल चोक',
+        morningPickupTime: '07:25',
+        eveningDropTime: '16:20',
+        monthlyFare: 1600,
+      },
+      {
+        id: stop3Id,
+        routeId: route1Id,
+        stopOrder: 3,
+        stopNameEn: 'Ekantakuna Pul',
+        stopNameNp: 'एकान्तकुना पुल',
+        morningPickupTime: '07:35',
+        eveningDropTime: '16:10',
+        monthlyFare: 1400,
+      },
+      {
+        id: stop4Id,
+        routeId: route1Id,
+        stopOrder: 4,
+        stopNameEn: 'School Main Gate',
+        stopNameNp: 'विद्यालय मूल गेट',
+        morningPickupTime: '07:50',
+        eveningDropTime: '15:55',
+        monthlyFare: 0,
+      },
+    ]);
+
+    // Allocate 2 sample students to Route 1
+    const sampleStudents = await db.query.students.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      limit: 2,
+    });
+
+    if (sampleStudents.length > 0) {
+      await db.insert(schema.studentTransportAllocations).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          studentId: sampleStudents[0].id,
+          routeId: route1Id,
+          stopId: stop1Id,
+          academicYearBs: 2083,
+          startDateBs: '2083-01-05',
+          status: 'ACTIVE',
+          remarks: 'लगनखेल स्टपबाट नियमित आवतजावत',
+        },
+        ...(sampleStudents.length > 1
+          ? [
+              {
+                id: crypto.randomUUID(),
+                schoolId,
+                studentId: sampleStudents[1].id,
+                routeId: route1Id,
+                stopId: stop2Id,
+                academicYearBs: 2083,
+                startDateBs: '2083-01-05',
+                status: 'ACTIVE',
+                remarks: 'जावलाखेल चोकबाट नियमित बस सेवा',
+              },
+            ]
+          : []),
+      ]);
+    }
+
+    // Sample maintenance log
+    await db.insert(schema.transportMaintenanceLogs).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        vehicleId: bus1Id,
+        logDateBs: '2083-05-15',
+        logType: 'FUEL',
+        odometerKm: 45200,
+        fuelQuantityLiters: 50,
+        totalCost: 8500,
+        vendorName: 'साझा सेवा पेट्रोल पम्प',
+        invoiceNo: 'SS-9082',
+        remarks: '५० लिटर डिजेल खरिद',
+      },
+    ]);
   }
 
   console.log('[Seed] Seeding completed successfully!');
