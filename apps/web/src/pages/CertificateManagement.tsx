@@ -107,6 +107,7 @@ const SchoolSealSvg = ({ schoolName }: { schoolName?: string }) => (
 
 export const CertificateManagement: React.FC = () => {
   const { t, formatNumber, language } = useLanguage();
+  const isNp = language === 'np';
   const { school } = useSchool();
 
   const [certificates, setCertificates] = useState<CertificateRecord[]>([]);
@@ -846,7 +847,7 @@ export const CertificateManagement: React.FC = () => {
               <option value="ALL">सबै कक्षाहरू (All Classes)</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.nameNp || c.nameEn} ({c.code})
+                  {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                 </option>
               ))}
             </select>
@@ -1127,7 +1128,7 @@ export const CertificateManagement: React.FC = () => {
                     <option value="">कक्षा छनोट गर्नुहोस्</option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.nameNp || c.nameEn} ({c.code})
+                        {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                       </option>
                     ))}
                   </select>

@@ -46,6 +46,7 @@ interface SubstitutePeriod {
   classNameNp: string;
   sectionCode: string;
   sectionNameNp: string;
+  sectionNameEn?: string;
   subjectNameEn: string;
   subjectNameNp: string;
   originalTeacher: {
@@ -90,6 +91,7 @@ interface HistoryRecord {
   classNameNp: string;
   sectionCode: string;
   sectionNameNp: string;
+  sectionNameEn?: string;
   subjectNameEn: string;
   subjectNameNp: string;
   originalTeacherNameEn: string;
@@ -673,12 +675,12 @@ export const SubstituteManagement: React.FC = () => {
                         {periodNamesNp[h.periodNumber] || `${h.periodNumber} घण्टी`}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="font-bold">{h.classNameNp}</span> ({h.sectionNameNp})
+                        <span className="font-bold">{isNp ? (h.classNameNp || h.classNameEn) : (h.classNameEn || h.classNameNp)}</span> ({isNp ? (h.sectionNameNp || h.sectionNameEn || h.sectionCode) : (h.sectionCode || h.sectionNameEn || h.sectionNameNp)})
                       </td>
-                      <td className="py-2.5 px-3 font-medium">{h.subjectNameNp}</td>
-                      <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{h.originalTeacherNameNp}</td>
+                      <td className="py-2.5 px-3 font-medium">{isNp ? (h.subjectNameNp || h.subjectNameEn) : (h.subjectNameEn || h.subjectNameNp)}</td>
+                      <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">{isNp ? (h.originalTeacherNameNp || h.originalTeacherNameEn) : (h.originalTeacherNameEn || h.originalTeacherNameNp)}</td>
                       <td className="py-2.5 px-3 font-bold text-blue-700 dark:text-blue-300">
-                        {h.substituteTeacherNameNp}
+                        {isNp ? (h.substituteTeacherNameNp || h.substituteTeacherNameEn) : (h.substituteTeacherNameEn || h.substituteTeacherNameNp)}
                       </td>
                       <td className="py-2.5 px-3 text-slate-500 italic">{h.remarks || '—'}</td>
                       <td className="py-2.5 px-3 text-center">
@@ -882,17 +884,21 @@ export const SubstituteManagement: React.FC = () => {
                         </div>
                       </td>
                       <td className="border border-slate-300 py-2 px-3 font-bold">
-                        {p.classNameNp} ({p.sectionNameNp})
+                        {isNp ? (p.classNameNp || p.classNameEn) : (p.classNameEn || p.classNameNp)} ({isNp ? (p.sectionNameNp || p.sectionCode) : (p.sectionCode || p.sectionNameNp)})
                       </td>
-                      <td className="border border-slate-300 py-2 px-3">{p.subjectNameNp}</td>
+                      <td className="border border-slate-300 py-2 px-3">
+                        {isNp ? (p.subjectNameNp || p.subjectNameEn) : (p.subjectNameEn || p.subjectNameNp)}
+                      </td>
                       <td className="border border-slate-300 py-2 px-3 text-slate-700">
-                        {p.originalTeacher.fullNameNp} ({p.originalTeacher.attendanceStatus})
+                        {isNp ? (p.originalTeacher.fullNameNp || p.originalTeacher.fullNameEn) : (p.originalTeacher.fullNameEn || p.originalTeacher.fullNameNp)} ({p.originalTeacher.attendanceStatus})
                       </td>
                       <td className="border border-slate-300 py-2 px-3 font-bold text-sm">
                         {p.isAssigned && p.substituteTeacher ? (
-                          <span className="text-blue-900">{p.substituteTeacher.fullNameNp}</span>
+                          <span className="text-blue-900">
+                            {isNp ? (p.substituteTeacher.fullNameNp || p.substituteTeacher.fullNameEn) : (p.substituteTeacher.fullNameEn || p.substituteTeacher.fullNameNp)}
+                          </span>
                         ) : (
-                          <span className="text-rose-600 italic">तोक्न बाँकी (खाली)</span>
+                          <span className="text-rose-600 italic">{isNp ? 'तोक्न बाँकी (खाली)' : 'Vacant'}</span>
                         )}
                       </td>
                       <td className="border border-slate-300 py-2 px-3 text-slate-600 italic">

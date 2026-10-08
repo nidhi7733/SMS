@@ -582,7 +582,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.nameEn} ({c.nameNp})
+                      {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -600,7 +600,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                   <option value="ALL">{isNp ? 'सबै सेक्सन (All Sections)' : 'All Sections'}</option>
                   {sections.map((s: any) => (
                     <option key={s.id} value={s.id}>
-                      {s.nameEn} ({s.code})
+                      {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)} ({s.code})
                     </option>
                   ))}
                 </select>
@@ -798,7 +798,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.nameEn} ({c.nameNp})
+                      {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -816,7 +816,7 @@ export const AttendanceManagement: React.FC<AttendanceManagementProps> = ({
                   <option value="ALL">{isNp ? 'सबै सेक्सन (All Sections)' : 'All Sections'}</option>
                   {sections.map((s: any) => (
                     <option key={s.id} value={s.id}>
-                      {s.nameEn} ({s.code})
+                      {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)} ({s.code})
                     </option>
                   ))}
                 </select>

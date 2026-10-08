@@ -743,7 +743,7 @@ export const StudentsManagement: React.FC = () => {
           <option value="">All Classes (ECD-12)</option>
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
-              {language === 'np' ? c.nameNp : c.nameEn}
+              {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
             </option>
           ))}
         </select>
@@ -1299,7 +1299,7 @@ export const StudentsManagement: React.FC = () => {
                             </span>
                           </div>
                           <div className="font-bold text-slate-900 dark:text-white text-xs mt-0.5">
-                            {language === 'np' ? sub.nameNp : sub.nameEn}
+                            {language === 'np' ? (sub.nameNp || sub.nameEn) : (sub.nameEn || sub.nameNp)}
                           </div>
                         </div>
                         <div className="text-right">
@@ -1613,7 +1613,7 @@ export const StudentsManagement: React.FC = () => {
                         >
                           {classes.map((c) => (
                             <option key={c.id} value={c.id}>
-                              {language === 'np' ? c.nameNp : c.nameEn}
+                              {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                             </option>
                           ))}
                         </select>
@@ -1658,7 +1658,7 @@ export const StudentsManagement: React.FC = () => {
                         <option value="">No House Assigned</option>
                         {houses.map((h) => (
                           <option key={h.id} value={h.id}>
-                            {language === 'np' ? h.nameNp : h.nameEn}
+                            {language === 'np' ? (h.nameNp || h.nameEn) : (h.nameEn || h.nameNp)}
                           </option>
                         ))}
                       </select>
@@ -2215,7 +2215,7 @@ export const StudentsManagement: React.FC = () => {
                       >
                         {classes.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {language === 'np' ? c.nameNp : c.nameEn}
+                            {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                           </option>
                         ))}
                       </select>
@@ -2271,7 +2271,7 @@ export const StudentsManagement: React.FC = () => {
                         <option value="">No House Assigned</option>
                         {houses.map((h) => (
                           <option key={h.id} value={h.id}>
-                            {language === 'np' ? h.nameNp : h.nameEn}
+                            {language === 'np' ? (h.nameNp || h.nameEn) : (h.nameEn || h.nameNp)}
                           </option>
                         ))}
                       </select>
@@ -2349,7 +2349,7 @@ export const StudentsManagement: React.FC = () => {
                                   <option value="">-- Select Optional I Subject --</option>
                                   {opt1Subjects.map((s) => (
                                     <option key={s.id} value={s.id}>
-                                      {s.code}: {language === 'np' ? s.nameNp : s.nameEn} ({formatNumber(s.creditHours)} CH)
+                                      {s.code}: {language === 'np' ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)} ({formatNumber(s.creditHours)} CH)
                                     </option>
                                   ))}
                                 </select>
@@ -2366,7 +2366,7 @@ export const StudentsManagement: React.FC = () => {
                                   <option value="">-- Select Optional II Subject --</option>
                                   {opt2Subjects.map((s) => (
                                     <option key={s.id} value={s.id}>
-                                      {s.code}: {language === 'np' ? s.nameNp : s.nameEn} ({formatNumber(s.creditHours)} CH)
+                                      {s.code}: {language === 'np' ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)} ({formatNumber(s.creditHours)} CH)
                                     </option>
                                   ))}
                                 </select>
@@ -2753,7 +2753,7 @@ export const StudentsManagement: React.FC = () => {
                     <option value="">Select Target Class...</option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {language === 'np' ? c.nameNp : c.nameEn}
+                        {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                       </option>
                     ))}
                   </select>

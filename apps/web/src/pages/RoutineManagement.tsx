@@ -292,7 +292,7 @@ export const RoutineManagement: React.FC = () => {
               >
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nameEn} ({c.nameNp})
+                    {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)}
                   </option>
                 ))}
               </select>
@@ -309,7 +309,7 @@ export const RoutineManagement: React.FC = () => {
               >
                 {sections.map((s: any) => (
                   <option key={s.id} value={s.id}>
-                    {s.nameEn} ({s.code})
+                    {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)} ({s.code})
                   </option>
                 ))}
               </select>
@@ -380,15 +380,15 @@ export const RoutineManagement: React.FC = () => {
                           {entry ? (
                             <div className="space-y-1 p-1 rounded">
                               <div className="font-bold text-indigo-700 dark:text-indigo-300 text-xs truncate">
-                                {entry.subjectNameEn}
+                                {isNp ? (entry.subjectNameNp || entry.subjectNameEn) : (entry.subjectNameEn || entry.subjectNameNp)}
                               </div>
                               <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium truncate flex items-center space-x-1">
                                 <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span>{entry.teacherNameEn}</span>
+                                <span>{isNp ? (entry.teacherNameNp || entry.teacherNameEn) : (entry.teacherNameEn || entry.teacherNameNp)}</span>
                               </div>
                               {viewMode === 'TEACHER' && (
                                 <div className="text-[10px] font-bold text-slate-500 bg-slate-200/60 dark:bg-slate-700 px-1 py-0.5 rounded">
-                                  {entry.classNameEn} - Sec {entry.sectionCode}
+                                  {isNp ? (entry.classNameNp || entry.classNameEn) : (entry.classNameEn || entry.classNameNp)} - {isNp ? `खण्ड ${entry.sectionCode}` : `Sec ${entry.sectionCode}`}
                                 </div>
                               )}
                               {entry.roomNumber && (
@@ -423,7 +423,7 @@ export const RoutineManagement: React.FC = () => {
                   {isNp ? 'पिरियड तालिका व्यवस्थापन' : 'Assign Routine Period'}
                 </h3>
                 <span className="text-xs text-slate-500">
-                  {editingSlot.dayOfWeek} • Period {editingSlot.periodNumber} ({currentClass?.nameEn} - Section {sections.find((s: any) => s.id === selectedSectionId)?.code})
+                  {editingSlot.dayOfWeek} • Period {editingSlot.periodNumber} ({isNp ? (currentClass?.nameNp || currentClass?.nameEn) : (currentClass?.nameEn || currentClass?.nameNp)} - {isNp ? `खण्ड ${sections.find((s: any) => s.id === selectedSectionId)?.code}` : `Section ${sections.find((s: any) => s.id === selectedSectionId)?.code}`})
                 </span>
               </div>
               <button onClick={() => setShowSlotModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -445,7 +445,7 @@ export const RoutineManagement: React.FC = () => {
             <form onSubmit={handleSaveSlot} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  विषय (Subject) *
+                  {isNp ? 'विषय (Subject) *' : 'Subject *'}
                 </label>
                 <select
                   required
@@ -453,10 +453,10 @@ export const RoutineManagement: React.FC = () => {
                   onChange={(e) => setEditingSlot({ ...editingSlot, subjectId: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm dark:text-white"
                 >
-                  <option value="">Select Subject</option>
+                  <option value="">{isNp ? '-- विषय छनोट गर्नुहोस् --' : 'Select Subject'}</option>
                   {subjects.map((sub: any) => (
                     <option key={sub.id} value={sub.id}>
-                      {sub.nameEn} ({sub.code})
+                      {isNp ? (sub.nameNp || sub.nameEn) : (sub.nameEn || sub.nameNp)} ({sub.code})
                     </option>
                   ))}
                 </select>
@@ -464,7 +464,7 @@ export const RoutineManagement: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  शिक्षक (Teacher) *
+                  {isNp ? 'शिक्षक (Teacher) *' : 'Teacher *'}
                 </label>
                 <select
                   required
@@ -472,10 +472,10 @@ export const RoutineManagement: React.FC = () => {
                   onChange={(e) => setEditingSlot({ ...editingSlot, teacherId: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm dark:text-white"
                 >
-                  <option value="">Select Teacher</option>
+                  <option value="">{isNp ? '-- शिक्षक छनोट गर्नुहोस् --' : 'Select Teacher'}</option>
                   {staffList.map((st: any) => (
                     <option key={st.id} value={st.id}>
-                      {st.fullNameEn} ({st.staffCode}) • {st.majorSubject || 'Teacher'}
+                      {isNp ? (st.fullNameNp || st.fullNameEn) : (st.fullNameEn || st.fullNameNp)} ({st.staffCode}) • {st.majorSubject || (isNp ? 'शिक्षक' : 'Teacher')}
                     </option>
                   ))}
                 </select>

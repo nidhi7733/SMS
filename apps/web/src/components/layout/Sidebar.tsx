@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose,
 }) => {
   const { t } = useLanguage();
-  const { hasPermission } = useAuth();
+  const { hasPermission, hasRole, user } = useAuth();
 
   // Close on Escape key press
   useEffect(() => {
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'attendance',
       label: t('nav.attendance'),
       icon: CalendarCheck2,
-      visible: hasPermission('ATTENDANCE_VIEW'),
+      visible: hasPermission('ATTENDANCE_VIEW') || hasPermission('ATTENDANCE_RECORD'),
     },
     {
       id: 'calendar',
@@ -93,51 +93,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'substitute',
-      label: t('nav.substitute') || 'Substitute Teacher',
+      label: t('nav.substitute'),
       icon: ArrowRightLeft,
-      visible: true,
+      visible:
+        hasRole('PRINCIPAL') ||
+        hasRole('SYSTEM_ADMIN') ||
+        hasRole('ADMINISTRATIVE_STAFF') ||
+        Boolean(user?.isSuperAdmin),
     },
     {
       id: 'exams',
       label: t('nav.exams'),
       icon: GraduationCap,
-      visible: true,
+      visible:
+        hasPermission('EXAMS_ENTER_MARKS') ||
+        hasPermission('EXAMS_VERIFY_RESULTS') ||
+        hasPermission('EXAMS_APPROVE_PUBLISH'),
     },
     {
       id: 'certificates',
       label: t('nav.certificates'),
       icon: Award,
-      visible: true,
+      visible: hasPermission('DOCUMENTS_ISSUE'),
     },
     {
       id: 'fees',
-      label: t('nav.fees') || 'शुल्क संकलन',
+      label: t('nav.fees'),
       icon: ReceiptText,
-      visible: true,
+      visible: hasPermission('FEES_COLLECT') || hasPermission('FEES_STRUCTURE_MANAGE'),
     },
     {
       id: 'accounting',
-      label: t('nav.accounting') || 'दोहोरो लेखा प्रणाली',
+      label: t('nav.accounting'),
       icon: Landmark,
-      visible: true,
+      visible: hasPermission('ACCOUNTS_VIEW') || hasPermission('ACCOUNTS_POST_VOUCHER'),
     },
     {
       id: 'inventory',
-      label: t('nav.inventory') || 'जिन्सी तथा सम्पत्ति',
+      label: t('nav.inventory'),
       icon: Boxes,
-      visible: true,
+      visible: hasPermission('INVENTORY_VIEW') || hasPermission('INVENTORY_MANAGE'),
     },
     {
       id: 'library',
-      label: t('nav.library') || 'पुस्तकालय व्यवस्थापन',
+      label: t('nav.library'),
       icon: BookOpen,
-      visible: true,
+      visible: hasPermission('LIBRARY_VIEW') || hasPermission('LIBRARY_CIRCULATION'),
     },
     {
       id: 'learning',
-      label: t('nav.learning') || 'सिकाइ तथा गृहकार्य',
+      label: t('nav.learning'),
       icon: BookMarked,
-      visible: true,
+      visible:
+        hasPermission('LMS_CONTENT_MANAGE') ||
+        hasRole('TEACHER') ||
+        hasRole('PRINCIPAL') ||
+        hasRole('STUDENT'),
     },
     {
       id: 'school_settings',

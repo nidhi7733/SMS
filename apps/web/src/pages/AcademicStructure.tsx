@@ -1163,7 +1163,7 @@ export const AcademicStructure: React.FC = () => {
                     </option>
                     {availableClasses.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {language === 'np' ? c.nameNp : c.nameEn} ({c.code})
+                        {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                       </option>
                     ))}
                   </select>
@@ -1262,16 +1262,16 @@ export const AcademicStructure: React.FC = () => {
                           {/* Subject Name */}
                           <td className="px-5 py-3.5">
                             <div className="font-bold text-slate-900 dark:text-white">
-                              {language === 'np' ? sub.nameNp : sub.nameEn}
+                              {language === 'np' ? (sub.nameNp || sub.nameEn) : (sub.nameEn || sub.nameNp)}
                             </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                              {language === 'np' ? sub.nameEn : sub.nameNp}
+                              {language === 'np' ? (sub.nameEn || sub.nameNp) : (sub.nameNp || sub.nameEn)}
                             </div>
                           </td>
 
                           {/* Class */}
                           <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {cls ? (language === 'np' ? cls.nameNp : cls.nameEn) : '—'}
+                            {cls ? (language === 'np' ? (cls.nameNp || cls.nameEn) : (cls.nameEn || cls.nameNp)) : '—'}
                           </td>
 
                           {/* Stream */}
@@ -2051,7 +2051,7 @@ export const AcademicStructure: React.FC = () => {
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {language === 'np' ? c.nameNp : c.nameEn} ({c.code})
+                      {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                     </option>
                   ))}
                 </select>
@@ -2216,7 +2216,7 @@ export const AcademicStructure: React.FC = () => {
                   >
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {language === 'np' ? c.nameNp : c.nameEn} ({c.code})
+                        {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                       </option>
                     ))}
                   </select>
@@ -2275,7 +2275,7 @@ export const AcademicStructure: React.FC = () => {
                     <option value="">{language === 'np' ? '-- साझा अनिवार्य (सबै संकायमा लागू) --' : '-- Common Core (All Streams) --'}</option>
                     {streams.map((st) => (
                       <option key={st.id} value={st.id}>
-                        {language === 'np' ? st.nameNp : st.nameEn} ({st.code})
+                        {language === 'np' ? (st.nameNp || st.nameEn) : (st.nameEn || st.nameNp)} ({st.code})
                       </option>
                     ))}
                   </select>
@@ -2661,7 +2661,7 @@ export const AcademicStructure: React.FC = () => {
                   >
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {language === 'np' ? c.nameNp : c.nameEn} ({c.code})
+                        {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                       </option>
                     ))}
                   </select>
@@ -2720,7 +2720,7 @@ export const AcademicStructure: React.FC = () => {
                     <option value="">{language === 'np' ? '-- साझा अनिवार्य (सबै संकायमा लागू) --' : '-- Common Core (All Streams) --'}</option>
                     {streams.map((st) => (
                       <option key={st.id} value={st.id}>
-                        {language === 'np' ? st.nameNp : st.nameEn} ({st.code})
+                        {language === 'np' ? (st.nameNp || st.nameEn) : (st.nameEn || st.nameNp)} ({st.code})
                       </option>
                     ))}
                   </select>
@@ -3093,7 +3093,7 @@ export const AcademicStructure: React.FC = () => {
                   <option value="">{language === 'np' ? 'सबै कक्षाहरू (Entire School)' : 'All Classes (Entire School)'}</option>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {language === 'np' ? c.nameNp : c.nameEn} ({c.code})
+                      {language === 'np' ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                     </option>
                   ))}
                 </select>

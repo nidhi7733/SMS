@@ -437,9 +437,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const academicYearBs = school?.activeAcademicYearBs || (school as any)?.active_academic_year_bs || 2083;
   const fiscalYearBs = school?.fiscalYearBs || (school as any)?.fiscal_year_bs || '2082/083';
 
-  const isPrincipalOrAdmin =
-    user?.roles?.some((r) => ['PRINCIPAL', 'SYSTEM_ADMIN', 'ADMIN', 'SUPERADMIN'].includes(r.name)) ||
-    user?.isSuperAdmin;
+  const isPrincipal =
+    user?.roles?.some((r) => ['PRINCIPAL'].includes(r.name)) || Boolean(user?.isSuperAdmin);
+  const isSysAdmin = user?.roles?.some((r) => ['SYSTEM_ADMIN', 'ADMIN', 'SUPERADMIN'].includes(r.name));
+  const isTeacher = user?.roles?.some((r) => r.name === 'TEACHER');
+  const isAccountant = user?.roles?.some((r) => r.name === 'ACCOUNTANT');
+  const isLibrarian = user?.roles?.some((r) => r.name === 'LIBRARIAN');
+  const isPrincipalOrAdmin = isPrincipal || isSysAdmin;
 
   const myAssignment = attendanceSummary?.myClassTeacherAssignment;
 
@@ -499,6 +503,159 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* Role-Specific Quick Actions Hub */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 shadow-2xs border border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                {isNp ? 'द्रुत पहुँच तथा मुख्य कार्यहरू' : 'Role Quick Actions Hub'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {isNp
+                  ? `तपाईंको भूमिका (${user?.roles?.map((r) => r.displayNameNp || r.name).join(', ') || 'Staff'}) अनुसारका आवश्यक कार्यहरू:`
+                  : `Frequent tasks for your role (${user?.roles?.map((r) => r.name).join(', ') || 'Staff'}):`}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            {user?.roles?.[0]?.name || (user?.isSuperAdmin ? 'SUPERADMIN' : 'STAFF')}
+          </span>
+        </div>
+
+        {/* Action Pills Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+          {/* TEACHER or PRINCIPAL / ADMIN */}
+          {(isTeacher || isPrincipalOrAdmin) && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('attendance')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'दैनिक हाजिरी' : 'Attendance'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'विद्यार्थी उपस्थिति' : 'Mark Daily'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate?.('learning')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'सिकाइ तथा LMS' : 'Learning & LMS'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'गृहकार्य र पाठ' : 'Lessons & HW'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate?.('routine')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'कक्षा तालिका' : 'Class Routine'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'साप्ताहिक तालिका' : 'Timetable'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate?.('exams')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'परीक्षा तथा अंक' : 'Exam Marks'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'प्राप्तांक प्रविष्टि' : 'CDC Grading'}</span>
+              </button>
+            </>
+          )}
+
+          {/* ACCOUNTANT */}
+          {(isAccountant || isPrincipalOrAdmin) && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('fees')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <Building className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'शुल्क संकलन' : 'Fees Collect'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'बिल तथा रसिद' : 'Receipts'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate?.('accounting')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'दोहोरो लेखा' : 'Accounting'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'भाउचर र खाता' : 'Ledgers'}</span>
+              </button>
+            </>
+          )}
+
+          {/* LIBRARIAN */}
+          {(isLibrarian || isPrincipalOrAdmin) && (
+            <button
+              type="button"
+              onClick={() => onNavigate?.('library')}
+              className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+            >
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 group-hover:scale-110 transition-transform mb-1.5">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold">{isNp ? 'पुस्तकालय' : 'Library'}</span>
+              <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'वितरण र फिर्ता' : 'Circulation'}</span>
+            </button>
+          )}
+
+          {/* PRINCIPAL / ADMIN EXCLUSIVE */}
+          {isPrincipalOrAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => onNavigate?.('academic')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <GraduationCap className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'शैक्षिक संरचना' : 'Academic'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'कक्षा र विषय' : 'Structure'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onNavigate?.('staff')}
+                className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 hover:bg-blue-50/60 dark:bg-slate-800/50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition text-center group shadow-2xs cursor-pointer"
+              >
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400 group-hover:scale-110 transition-transform mb-1.5">
+                  <Users className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold">{isNp ? 'शिक्षक/कर्मचारी' : 'Staff'}</span>
+                <span className="text-[10px] text-slate-400 font-medium">{isNp ? 'दरबन्दी विवरण' : 'Records'}</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* 1. Class Teacher Assigned Class Attendance Card (Visible if user is assigned as Class Teacher) */}
       {myAssignment && myAssignment.isClassTeacher && (
         <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 sm:p-6 shadow-md border border-indigo-700/60 transition transform">
@@ -510,9 +667,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
               <h3 className="text-xl md:text-2xl font-black tracking-tight text-white flex flex-wrap items-center gap-2.5">
                 <span>
-                  {isNp ? myAssignment.classNameNp : myAssignment.classNameEn}
+                  {isNp ? (myAssignment.classNameNp || myAssignment.classNameEn) : (myAssignment.classNameEn || myAssignment.classNameNp)}
                   {' - '}
-                  {isNp ? myAssignment.sectionNameNp || `खण्ड ${myAssignment.sectionCode}` : `Section ${myAssignment.sectionCode}`}
+                  {isNp ? (myAssignment.sectionNameNp || `खण्ड ${myAssignment.sectionCode}`) : (myAssignment.sectionNameEn || `Section ${myAssignment.sectionCode}`)}
                 </span>
                 {myAssignment.isMarkedToday ? (
                   <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -571,7 +728,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       )}
 
       {/* Principal / Admin Substitute Alert Banner */}
-      {substituteOverview && substituteOverview.vacantCount > 0 && (
+      {isPrincipalOrAdmin && substituteOverview && substituteOverview.vacantCount > 0 && (
         <div className="bg-gradient-to-r from-rose-900 via-rose-800 to-amber-900 text-white rounded-2xl p-5 shadow-lg border border-rose-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5">
             <div className="p-3 rounded-xl bg-white/10 text-rose-200 border border-white/20 animate-pulse">
@@ -1194,7 +1351,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         </div>
 
         {/* 4. Today's Substitute Class Management (आजको सट्टा कक्षा व्यवस्थापन) */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-5 border border-slate-200 dark:border-slate-700/80 space-y-4">
+        {isPrincipalOrAdmin && (
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-5 border border-slate-200 dark:border-slate-700/80 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/80 pb-3.5">
             <div>
               <h4 className="text-sm md:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -1296,7 +1454,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <span className="text-xs font-black text-slate-900 dark:text-white">
-                          {isNp ? p.classNameNp : p.classNameEn} ({isNp ? p.sectionNameNp : p.sectionCode})
+                          {isNp ? (p.classNameNp || p.classNameEn) : (p.classNameEn || p.classNameNp)} ({isNp ? (p.sectionNameNp || p.sectionCode) : (p.sectionCode || p.sectionNameNp)})
                         </span>
                         <div className="text-[11px] font-bold text-blue-600 dark:text-blue-400 font-mono">
                           {isNp ? periodTitle : `Period ${p.periodNumber}`}{' '}
@@ -1323,7 +1481,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         {isNp ? 'विषय' : 'Subject'}:
                       </span>{' '}
                       <span className="font-bold text-slate-900 dark:text-white">
-                        {isNp ? p.subjectNameNp : p.subjectNameEn}
+                        {isNp ? (p.subjectNameNp || p.subjectNameEn) : (p.subjectNameEn || p.subjectNameNp)}
                       </span>
                     </div>
 
@@ -1351,7 +1509,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           </span>
                         </div>
                         <div className="font-bold text-slate-800 dark:text-slate-200">
-                          {isNp ? p.originalTeacher.fullNameNp : p.originalTeacher.fullNameEn}
+                          {isNp ? (p.originalTeacher.fullNameNp || p.originalTeacher.fullNameEn) : (p.originalTeacher.fullNameEn || p.originalTeacher.fullNameNp)}
                           <span className="font-normal font-mono text-[10px] text-slate-400 ml-1">
                             ({p.originalTeacher.staffCode})
                           </span>
@@ -1382,8 +1540,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                         </div>
                         <div className="font-black text-slate-900 dark:text-white">
                           {isNp
-                            ? p.assignment.substituteTeacher.fullNameNp
-                            : p.assignment.substituteTeacher.fullNameEn}
+                            ? (p.assignment.substituteTeacher.fullNameNp || p.assignment.substituteTeacher.fullNameEn)
+                            : (p.assignment.substituteTeacher.fullNameEn || p.assignment.substituteTeacher.fullNameNp)}
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
                           <span className="font-mono">{p.assignment.substituteTeacher.staffCode}</span>
@@ -1427,6 +1585,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           )}
         </div>
+        )}
 
         {/* 5. Class-wise Student Attendance Table (कक्षा अनुसार विद्यार्थी उपस्थिति) */}
         <div className="space-y-3 pt-2">
@@ -1538,7 +1697,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                             </span>
                             <div>
                               <div className="font-bold text-slate-900 dark:text-white">
-                                {isNp ? cls.nameNp : cls.nameEn}
+                                {isNp ? (cls.nameNp || cls.nameEn) : (cls.nameEn || cls.nameNp)}
                               </div>
                               <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                                 {cls.code !== 'ECD' ? `Grade ${cls.code}` : 'Early Childhood'}
@@ -1557,7 +1716,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                                   className="flex flex-wrap items-center gap-1.5 text-[11px]"
                                 >
                                   <span className="font-bold text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                                    {isNp ? sec.nameNp || `खण्ड ${sec.code}` : `Sec ${sec.code}`}
+                                    {isNp ? (sec.nameNp || `खण्ड ${sec.code}`) : (sec.nameEn || `Sec ${sec.code}`)}
                                   </span>
 
                                   {sec.classTeacherName ? (
@@ -1763,91 +1922,93 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       </div>
 
       {/* Stage 1 Foundation Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Foundation Card 1 */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <span>Foundation Architecture (Nepal Context)</span>
-            </h3>
-            <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-              Verified
-            </span>
+      {isPrincipalOrAdmin && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Foundation Card 1 */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <span>Foundation Architecture (Nepal Context)</span>
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
+                Verified
+              </span>
+            </div>
+
+            <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 font-medium">
+              <li className="flex items-start space-x-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                <span>
+                  <strong className="text-slate-900 dark:text-white">Bilingual Localization</strong>: Seamless toggle
+                  between Nepali (Devanagari) and English.
+                </span>
+              </li>
+              <li className="flex items-start space-x-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                <span>
+                  <strong className="text-slate-900 dark:text-white">Academic & Fiscal Year Separation</strong>: Active
+                  BS Academic Year ({formatNumber(academicYearBs)}) and Nepal Fiscal Year ({fiscalYearBs}).
+                </span>
+              </li>
+              <li className="flex items-start space-x-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                <span>
+                  <strong className="text-slate-900 dark:text-white">Granular RBAC</strong>: Record-level isolation;
+                  technical admin cannot see confidential student/staff records without authorization.
+                </span>
+              </li>
+              <li className="flex items-start space-x-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                <span>
+                  <strong className="text-slate-900 dark:text-white">Sync Outbox Ready</strong>: Durable outbox table for
+                  local school server to cloud replication.
+                </span>
+              </li>
+            </ul>
           </div>
 
-          <ul className="space-y-3 text-sm text-slate-700 dark:text-slate-300 font-medium">
-            <li className="flex items-start space-x-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <span>
-                <strong className="text-slate-900 dark:text-white">Bilingual Localization</strong>: Seamless toggle
-                between Nepali (Devanagari) and English.
+          {/* Foundation Card 2 */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <span>Active Session Security & Audit Log</span>
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-bold border border-blue-300 dark:border-blue-800">
+                Audited
               </span>
-            </li>
-            <li className="flex items-start space-x-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <span>
-                <strong className="text-slate-900 dark:text-white">Academic & Fiscal Year Separation</strong>: Active
-                BS Academic Year ({formatNumber(academicYearBs)}) and Nepal Fiscal Year ({fiscalYearBs}).
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 text-xs space-y-2 font-mono text-slate-800 dark:text-slate-200">
+              <div>
+                <strong className="text-slate-900 dark:text-white">User ID:</strong> {user?.id}
+              </div>
+              <div>
+                <strong className="text-slate-900 dark:text-white">Username:</strong> {user?.username}
+              </div>
+              <div>
+                <strong className="text-slate-900 dark:text-white">Roles:</strong> {user?.roles.map((r) => r.name).join(', ')}
+              </div>
+              <div>
+                <strong className="text-slate-900 dark:text-white">Superadmin Privilege:</strong>{' '}
+                {user?.isSuperAdmin ? 'True' : 'False'}
+              </div>
+              <div>
+                <strong className="text-slate-900 dark:text-white">Total Granted Permissions:</strong>{' '}
+                {user?.permissions.length}
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 font-medium">
+              <span>Security: Argon2/bcrypt + HTTP-only JWT</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center">
+                Permanent Audit Trail <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
               </span>
-            </li>
-            <li className="flex items-start space-x-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <span>
-                <strong className="text-slate-900 dark:text-white">Granular RBAC</strong>: Record-level isolation;
-                technical admin cannot see confidential student/staff records without authorization.
-              </span>
-            </li>
-            <li className="flex items-start space-x-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
-              <span>
-                <strong className="text-slate-900 dark:text-white">Sync Outbox Ready</strong>: Durable outbox table for
-                local school server to cloud replication.
-              </span>
-            </li>
-          </ul>
+            </div>
+          </div>
         </div>
-
-        {/* Foundation Card 2 */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-              <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <span>Active Session Security & Audit Log</span>
-            </h3>
-            <span className="px-2.5 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-bold border border-blue-300 dark:border-blue-800">
-              Audited
-            </span>
-          </div>
-
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700 text-xs space-y-2 font-mono text-slate-800 dark:text-slate-200">
-            <div>
-              <strong className="text-slate-900 dark:text-white">User ID:</strong> {user?.id}
-            </div>
-            <div>
-              <strong className="text-slate-900 dark:text-white">Username:</strong> {user?.username}
-            </div>
-            <div>
-              <strong className="text-slate-900 dark:text-white">Roles:</strong> {user?.roles.map((r) => r.name).join(', ')}
-            </div>
-            <div>
-              <strong className="text-slate-900 dark:text-white">Superadmin Privilege:</strong>{' '}
-              {user?.isSuperAdmin ? 'True' : 'False'}
-            </div>
-            <div>
-              <strong className="text-slate-900 dark:text-white">Total Granted Permissions:</strong>{' '}
-              {user?.permissions.length}
-            </div>
-          </div>
-
-          <div className="text-xs text-slate-600 dark:text-slate-400 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 font-medium">
-            <span>Security: Argon2/bcrypt + HTTP-only JWT</span>
-            <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center">
-              Permanent Audit Trail <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
-            </span>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Quick Assign Substitute Modal */}
       {assignModalSlot && (
@@ -2042,7 +2203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     <tr key={p.id} className="border-b border-slate-300">
                       <td className="border border-slate-400 p-1.5 text-center font-bold font-mono">{idx + 1}</td>
                       <td className="border border-slate-400 p-1.5 font-bold">
-                        {p.classNameNp} ({p.sectionNameNp})
+                        {isNp ? (p.classNameNp || p.classNameEn) : (p.classNameEn || p.classNameNp)} ({isNp ? (p.sectionNameNp || p.sectionCode) : (p.sectionCode || p.sectionNameNp)})
                       </td>
                       <td className="border border-slate-400 p-1.5 text-center">
                         <div className="font-bold">{periodNamesNp[p.periodNumber] || `${p.periodNumber} घण्टी`}</div>
@@ -2052,9 +2213,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                           </div>
                         )}
                       </td>
-                      <td className="border border-slate-400 p-1.5 font-bold">{p.subjectNameNp}</td>
+                      <td className="border border-slate-400 p-1.5 font-bold">
+                        {isNp ? (p.subjectNameNp || p.subjectNameEn) : (p.subjectNameEn || p.subjectNameNp)}
+                      </td>
                       <td className="border border-slate-400 p-1.5">
-                        <div className="font-bold">{p.originalTeacher?.fullNameNp || '—'}</div>
+                        <div className="font-bold">
+                          {isNp
+                            ? (p.originalTeacher?.fullNameNp || p.originalTeacher?.fullNameEn)
+                            : (p.originalTeacher?.fullNameEn || p.originalTeacher?.fullNameNp) || '—'}
+                        </div>
                         <div className="text-[10px] text-slate-500">
                           {p.originalTeacher?.attendanceStatus === 'OFFICIAL_DUTY'
                             ? `काज (${p.originalTeacher?.remarks || 'OD'})`
@@ -2066,7 +2233,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                       <td className="border border-slate-400 p-1.5 font-bold text-slate-950">
                         {p.assignment?.substituteTeacher ? (
                           <div>
-                            <div>{p.assignment.substituteTeacher.fullNameNp}</div>
+                            <div>
+                              {isNp
+                                ? (p.assignment.substituteTeacher.fullNameNp || p.assignment.substituteTeacher.fullNameEn)
+                                : (p.assignment.substituteTeacher.fullNameEn || p.assignment.substituteTeacher.fullNameNp)}
+                            </div>
                             <div className="text-[10px] text-slate-500 font-mono">
                               ({p.assignment.substituteTeacher.staffCode})
                             </div>

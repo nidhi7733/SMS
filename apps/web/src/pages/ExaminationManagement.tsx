@@ -88,6 +88,7 @@ interface TeacherAllotmentResponse {
 
 export const ExaminationManagement: React.FC = () => {
   const { t, formatNumber, language } = useLanguage();
+  const isNp = language === 'np';
   const { school } = useSchool();
 
   const [activeTab, setActiveTab] = useState<'EXAMS' | 'ENTRY' | 'LEDGER' | 'REPORT' | 'ADMIT_CARD'>('EXAMS');
@@ -1365,8 +1366,12 @@ export const ExaminationManagement: React.FC = () => {
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">{exam.nameNp || exam.nameEn}</h3>
-                  <div className="text-xs text-slate-500 font-medium">{exam.nameEn}</div>
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-slate-100">
+                    {isNp ? (exam.nameNp || exam.nameEn) : (exam.nameEn || exam.nameNp)}
+                  </h3>
+                  <div className="text-xs text-slate-500 font-medium">
+                    {isNp ? exam.nameEn : exam.nameNp}
+                  </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-1 text-slate-600 dark:text-slate-400">
                     <div>
@@ -1422,7 +1427,7 @@ export const ExaminationManagement: React.FC = () => {
               >
                 {exams.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.nameNp || e.nameEn}
+                    {isNp ? (e.nameNp || e.nameEn) : (e.nameEn || e.nameNp)}
                   </option>
                 ))}
               </select>
@@ -1438,7 +1443,7 @@ export const ExaminationManagement: React.FC = () => {
               >
                 {entryClasses.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nameNp || c.nameEn} ({c.code})
+                    {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                   </option>
                 ))}
               </select>
@@ -1454,7 +1459,7 @@ export const ExaminationManagement: React.FC = () => {
               >
                 {filteredSections.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.nameNp || s.nameEn}
+                    {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                   </option>
                 ))}
               </select>
@@ -1470,7 +1475,7 @@ export const ExaminationManagement: React.FC = () => {
               >
                 {entrySubjects.map((sub) => (
                   <option key={sub.id} value={sub.id}>
-                    {sub.nameNp || sub.nameEn} ({sub.code})
+                    {isNp ? (sub.nameNp || sub.nameEn) : (sub.nameEn || sub.nameNp)} ({sub.code})
                   </option>
                 ))}
               </select>
@@ -1607,7 +1612,7 @@ export const ExaminationManagement: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center space-x-4">
                   <span className="font-bold text-base text-slate-900 dark:text-slate-100">
-                    {activeSubjectMeta.nameNp || activeSubjectMeta.nameEn} ({activeSubjectMeta.code})
+                    {isNp ? (activeSubjectMeta.nameNp || activeSubjectMeta.nameEn) : (activeSubjectMeta.nameEn || activeSubjectMeta.nameNp)} ({activeSubjectMeta.code})
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-semibold">
                     क्रेडिट घण्टा: <b>{activeSubjectMeta.creditHours || 4}</b>
@@ -1998,7 +2003,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {exams.map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.nameNp || e.nameEn}
+                      {isNp ? (e.nameNp || e.nameEn) : (e.nameEn || e.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -2013,7 +2018,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.nameNp || c.nameEn} ({c.code})
+                      {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                     </option>
                   ))}
                 </select>
@@ -2028,7 +2033,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {filteredSections.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.nameNp || s.nameEn}
+                      {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -2132,7 +2137,7 @@ export const ExaminationManagement: React.FC = () => {
                           <th className="py-3 px-3 w-56">विद्यार्थीको नाम</th>
                           {(ledgerData.subjects || []).map((sub: any) => (
                             <th key={sub.id} className="py-3 px-3 text-center">
-                              <div>{sub.nameNp || sub.nameEn || sub.code}</div>
+                              <div>{isNp ? (sub.nameNp || sub.nameEn || sub.code) : (sub.nameEn || sub.nameNp || sub.code)}</div>
                               <div className="text-[10px] text-slate-500 font-normal">क्रेडिट: {sub.creditHours || 4}</div>
                             </th>
                           ))}
@@ -2195,7 +2200,7 @@ export const ExaminationManagement: React.FC = () => {
                           <th className="py-3 px-3">विद्यार्थीको नाम</th>
                           {(ledgerData.subjects || []).map((sub: any) => (
                             <th key={sub.id} className="py-3 px-2 text-center">
-                              <div>{sub.nameNp || sub.code}</div>
+                              <div>{isNp ? (sub.nameNp || sub.nameEn || sub.code) : (sub.nameEn || sub.nameNp || sub.code)}</div>
                               <div className="text-[10px] text-slate-500 font-normal">CR: {sub.creditHours}</div>
                             </th>
                           ))}
@@ -2297,7 +2302,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {exams.map((e) => (
                     <option key={e.id} value={e.id}>
-                      {e.nameNp || e.nameEn}
+                      {isNp ? (e.nameNp || e.nameEn) : (e.nameEn || e.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -2312,7 +2317,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.nameNp || c.nameEn} ({c.code})
+                      {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                     </option>
                   ))}
                 </select>
@@ -2327,7 +2332,7 @@ export const ExaminationManagement: React.FC = () => {
                 >
                   {filteredSections.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.nameNp || s.nameEn}
+                      {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                     </option>
                   ))}
                 </select>
@@ -2419,7 +2424,7 @@ export const ExaminationManagement: React.FC = () => {
                     <div>
                       <span className="text-slate-500">कक्षा / खण्ड: </span>
                       <span className="font-bold">
-                        {gradesheetData.class?.nameNp} {gradesheetData.section?.nameNp ? `(${gradesheetData.section?.nameNp})` : ''}
+                        {isNp ? (gradesheetData.class?.nameNp || gradesheetData.class?.nameEn) : (gradesheetData.class?.nameEn || gradesheetData.class?.nameNp)} {gradesheetData.section ? `(${isNp ? (gradesheetData.section.nameNp || gradesheetData.section.nameEn) : (gradesheetData.section.nameEn || gradesheetData.section.nameNp)})` : ''}
                       </span>
                     </div>
                     <div>
@@ -2481,8 +2486,8 @@ export const ExaminationManagement: React.FC = () => {
                           <tr key={sub.code || idx} className="border-b border-slate-300">
                             <td className="border border-slate-300 py-2.5 px-2 text-center font-mono">{idx + 1}</td>
                             <td className="border border-slate-300 py-2.5 px-3">
-                              <div className="font-bold text-slate-900">{sub.nameNp || sub.subjectNameNp}</div>
-                              <div className="text-[10px] text-slate-500">{sub.nameEn || sub.subjectNameEn} ({sub.code})</div>
+                              <div className="font-bold text-slate-900">{isNp ? (sub.nameNp || sub.subjectNameNp || sub.nameEn || sub.subjectNameEn) : (sub.nameEn || sub.subjectNameEn || sub.nameNp || sub.subjectNameNp)}</div>
+                              <div className="text-[10px] text-slate-500">{isNp ? (sub.nameEn || sub.subjectNameEn) : (sub.nameNp || sub.subjectNameNp)} ({sub.code})</div>
                             </td>
                             <td className="border border-slate-300 py-2.5 px-2 text-center font-mono font-bold">
                               {sub.creditHours || 4}
@@ -2603,7 +2608,7 @@ export const ExaminationManagement: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-xs font-bold text-slate-700 mt-1">
-                    {gradesheetData.exam?.nameNp || gradesheetData.exam?.nameEn}
+                    {isNp ? (gradesheetData.exam?.nameNp || gradesheetData.exam?.nameEn) : (gradesheetData.exam?.nameEn || gradesheetData.exam?.nameNp)}
                   </div>
                 </div>
 
@@ -2629,7 +2634,7 @@ export const ExaminationManagement: React.FC = () => {
                     <div>
                       <span className="text-slate-500">कक्षा / खण्ड: </span>
                       <span className="font-bold">
-                        {gradesheetData.class?.nameNp} {gradesheetData.section?.nameNp ? `(${gradesheetData.section?.nameNp})` : ''}
+                        {isNp ? (gradesheetData.class?.nameNp || gradesheetData.class?.nameEn) : (gradesheetData.class?.nameEn || gradesheetData.class?.nameNp)} {gradesheetData.section ? `(${isNp ? (gradesheetData.section.nameNp || gradesheetData.section.nameEn) : (gradesheetData.section.nameEn || gradesheetData.section.nameNp)})` : ''}
                       </span>
                     </div>
                     <div>
@@ -2854,7 +2859,7 @@ export const ExaminationManagement: React.FC = () => {
                   >
                     {exams.map((e) => (
                       <option key={e.id} value={e.id}>
-                        {e.nameNp || e.nameEn}
+                        {isNp ? (e.nameNp || e.nameEn) : (e.nameEn || e.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -2868,10 +2873,10 @@ export const ExaminationManagement: React.FC = () => {
                     onChange={(e) => setAppClassId(e.target.value)}
                     className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
                   >
-                    <option value="ALL">-- सम्पूर्ण कक्षाहरू (All) --</option>
+                    <option value="ALL">{isNp ? '-- सम्पूर्ण कक्षाहरू (All) --' : '-- All Classes --'}</option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.nameNp || c.nameEn} ({c.code})
+                        {isNp ? (c.nameNp || c.nameEn) : (c.nameEn || c.nameNp)} ({c.code})
                       </option>
                     ))}
                   </select>
@@ -2885,10 +2890,10 @@ export const ExaminationManagement: React.FC = () => {
                     onChange={(e) => setAppSectionId(e.target.value)}
                     className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-semibold"
                   >
-                    <option value="ALL">-- सम्पूर्ण खण्डहरू (All) --</option>
+                    <option value="ALL">{isNp ? '-- सम्पूर्ण खण्डहरू (All) --' : '-- All Sections --'}</option>
                     {sections.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.nameNp || s.nameEn}
+                        {isNp ? (s.nameNp || s.nameEn) : (s.nameEn || s.nameNp)}
                       </option>
                     ))}
                   </select>
@@ -3220,8 +3225,10 @@ export const ExaminationManagement: React.FC = () => {
               <div className="p-3 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-900 dark:text-indigo-200">
                 <b>क्षेत्र (Scope): </b>
                 {appClassId === 'ALL'
-                  ? 'सम्पूर्ण कक्षाहरूका सक्रिय परीक्षार्थीहरू'
-                  : `छानिएको कक्षा (${classes.find((c) => c.id === appClassId)?.nameNp || 'कक्षा'})`}
+                  ? (isNp ? 'सम्पूर्ण कक्षाहरूका सक्रिय परीक्षार्थीहरू' : 'All active students from all classes')
+                  : (isNp
+                      ? `छानिएको कक्षा (${classes.find((c) => c.id === appClassId)?.nameNp || classes.find((c) => c.id === appClassId)?.nameEn || 'कक्षा'})`
+                      : `Selected Class (${classes.find((c) => c.id === appClassId)?.nameEn || classes.find((c) => c.id === appClassId)?.nameNp || 'Class'})`)}
               </div>
 
               <div>
