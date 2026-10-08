@@ -436,8 +436,8 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       } else if (m.memberType === 'STAFF' && m.staffId) {
         const st = staffMap.get(m.staffId);
         if (st) {
-          fullNameEn = [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
-          fullNameNp = [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
+          fullNameEn = st.fullNameEn || [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
+          fullNameNp = st.fullNameNp || [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
           email = st.email;
           phone = st.phone;
           detailsLabel = `${st.department || 'शिक्षक'} (${st.designation || 'Staff'})`;
@@ -466,6 +466,30 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
 
     if (!body.memberType || (!body.studentId && !body.staffId)) {
       return reply.status(400).send({ message: 'सदस्यको प्रकार र विद्यार्थी वा कर्मचारी छनोट अनिवार्य छ' });
+    }
+
+    // Check if card is already issued
+    if (body.memberType === 'STUDENT' && body.studentId) {
+      const existing = await db.query.libraryMembers.findFirst({
+        where: (t: any, { and, eq }: any) =>
+          and(eq(t.studentId, body.studentId), eq(t.schoolId, currentUser.schoolId)),
+      });
+      if (existing) {
+        return reply.status(400).send({
+          message: `यो विद्यार्थीको लागि पहिले नै कार्ड (${existing.cardNumber}) जारी भइसकेको छ। (Card ${existing.cardNumber} already issued for this student)`,
+        });
+      }
+    }
+    if (body.memberType === 'STAFF' && body.staffId) {
+      const existing = await db.query.libraryMembers.findFirst({
+        where: (t: any, { and, eq }: any) =>
+          and(eq(t.staffId, body.staffId), eq(t.schoolId, currentUser.schoolId)),
+      });
+      if (existing) {
+        return reply.status(400).send({
+          message: `यो शिक्षक/कर्मचारीको लागि पहिले नै कार्ड (${existing.cardNumber}) जारी भइसकेको छ। (Card ${existing.cardNumber} already issued for this staff)`,
+        });
+      }
     }
 
     // Generate Card Number
@@ -559,8 +583,8 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       } else if (mem?.memberType === 'STAFF' && mem.staffId) {
         const st = staffMap.get(mem.staffId);
         if (st) {
-          memberNameEn = [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
-          memberNameNp = [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
+          memberNameEn = st.fullNameEn || [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
+          memberNameNp = st.fullNameNp || [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
         }
       }
 
@@ -903,8 +927,8 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       } else if (mem?.memberType === 'STAFF' && mem.staffId) {
         const st = staffMap.get(mem.staffId);
         if (st) {
-          memberNameEn = [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
-          memberNameNp = [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
+          memberNameEn = st.fullNameEn || [st.firstNameEn, st.middleNameEn, st.lastNameEn].filter(Boolean).join(' ');
+          memberNameNp = st.fullNameNp || [st.firstNameNp, st.middleNameNp, st.lastNameNp].filter(Boolean).join(' ');
         }
       }
 

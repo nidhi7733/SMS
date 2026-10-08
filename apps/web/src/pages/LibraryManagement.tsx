@@ -143,8 +143,14 @@ export const LibraryManagement: React.FC = () => {
       if (cirRes.ok) setCirculations(await cirRes.json());
       if (fRes.ok) setFines(await fRes.json());
       if (sRes.ok) setSummary(await sRes.json());
-      if (stuRes.ok) setStudents(await stuRes.json());
-      if (stfRes.ok) setStaffList(await stfRes.json());
+      if (stuRes.ok) {
+        const data = await stuRes.json();
+        setStudents(Array.isArray(data) ? data : data.students || []);
+      }
+      if (stfRes.ok) {
+        const data = await stfRes.json();
+        setStaffList(Array.isArray(data) ? data : data.staff || []);
+      }
     } catch (err: any) {
       showFeedback('error', 'डाटा लोड गर्न सकिएन: ' + err.message);
     } finally {
@@ -332,6 +338,42 @@ export const LibraryManagement: React.FC = () => {
     }
   };
 
+  // Open Member Modal & Auto-select unassigned candidate
+  const handleOpenMemberModal = () => {
+    setIsMemberModalOpen(true);
+    const unassignedStu = students.find((s) => !members.some((m) => m.studentId === s.id));
+    if (unassignedStu) {
+      setNewMemberStudentId(unassignedStu.id);
+    } else if (students.length > 0) {
+      setNewMemberStudentId(students[0].id);
+    }
+    const unassignedStf = staffList.find((st) => !members.some((m) => m.staffId === st.id));
+    if (unassignedStf) {
+      setNewMemberStaffId(unassignedStf.id);
+    } else if (staffList.length > 0) {
+      setNewMemberStaffId(staffList[0].id);
+    }
+  };
+
+  const handleMemberTypeChange = (type: 'STUDENT' | 'STAFF') => {
+    setNewMemberType(type);
+    if (type === 'STUDENT') {
+      const unassignedStu = students.find((s) => !members.some((m) => m.studentId === s.id));
+      if (unassignedStu) {
+        setNewMemberStudentId(unassignedStu.id);
+      } else if (students.length > 0) {
+        setNewMemberStudentId(students[0].id);
+      }
+    } else {
+      const unassignedStf = staffList.find((st) => !members.some((m) => m.staffId === st.id));
+      if (unassignedStf) {
+        setNewMemberStaffId(unassignedStf.id);
+      } else if (staffList.length > 0) {
+        setNewMemberStaffId(staffList[0].id);
+      }
+    }
+  };
+
   // Handle Add Member
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -355,16 +397,21 @@ export const LibraryManagement: React.FC = () => {
         }),
       });
 
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.message || 'Failed to create member');
       }
 
-      showFeedback('success', isNp ? 'नयाँ पुस्तकालय सदस्यता कार्ड जारी गरियो।' : 'Library membership card issued successfully.');
+      showFeedback(
+        'success',
+        isNp
+          ? `नयाँ पुस्तकालय सदस्यता कार्ड जारी गरियो (${data.cardNumber || ''})।`
+          : `Library membership card issued successfully (${data.cardNumber || ''}).`
+      );
       setIsMemberModalOpen(false);
       setNewMemberStudentId('');
       setNewMemberStaffId('');
-      loadData();
+      await loadData();
     } catch (err: any) {
       showFeedback('error', err.message);
     }
@@ -491,7 +538,7 @@ export const LibraryManagement: React.FC = () => {
             <span>{isNp ? 'नयाँ पुस्तक दर्ता' : 'Add New Book'}</span>
           </button>
           <button
-            onClick={() => setIsMemberModalOpen(true)}
+            onClick={handleOpenMemberModal}
             className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-medium shadow-sm transition-all"
           >
             <Users className="w-4 h-4" />
@@ -1072,7 +1119,7 @@ export const LibraryManagement: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => setIsMemberModalOpen(true)}
+              onClick={handleOpenMemberModal}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-xl text-sm font-semibold flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
@@ -1103,10 +1150,10 @@ export const LibraryManagement: React.FC = () => {
                         </td>
                         <td className="py-3 px-4">
                           <div className="font-bold text-slate-900 dark:text-white">
-                            {isNp ? mem.fullNameNp : mem.fullNameEn}
+                            {isNp ? (mem.fullNameNp || mem.fullNameEn) : (mem.fullNameEn || mem.fullNameNp)}
                           </div>
                           <div className="text-xs text-slate-500">
-                            {isNp ? mem.fullNameEn : mem.fullNameNp}
+                            {isNp ? (mem.fullNameEn || mem.fullNameNp) : (mem.fullNameNp || mem.fullNameEn)}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1826,7 +1873,7 @@ export const LibraryManagement: React.FC = () => {
                       type="radio"
                       name="mType"
                       checked={newMemberType === 'STUDENT'}
-                      onChange={() => setNewMemberType('STUDENT')}
+                      onChange={() => handleMemberTypeChange('STUDENT')}
                     />
                     <span>{isNp ? 'विद्यार्थी (२ पुस्तक, १४ दिन)' : 'Student (2 Books, 14d)'}</span>
                   </label>
@@ -1835,7 +1882,7 @@ export const LibraryManagement: React.FC = () => {
                       type="radio"
                       name="mType"
                       checked={newMemberType === 'STAFF'}
-                      onChange={() => setNewMemberType('STAFF')}
+                      onChange={() => handleMemberTypeChange('STAFF')}
                     />
                     <span>{isNp ? 'शिक्षक/कर्मचारी (५ पुस्तक, ३० दिन)' : 'Staff (5 Books, 30d)'}</span>
                   </label>
@@ -1850,16 +1897,30 @@ export const LibraryManagement: React.FC = () => {
                   <select
                     value={newMemberStudentId}
                     onChange={(e) => setNewMemberStudentId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 text-sm"
                     required
                   >
                     <option value="">{isNp ? '-- विद्यार्थी छनोट गर्नुहोस् --' : '-- Select Student --'}</option>
-                    {students.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.firstNameNp || s.firstNameEn} {s.lastNameNp || s.lastNameEn} (कक्षा {s.currentClass || '-'}, रोल: {s.rollNumber || '-'})
-                      </option>
-                    ))}
+                    {students.map((s) => {
+                      const existingCard = members.find((m) => m.studentId === s.id);
+                      const name = isNp
+                        ? [s.firstNameNp, s.middleNameNp, s.lastNameNp].filter(Boolean).join(' ') || [s.firstNameEn, s.middleNameEn, s.lastNameEn].filter(Boolean).join(' ')
+                        : [s.firstNameEn, s.middleNameEn, s.lastNameEn].filter(Boolean).join(' ') || [s.firstNameNp, s.middleNameNp, s.lastNameNp].filter(Boolean).join(' ');
+                      const classLabel = s.classNameNp || s.classNameEn || (s.currentClass ? `${isNp ? 'कक्षा ' : 'Class '}${s.currentClass}` : '');
+                      const rollLabel = s.rollNumber ? `${isNp ? 'रोल: ' : 'Roll: '}${s.rollNumber}` : '';
+                      const meta = [classLabel, rollLabel].filter(Boolean).join(', ');
+                      return (
+                        <option key={s.id} value={s.id} disabled={Boolean(existingCard)}>
+                          {name || 'Unknown'} {meta ? `(${meta})` : ''} {existingCard ? `[कार्ड: ${existingCard.cardNumber}]` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  {members.some((m) => m.studentId === newMemberStudentId) && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                      {isNp ? 'यो विद्यार्थीको कार्ड पहिले नै जारी भइसकेको छ।' : 'This student already has an active library card.'}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -1869,16 +1930,29 @@ export const LibraryManagement: React.FC = () => {
                   <select
                     value={newMemberStaffId}
                     onChange={(e) => setNewMemberStaffId(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 text-sm"
                     required
                   >
                     <option value="">{isNp ? '-- शिक्षक/कर्मचारी छनोट गर्नुहोस् --' : '-- Select Staff --'}</option>
-                    {staffList.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.firstNameNp || st.firstNameEn} {st.lastNameNp || st.lastNameEn} ({st.department || 'Academic'})
-                      </option>
-                    ))}
+                    {staffList.map((st) => {
+                      const existingCard = members.find((m) => m.staffId === st.id);
+                      const name = isNp
+                        ? st.fullNameNp || st.fullNameEn || [st.firstNameNp, st.lastNameNp].filter(Boolean).join(' ')
+                        : st.fullNameEn || st.fullNameNp || [st.firstNameEn, st.lastNameEn].filter(Boolean).join(' ');
+                      const code = st.staffCode ? `[${st.staffCode}]` : '';
+                      const dept = st.department || st.designation || 'Academic';
+                      return (
+                        <option key={st.id} value={st.id} disabled={Boolean(existingCard)}>
+                          {code ? `${code} ` : ''}{name || 'Staff Member'} ({dept}) {existingCard ? `[कार्ड: ${existingCard.cardNumber}]` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  {members.some((m) => m.staffId === newMemberStaffId) && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                      {isNp ? 'यो शिक्षक/कर्मचारीको कार्ड पहिले नै जारी भइसकेको छ।' : 'This staff member already has an active library card.'}
+                    </p>
+                  )}
                 </div>
               )}
 
