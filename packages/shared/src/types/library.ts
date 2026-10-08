@@ -96,6 +96,7 @@ export interface LibraryFine {
   receiptNumber?: string | null;
   paymentDateBs?: string | null;
   collectedById?: string | null;
+  voucherId?: string | null;
   createdAt?: string;
 }
 
@@ -128,11 +129,28 @@ export interface LibraryCirculationWithDetails extends LibraryCirculation {
   calculatedFine?: number;
 }
 
+export interface LibraryFineWithDetails extends LibraryFine {
+  cardNumber?: string;
+  memberNameEn?: string;
+  memberNameNp?: string;
+  bookTitleEn?: string;
+  bookTitleNp?: string;
+  circulationNumber?: string;
+  voucherNumber?: string | null;
+}
+
 // DTOs
 export interface CreateLibraryCategoryDto {
   code: string;
   nameEn: string;
   nameNp: string;
+  description?: string;
+}
+
+export interface UpdateLibraryCategoryDto {
+  code?: string;
+  nameEn?: string;
+  nameNp?: string;
   description?: string;
 }
 
@@ -151,6 +169,27 @@ export interface CreateLibraryBookDto {
   initialCopiesCount?: number;
   accessionPrefix?: string; // e.g. "ACC-2083"
   description?: string;
+}
+
+export interface UpdateLibraryBookDto {
+  isbn?: string;
+  titleEn?: string;
+  titleNp?: string;
+  author?: string;
+  publisher?: string;
+  edition?: string;
+  publicationYear?: string;
+  language?: string;
+  categoryId?: string;
+  rackLocation?: string;
+  price?: number;
+  description?: string;
+}
+
+export interface UpdateLibraryMemberDto {
+  maxAllowedBooks?: number;
+  maxIssueDays?: number;
+  status?: LibraryMemberStatus;
 }
 
 export interface IssueBookDto {

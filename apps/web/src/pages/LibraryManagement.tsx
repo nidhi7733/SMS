@@ -23,6 +23,7 @@ import {
   Barcode,
   Check,
   X,
+  Edit3,
 } from 'lucide-react';
 import {
   LibraryBook,
@@ -37,7 +38,8 @@ import {
 export const LibraryManagement: React.FC = () => {
   const { language, formatNumber } = useLanguage();
   const isNp = language === 'np';
-  const { token } = useAuth();
+  const { token, user, hasRole } = useAuth();
+  const canEdit = hasRole('SUPER_ADMIN') || hasRole('ADMIN') || hasRole('PRINCIPAL') || Boolean(user?.isSuperAdmin);
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'circulation' | 'members' | 'fines' | 'categories'>('catalog');
 
@@ -105,6 +107,37 @@ export const LibraryManagement: React.FC = () => {
   const [newMemberType, setNewMemberType] = useState<'STUDENT' | 'STAFF'>('STUDENT');
   const [newMemberStudentId, setNewMemberStudentId] = useState('');
   const [newMemberStaffId, setNewMemberStaffId] = useState('');
+
+  // Edit Book State
+  const [isEditBookModalOpen, setIsEditBookModalOpen] = useState(false);
+  const [editingBook, setEditingBook] = useState<LibraryBookWithDetails | null>(null);
+  const [editBookTitleNp, setEditBookTitleNp] = useState('');
+  const [editBookTitleEn, setEditBookTitleEn] = useState('');
+  const [editBookAuthor, setEditBookAuthor] = useState('');
+  const [editBookPublisher, setEditBookPublisher] = useState('');
+  const [editBookEdition, setEditBookEdition] = useState('');
+  const [editBookYear, setEditBookYear] = useState('2081');
+  const [editBookLanguage, setEditBookLanguage] = useState('NEPALI');
+  const [editBookCategoryId, setEditBookCategoryId] = useState('');
+  const [editBookRackLocation, setEditBookRackLocation] = useState('');
+  const [editBookPrice, setEditBookPrice] = useState(200);
+  const [editBookIsbn, setEditBookIsbn] = useState('');
+  const [editBookDesc, setEditBookDesc] = useState('');
+
+  // Edit Category State
+  const [isEditCategoryModalOpen, setIsEditCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<LibraryCategory | null>(null);
+  const [editCategoryCode, setEditCategoryCode] = useState('');
+  const [editCategoryNameEn, setEditCategoryNameEn] = useState('');
+  const [editCategoryNameNp, setEditCategoryNameNp] = useState('');
+  const [editCategoryDesc, setEditCategoryDesc] = useState('');
+
+  // Edit Member Limits State
+  const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<LibraryMemberWithDetails | null>(null);
+  const [editMemberMaxBooks, setEditMemberMaxBooks] = useState(2);
+  const [editMemberMaxDays, setEditMemberMaxDays] = useState(14);
+  const [editMemberStatus, setEditMemberStatus] = useState<'ACTIVE' | 'SUSPENDED'>('ACTIVE');
 
   const headers = {
     'Content-Type': 'application/json',
@@ -477,6 +510,142 @@ export const LibraryManagement: React.FC = () => {
     }
   };
 
+  // --- Handlers for Member Limits Edit ---
+  const handleOpenEditMember = (mem: LibraryMemberWithDetails) => {
+    setEditingMember(mem);
+    setEditMemberMaxBooks(mem.maxAllowedBooks);
+    setEditMemberMaxDays(mem.maxIssueDays);
+    setEditMemberStatus(mem.status as 'ACTIVE' | 'SUSPENDED');
+    setIsEditMemberModalOpen(true);
+  };
+
+  const handleUpdateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    try {
+      const res = await fetch(`/api/library/members/${editingMember.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          maxAllowedBooks: Number(editMemberMaxBooks),
+          maxIssueDays: Number(editMemberMaxDays),
+          status: editMemberStatus,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update member');
+
+      const cardNum = data.member?.cardNumber || editingMember.cardNumber;
+      showFeedback(
+        'success',
+        isNp
+          ? `सदस्यको पुस्तक कोटा र नीति सफलतापूर्वक अद्यावधिक गरियो (${cardNum})।`
+          : `Member borrowing limit and policy updated successfully (${cardNum}).`
+      );
+      setIsEditMemberModalOpen(false);
+      setEditingMember(null);
+      await loadData();
+    } catch (err: any) {
+      showFeedback('error', err.message);
+    }
+  };
+
+  // --- Handlers for Category Edit ---
+  const handleOpenEditCategory = (cat: LibraryCategory) => {
+    setEditingCategory(cat);
+    setEditCategoryCode(cat.code);
+    setEditCategoryNameEn(cat.nameEn);
+    setEditCategoryNameNp(cat.nameNp);
+    setEditCategoryDesc(cat.description || '');
+    setIsEditCategoryModalOpen(true);
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    try {
+      const res = await fetch(`/api/library/categories/${editingCategory.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          code: editCategoryCode.trim(),
+          nameEn: editCategoryNameEn.trim(),
+          nameNp: editCategoryNameNp.trim(),
+          description: editCategoryDesc.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update category');
+
+      showFeedback('success', isNp ? 'विधा (DDC Category) विवरण सम्पादन गरियो।' : 'Category updated successfully.');
+      setIsEditCategoryModalOpen(false);
+      setEditingCategory(null);
+      await loadData();
+    } catch (err: any) {
+      showFeedback('error', err.message);
+    }
+  };
+
+  // --- Handlers for Book Catalog Edit ---
+  const handleOpenEditBook = (book: LibraryBookWithDetails) => {
+    setEditingBook(book);
+    setEditBookTitleNp(book.titleNp);
+    setEditBookTitleEn(book.titleEn);
+    setEditBookAuthor(book.author);
+    setEditBookPublisher(book.publisher || '');
+    setEditBookEdition(book.edition || '');
+    setEditBookYear(book.publicationYear || '2081');
+    setEditBookLanguage(book.language || 'NEPALI');
+    setEditBookCategoryId(book.categoryId);
+    setEditBookRackLocation(book.rackLocation || '');
+    setEditBookPrice(book.price || 0);
+    setEditBookIsbn(book.isbn || '');
+    setEditBookDesc(book.description || '');
+    setIsEditBookModalOpen(true);
+  };
+
+  const handleUpdateBook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBook) return;
+    try {
+      const res = await fetch(`/api/library/books/${editingBook.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          titleEn: editBookTitleEn.trim(),
+          titleNp: editBookTitleNp.trim(),
+          author: editBookAuthor.trim(),
+          publisher: editBookPublisher.trim() || undefined,
+          edition: editBookEdition.trim() || undefined,
+          publicationYear: editBookYear.trim() || undefined,
+          language: editBookLanguage,
+          categoryId: editBookCategoryId,
+          rackLocation: editBookRackLocation.trim() || undefined,
+          price: Number(editBookPrice) || 0,
+          isbn: editBookIsbn.trim() || undefined,
+          description: editBookDesc.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update book');
+
+      showFeedback(
+        'success',
+        isNp ? 'पुस्तक क्याटलग विवरण सफलतापूर्वक अद्यावधिक गरियो।' : 'Book catalog updated successfully.'
+      );
+      setIsEditBookModalOpen(false);
+      // Refresh drawer book if open
+      if (selectedBookForDrawer && selectedBookForDrawer.id === editingBook.id) {
+        const bookRes = await fetch(`/api/library/books/${editingBook.id}`, { headers });
+        if (bookRes.ok) setSelectedBookForDrawer(await bookRes.json());
+      }
+      setEditingBook(null);
+      await loadData();
+    } catch (err: any) {
+      showFeedback('error', err.message);
+    }
+  };
+
   // Find currently selected member in quick issue for quota feedback
   const selectedMemberObj = members.find((m) => m.cardNumber === issueMemberCardNo);
   const isMemberQuotaExceeded =
@@ -794,12 +963,25 @@ export const LibraryManagement: React.FC = () => {
                           रु. {formatNumber(book.price)}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => setSelectedBookForDrawer(book)}
-                            className="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg transition"
-                          >
-                            {isNp ? 'प्रतिहरू हेर्नुहोस्' : 'View Copies'} ({book.copies?.length || 0})
-                          </button>
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => setSelectedBookForDrawer(book)}
+                              className="px-2.5 py-1 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg transition"
+                            >
+                              {isNp ? 'प्रतिहरू' : 'Copies'} ({book.copies?.length || 0})
+                            </button>
+                            {canEdit && (
+                              <button
+                                data-testid={`edit-book-${book.id}`}
+                                onClick={() => handleOpenEditBook(book)}
+                                className="px-2 py-1 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg transition inline-flex items-center gap-1"
+                                title={isNp ? 'पुस्तक विवरण सम्पादन' : 'Edit Book Catalog'}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>{isNp ? 'सम्पादन' : 'Edit'}</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1073,11 +1255,12 @@ export const LibraryManagement: React.FC = () => {
                             {cir.status !== 'RETURNED' && (
                               <div className="flex items-center justify-end space-x-1.5">
                                 <button
+                                  data-testid={`return-circulation-${cir.id}`}
                                   onClick={() => {
                                     setSelectedCirculationForReturn(cir);
                                     setIsReturnModalOpen(true);
                                   }}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold transition"
+                                  className="circulation-return-btn px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold transition"
                                 >
                                   {isNp ? 'फिर्ता' : 'Return'}
                                 </button>
@@ -1138,6 +1321,7 @@ export const LibraryManagement: React.FC = () => {
                     <th className="py-3 px-4">{isNp ? 'सम्पर्क फोन' : 'Phone'}</th>
                     <th className="py-3 px-4">{isNp ? 'कोटा उपयोग' : 'Quota Usage'}</th>
                     <th className="py-3 px-4">{isNp ? 'स्थिति' : 'Status'}</th>
+                    <th className="py-3 px-4 text-right">{isNp ? 'कार्य' : 'Actions'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1183,11 +1367,31 @@ export const LibraryManagement: React.FC = () => {
                               {mem.activeIssuesCount} / {mem.maxAllowedBooks} {isNp ? 'पुस्तक' : 'Books'}
                             </span>
                           </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {isNp ? `म्याद: ${mem.maxIssueDays} दिन` : `Limit: ${mem.maxIssueDays}d`}
+                          </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            mem.status === 'ACTIVE'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                              : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                          }`}>
                             {mem.status}
                           </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {canEdit && (
+                            <button
+                              data-testid={`edit-member-${mem.id}`}
+                              onClick={() => handleOpenEditMember(mem)}
+                              className="px-2.5 py-1 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg transition inline-flex items-center gap-1"
+                              title={isNp ? 'कोटा तथा स्थिति सम्पादन' : 'Edit Member Limits'}
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>{isNp ? 'सम्पादन' : 'Edit'}</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1289,7 +1493,12 @@ export const LibraryManagement: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-xs font-mono text-slate-500">
-                          {fine.receiptNumber || '-'}
+                          <div>{fine.receiptNumber || '-'}</div>
+                          {fine.voucherNumber && (
+                            <div className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              {isNp ? `भौचर: ${fine.voucherNumber}` : `Voucher: ${fine.voucherNumber}`}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right">
                           {fine.paymentStatus === 'UNPAID' && (
@@ -1359,6 +1568,16 @@ export const LibraryManagement: React.FC = () => {
                     {isNp ? c.nameEn : c.nameNp}
                   </div>
                   {c.description && <p className="text-xs text-slate-400 mt-1 line-clamp-2">{c.description}</p>}
+                  {canEdit && (
+                    <button
+                      data-testid={`edit-category-${c.id}`}
+                      onClick={() => handleOpenEditCategory(c)}
+                      className="mt-2 w-full py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 rounded-lg transition flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>{isNp ? 'विधा सम्पादन' : 'Edit Category'}</span>
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -1601,13 +1820,25 @@ export const LibraryManagement: React.FC = () => {
                   {selectedBookForDrawer.author} • {selectedBookForDrawer.rackLocation}
                 </span>
               </div>
-              <button
-                data-testid="close-copies-drawer"
-                onClick={() => setSelectedBookForDrawer(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                {canEdit && (
+                  <button
+                    data-testid="drawer-edit-book-btn"
+                    onClick={() => handleOpenEditBook(selectedBookForDrawer)}
+                    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 transition"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{isNp ? 'विवरण सम्पादन' : 'Edit Book'}</span>
+                  </button>
+                )}
+                <button
+                  data-testid="close-copies-drawer"
+                  onClick={() => setSelectedBookForDrawer(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-4">
@@ -2062,6 +2293,400 @@ export const LibraryManagement: React.FC = () => {
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
                 >
                   {isNp ? 'सुरक्षित गर्नुहोस्' : 'Save Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT MEMBER LIMITS & POLICY */}
+      {/* ======================================================== */}
+      {isEditMemberModalOpen && editingMember && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 max-w-md w-full rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-600" />
+                <span>{isNp ? 'पुस्तकालय सदस्य कोटा तथा नीति सम्पादन' : 'Edit Member Quota & Policy'}</span>
+              </h3>
+              <button
+                onClick={() => setIsEditMemberModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Member Summary Pill */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+              <div className="font-bold text-slate-900 dark:text-white text-sm">
+                {isNp ? editingMember.fullNameNp || editingMember.fullNameEn : editingMember.fullNameEn || editingMember.fullNameNp}
+              </div>
+              <div className="text-slate-500 font-mono mt-0.5">
+                {editingMember.cardNumber} • {editingMember.memberType === 'STUDENT' ? 'विद्यार्थी' : 'शिक्षक/कर्मचारी'}
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateMember} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'अधिकतम पुस्तक संख्या (Max Allowed Books) *' : 'Max Allowed Books *'}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={editMemberMaxBooks}
+                  onChange={(e) => setEditMemberMaxBooks(Math.max(1, Number(e.target.value)))}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  required
+                />
+                <span className="text-[11px] text-slate-500">
+                  {isNp ? 'प्रशासन वा प्रधानाध्यापकले १ देखि ५० सम्म कोटा तोक्न सक्ने' : 'Allowed range: 1 to 50 books'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'अधिकतम ऋण म्याद (दिन) *' : 'Max Borrow Days *'}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={180}
+                  value={editMemberMaxDays}
+                  onChange={(e) => setEditMemberMaxDays(Math.max(1, Number(e.target.value)))}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  required
+                />
+                <span className="text-[11px] text-slate-500">
+                  {isNp ? 'दिन (उदा: १४, २१, ३०, ६० दिन)' : 'Max days per loan (1 to 180 days)'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'सदस्यता स्थिति (Membership Status) *' : 'Membership Status *'}
+                </label>
+                <select
+                  value={editMemberStatus}
+                  onChange={(e) => setEditMemberStatus(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 text-sm"
+                >
+                  <option value="ACTIVE">{isNp ? 'सक्रिय (ACTIVE)' : 'Active'}</option>
+                  <option value="SUSPENDED">{isNp ? 'निलम्बित (SUSPENDED)' : 'Suspended'}</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditMemberModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+                >
+                  {isNp ? 'रद्द' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  {isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Member'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT DDC CATEGORY */}
+      {/* ======================================================== */}
+      {isEditCategoryModalOpen && editingCategory && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 max-w-md w-full rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-600" />
+                <span>{isNp ? 'विधा (DDC Category) सम्पादन' : 'Edit Category'}</span>
+              </h3>
+              <button
+                onClick={() => setIsEditCategoryModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateCategory} className="space-y-4 text-sm">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'DDC कोड * (e.g. 700)' : 'DDC Code *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 700"
+                  value={editCategoryCode}
+                  onChange={(e) => setEditCategoryCode(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 font-mono"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'विधाको नाम (नेपाली) *' : 'Name (Nepali) *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="उदा: कला तथा मनोरञ्जन"
+                  value={editCategoryNameNp}
+                  onChange={(e) => setEditCategoryNameNp(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'विधाको नाम (अंग्रेजी) *' : 'Name (English) *'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Arts & Recreation"
+                  value={editCategoryNameEn}
+                  onChange={(e) => setEditCategoryNameEn(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {isNp ? 'विवरण' : 'Description'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={editCategoryDesc}
+                  onChange={(e) => setEditCategoryDesc(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditCategoryModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+                >
+                  {isNp ? 'रद्द' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  {isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Category'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL: EDIT BOOK CATALOG */}
+      {/* ======================================================== */}
+      {isEditBookModalOpen && editingBook && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900">
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-indigo-600" />
+                <span>{isNp ? 'पुस्तक क्याटलग सम्पादन' : 'Edit Book Catalog'}</span>
+              </h2>
+              <button
+                onClick={() => setIsEditBookModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateBook} className="p-6 space-y-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'पुस्तकको नाम (नेपाली) *' : 'Book Title (Nepali) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookTitleNp}
+                    onChange={(e) => setEditBookTitleNp(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'पुस्तकको नाम (अंग्रेजी) *' : 'Book Title (English) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookTitleEn}
+                    onChange={(e) => setEditBookTitleEn(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'लेखक (Author) *' : 'Author *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookAuthor}
+                    onChange={(e) => setEditBookAuthor(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'विधा (DDC Category) *' : 'DDC Category *'}
+                  </label>
+                  <select
+                    value={editBookCategoryId}
+                    onChange={(e) => setEditBookCategoryId(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                    required
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        [{c.code}] {isNp ? c.nameNp : c.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'प्रकाशन (Publisher)' : 'Publisher'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookPublisher}
+                    onChange={(e) => setEditBookPublisher(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'संस्करण (Edition)' : 'Edition'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookEdition}
+                    onChange={(e) => setEditBookEdition(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'प्रकाशन वर्ष (BS)' : 'Year (BS)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookYear}
+                    onChange={(e) => setEditBookYear(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'भाषा (Language)' : 'Language'}
+                  </label>
+                  <select
+                    value={editBookLanguage}
+                    onChange={(e) => setEditBookLanguage(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  >
+                    <option value="NEPALI">नेपाली (Nepali)</option>
+                    <option value="ENGLISH">English</option>
+                    <option value="SANSKRIT">संस्कृत (Sanskrit)</option>
+                    <option value="MAITHILI">मैथिली (Maithili)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'र्याक / स्थान (Rack)' : 'Rack Location'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookRackLocation}
+                    onChange={(e) => setEditBookRackLocation(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'मूल्य प्रति प्रति (रु)' : 'Price per Copy (NPR)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={editBookPrice}
+                    onChange={(e) => setEditBookPrice(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'ISBN नम्बर' : 'ISBN Number'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookIsbn}
+                    onChange={(e) => setEditBookIsbn(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {isNp ? 'संक्षिप्त विवरण (Description)' : 'Description'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editBookDesc}
+                    onChange={(e) => setEditBookDesc(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditBookModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-medium"
+                >
+                  {isNp ? 'रद्द गर्नुहोस्' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-sm"
+                >
+                  {isNp ? 'विवरण अद्यावधिक गर्नुहोस्' : 'Update Book Catalog'}
                 </button>
               </div>
             </form>

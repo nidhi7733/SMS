@@ -567,6 +567,128 @@
 
 ---
 
+# RFC 004: पुस्तकालय सदस्य कोटा सम्पादन, विलम्ब शुल्क दोहोरो लेखा भौचर एकीकरण तथा क्याटलग/विधा व्यवस्थापन (Library Member Limits Edit, Fine Accounting Journal Integration & Catalog/Category Edit)
 
+> **दस्तावेज स्थान (Location):** `/rfc/requirement.md` & Artifact  
+> **प्रणाली:** हाम्रो विद्यालय व्यवस्थापन प्रणाली (Hamro SMS)  
+> **मोड्युल:** पुस्तकालय तथा दोहोरो लेखा प्रणाली एकीकरण (Library & Accounting Integration)  
+> **प्रस्ताव मिति:** २०८३-०६-२२ (2026-10-08)  
+> **स्वीकृति स्थिति (Acceptance Status):** 🟡 **समीक्षाधीन (UNDER REVIEW / PENDING ACCEPTANCE)**  
+> **विशेष निर्देशन:** *प्रयोगकर्ताको आधिकारिक स्वीकृति (User Sign-off) पछि मात्र कार्यान्वयन (Coding) सुरु गरिनेछ।*
 
+---
 
+## १. परिचय तथा उद्देश्य (Introduction & Purpose)
+
+विद्यालय पुस्तकालय प्रणालीलाई अझ व्यवस्थित, उत्तरदायी र आर्थिक रूपमा पारदर्शी बनाउन यस RFC मार्फत तीन मुख्य स्तम्भहरू थप तथा परिमार्जन गर्न प्रस्ताव गरिएको छ:
+1. **सदस्यता नीति तथा पुस्तक कोटा सम्पादन (Member Quota & Limits Edit):** केवल अधिकृत प्रयोगकर्ता (Super Admin, Admin, Principal) ले विद्यार्थी तथा शिक्षक/कर्मचारीको पुस्तक लिने अधिकतम सीमा (`maxAllowedBooks`), जारी दिन (`maxIssueDays`), र सदस्यता स्थिति (`ACTIVE`/`SUSPENDED`) आवश्यकतानुसार परिमार्जन गर्न सक्ने।
+2. **विलम्ब शुल्क असुली र दोहोरो लेखा गोश्वारा भौचर एकीकरण (Fine Due Collection Linked to Double-Entry Accounting Journal):** पुस्तकालयमा पुस्तक म्याद नाघेर असुल गरिने विलम्ब शुल्क (Overdue Fine) संकलन हुनासाथ दोहोरो लेखा प्रणालीमा स्वचालित रूपमा नगद/बैंक प्राप्ति गोश्वारा भौचर (`CR`/`BR` Journal Voucher) निर्माण हुने र लेखा प्रणालीको खाता सूची (Chart of Accounts), लेजर र दैनिक लगत (Day Book) मा सिधै प्रविष्टि हुने।
+3. **विधा (DDC Category) र क्याटलग पुस्तक विवरण सम्पादन (Category & Book Catalog Edit):** पुस्तकालयमा दर्ता भइसकेका विधा र पुस्तकहरूमा लेखक, प्रकाशक, संस्करण, र्याक लोकेसन, मूल्य, नाम आदि विवरण एडमिन वा प्रधानाध्यापकले सच्याउन र सम्पादन गर्न सक्ने।
+
+---
+
+## २. आवश्यकताहरूको विस्तृत विवरण (Detailed Requirements Specification)
+
+### २.१. सदस्य पुस्तक सीमा तथा विवरण सम्पादन (Member Borrowing Limits Edit)
+- **अधिकृत भूमिकाहरू (Authorized Roles):** `SUPER_ADMIN`, `ADMIN`, `PRINCIPAL`। अन्य प्रयोगकर्तालाई सम्पादन बटन नदेखिने तथा ब्याकइन्डमा सुरक्षा जाँच हुने।
+- **सम्पादन योग्य फिल्डहरू:**
+  - `maxAllowedBooks` (अधिकतम पुस्तक सीमा: १ देखि २० सम्म)।
+  - `maxIssueDays` (पुस्तक राख्न पाउने दिन सीमा: १ देखि ९० दिन सम्म)।
+  - `status` (सदस्यता स्थिति: `ACTIVE` वा `SUSPENDED`)।
+- **ब्याकइन्ड एन्डपोइन्ट:** `PUT /api/library/members/:id`
+- **फ्रन्टइन्ड इन्टरफेस:** पुस्तकालय सदस्यता लगत तालिकामा प्रत्येक सदस्यको दायाँ 'सम्पादन' (Edit) बटन, र क्लिक गर्दा पपअप हुने सुरक्षित मोडल।
+
+### २.२. विलम्ब शुल्क र दोहोरो लेखा गोश्वारा भौचर एकीकरण (Fine Accounting Journal Integration)
+- **लेखा खाता (Chart of Accounts):**
+  - **डेबिट खाता (Dr):** `1001` (नगद मौज्दात - काउन्टर / Cash in Hand) वा `1002` (बैंक खाता / Bank Account - भुक्तानी माध्यम अनुसार)।
+  - **क्रेडिट खाता (Cr):** `4005` (पुस्तकालय जरिवाना तथा विलम्ब शुल्क आम्दानी / Library Fine & Penalties Income - आम्दानी समूह ४००० अन्तर्गत)।
+  - यदि खाता `4005` विद्यालयको COA मा पहिले नै छैन भने प्रणालीले स्वतः सिड/निर्माण गर्नेछ।
+- **स्वचालित गोश्वारा भौचर (Automatic Journal Voucher Generation):**
+  - पुस्तक फिर्ता गर्दा जरिवाना तिरेमा वा बाँकी जरिवाना असुली (`/fines/:id/pay`) गर्दा भौचर स्वतः निर्माण हुने:
+    - `voucherType`: `CR` (Cash Receipt) वा `BR` (Bank Receipt)
+    - `referenceModule`: `LIBRARY_FINE`
+    - `referenceId`: जरिवाना लगत ID / रसिद नम्बर
+    - `voucherNumber`: `CR-2083-XXXX`
+    - `narration`: `पुस्तकालय विलम्ब शुल्क संकलन - रसिद नं. ${receiptNumber} (कार्ड नं. ${cardNumber})`
+    - `totalDebit` = `totalCredit` = असुल भएको जरिवाना रकम (`paidAmount`)
+  - डाटाबेसमा `library_fines` तालिकामा `voucher_id` सुरक्षित रूपमा भण्डारण हुने।
+  - लेखा व्यवस्थापन (Accounting Module - `/accounting`) को गोश्वारा भौचर सूची, डे बुक, लेजर, र ट्रायल ब्यालेन्समा तत्काल देखिने।
+
+### २.३. विधा तथा क्याटलग पुस्तक सम्पादन (Category & Book Catalog Edit)
+- **विधा सम्पादन (DDC Category Edit):**
+  - सम्पादन योग्य: विधा कोड (`code`), अंग्रेजी नाम (`nameEn`), नेपाली नाम (`nameNp`), विवरण (`description`)।
+  - ब्याकइन्ड एन्डपोइन्ट: `PUT /api/library/categories/:id`
+  - फ्रन्टइन्ड इन्टरफेस: विधा कार्डमा 'सम्पादन' बटन र 'विधा सम्पादन' मोडल।
+- **पुस्तक क्याटलग सम्पादन (Book Catalog Edit):**
+  - सम्पादन योग्य: पुस्तकको नाम (नेपाली र अंग्रेजी), लेखक, प्रकाशक, संस्करण, प्रकाशन वर्ष (वि.सं.), भाषा, विधा (DDC Category), र्याक लोकेसन, मूल्य, ISBN, र सारांश।
+  - ब्याकइन्ड एन्डपोइन्ट: `PUT /api/library/books/:id`
+  - फ्रन्टइन्ड इन्टरफेस: क्याटलग सूची र पुस्तक विवरण ड्रअरमा 'सम्पादन' बटन र प्रि-फिल्ड भएको सम्पादन मोडल।
+
+---
+
+## ३. प्राविधिक संरचना तथा डाटाबेस परिवर्तन (Technical Architecture)
+
+### ३.१. डाटाबेस स्किमा परिवर्तन (`apps/api/src/db/schema.ts`):
+```typescript
+// library_fines तालिकामा voucherId थप:
+export const libraryFines = pgTable('library_fines', {
+  // ... existing fields ...
+  voucherId: text('voucher_id').references(() => journalVouchers.id, { onDelete: 'set null' }),
+});
+```
+
+### ३.२. नयाँ र परिमार्जित ब्याकइन्ड एन्डपोइन्टहरू (`apps/api/src/routes/library.ts`):
+1. `PUT /api/library/members/:id` — सदस्य पुस्तक सीमा, दिन र स्थिति सम्पादन (Admin/Principal Only)।
+2. `PUT /api/library/categories/:id` — विधा विवरण सम्पादन (Admin/Principal Only)।
+3. `PUT /api/library/books/:id` — पुस्तक क्याटलग विवरण सम्पादन (Admin/Principal Only)।
+4. `POST /api/library/return` & `POST /api/library/fines/:id/pay` — शुल्क असुल हुँदा स्वचालित Journal Voucher सिर्जना गरी COA ब्यालेन्स अद्यावधिक गर्ने।
+
+---
+
+## ४. प्लेराइट स्वचालित परीक्षण तथा प्रमाण योजना (Playwright Automated Test Plan)
+
+परीक्षण स्क्रिप्ट: `e2e/library_enhancements_test.cjs`
+
+| परिदृश्य (Scenario) | परीक्षण विधि | संकलन गरिने प्रमाण (Screenshot Evidence) |
+|---|---|---|
+| **१. सदस्य कोटा सम्पादन** | Admin ले विद्यार्थीको पुस्तक सीमा २ बाट बढाएर ३ र दिन १४ बाट २१ बनाउने, तालिकामा तुरुन्त ३ पुस्तक सीमा देखिने। | `10_member_quota_edited.png` |
+| **२. जरिवाना असुली र भौचर** | बाँकी जरिवाना असुल गर्ने, प्रणालीले `CR-2083-XXXX` भौचर जेनेरेट गर्ने, र Accounting मोड्युलको गोश्वारा भौचरमा देखिने। | `11_fine_journal_voucher_accounting.png` |
+| **३. विधा सम्पादन** | DDC विधाको नाम र विवरण सम्पादन गर्ने र कार्डमा नयाँ विवरण देखिने। | `12_category_edited.png` |
+| **४. पुस्तक विवरण सम्पादन** | क्याटलग पुस्तकको शीर्षक र र्याक विवरण सम्पादन गर्ने र क्याटलग तथा ड्रअरमा देखिने। | `13_book_catalog_edited.png` |
+
+---
+
+## ५. कार्यान्वयन कार्ययोजना (Implementation Plan)
+
+```
+[ चरण १: डाटाबेस स्किमा तथा लेखा खाता (Schema & COA Setup) ]
+  └── libraryFines मा voucherId थप, COA मा 4005 Library Fine Income खाता सुनिश्चित।
+           │
+           ▼
+[ चरण २: ब्याकइन्ड एन्डपोइन्टहरू (API Routes) ]
+  └── PUT /members/:id, PUT /categories/:id, PUT /books/:id निर्माण तथा Auto-JV लजिक एकीकरण।
+           │
+           ▼
+[ चरण ३: फ्रन्टइन्ड व्यवस्थापन इन्टरफेस (Web UI) ]
+  └── Edit Member Modal, Edit Category Modal, Edit Book Modal, Fine-JV Badge प्रदर्शन।
+           │
+           ▼
+[ चरण ४: प्लेराइट स्वचालित परीक्षण तथा प्रमाण (Playwright E2E Suite) ]
+  └── e2e/library_enhancements_test.cjs रन गरी स्क्रिनसट प्रमाण संकलन तथा Walkthrough प्रतिवेदन तयार।
+```
+
+---
+
+## ६. स्वीकृति मापदण्ड तथा अभिलेख (Acceptance Criteria & Log)
+
+### ६.१. मापदण्डहरू:
+1. **भूमिका नियन्त्रण (RBAC):** केवल Super Admin, Admin, वा Principal ले मात्र सदस्य सीमा, विधा र पुस्तक सम्पादन गर्न सक्ने।
+2. **लेखा एकीकरण शुद्धता (Accounting Precision):** जरिवाना असुली हुनासाथ दोहोरो लेखा प्रणालीमा डेबिट नगद/बैंक र क्रेडिट जरिवाना आम्दानी बराबर रकमको भौचर बन्नुपर्ने र Accounting पृष्ठमा देखिनुपर्ने।
+3. **डेटा शुद्धता (Data Integrity):** पुस्तक र विधा सम्पादन गर्दा विद्यमान भौतिक प्रतिहरू (Copies) र कारोबार (Circulations) को अखण्डतामा कुनै असर नपर्ने।
+4. **प्लेराइट प्रमाण:** सबै ४ वटै परिदृश्यहरूको प्रत्यक्ष स्क्रिनसट प्रमाण उपलब्ध हुनुपर्ने।
+
+### ६.२. स्वीकृति अभिलेख (User Acceptance Log):
+
+| मिति (Date) | समीक्षक (Reviewer) | स्वीकृति स्थिति (Status) | प्रयोगकर्ताको टिप्पणी / पृष्ठपोषण |
+|---|---|---|---|
+| २०८३-०६-२२ (2026-10-08) | User | 🟡 **समीक्षाधीन (PENDING ACCEPTANCE)** | प्रयोगकर्ताको आधिकारिक स्वीकृति प्रतिक्षारत। |

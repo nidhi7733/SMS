@@ -59,6 +59,11 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
     return true;
   };
 
+  const checkAdminOrPrincipal = (currentUser: any) => {
+    const roles = currentUser?.roles || [];
+    return roles.some((r: string) => ['SUPER_ADMIN', 'ADMIN', 'PRINCIPAL'].includes(r)) || currentUser?.isSuperAdmin;
+  };
+
   // ==========================================
   // 1. Categories (वर्गीकरण / Dewey Decimal Classification)
   // ==========================================
@@ -96,6 +101,38 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
 
     await db.insert(schema.libraryCategories).values(newCategory);
     return reply.status(201).send(newCategory);
+  });
+
+  fastify.put('/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    if (!checkAdminOrPrincipal(currentUser)) {
+      return reply.status(403).send({ message: 'विधा सम्पादन गर्न एडमिन वा प्रधानाध्यापकको अनुमति आवश्यक छ' });
+    }
+
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+
+    const existing = await db.query.libraryCategories.findFirst({
+      where: (t: any, { eq, and }: any) => and(eq(t.id, id), eq(t.schoolId, currentUser.schoolId)),
+    });
+    if (!existing) {
+      return reply.status(404).send({ message: 'विधा फेला परेन' });
+    }
+
+    const updates: any = {};
+    if (body.code !== undefined && body.code.trim()) updates.code = body.code.trim();
+    if (body.nameEn !== undefined && body.nameEn.trim()) updates.nameEn = body.nameEn.trim();
+    if (body.nameNp !== undefined && body.nameNp.trim()) updates.nameNp = body.nameNp.trim();
+    if (body.description !== undefined) updates.description = body.description;
+
+    await db.update(schema.libraryCategories).set(updates).where(eq(schema.libraryCategories.id, id));
+
+    const updated = await db.query.libraryCategories.findFirst({
+      where: (t: any, { eq }: any) => eq(t.id, id),
+    });
+    return reply.send(updated);
   });
 
   // ==========================================
@@ -242,11 +279,16 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
   fastify.put('/books/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!(await authenticate(request, reply))) return;
     const db = await getDb();
+    const currentUser = (request as any).user;
+    if (!checkAdminOrPrincipal(currentUser)) {
+      return reply.status(403).send({ message: 'पुस्तक सम्पादन गर्न एडमिन वा प्रधानाध्यापकको अनुमति आवश्यक छ' });
+    }
+
     const { id } = request.params as { id: string };
     const body = request.body as any;
 
     const existing = await db.query.libraryBooks.findFirst({
-      where: (t: any, { eq }: any) => eq(t.id, id),
+      where: (t: any, { eq, and }: any) => and(eq(t.id, id), eq(t.schoolId, currentUser.schoolId)),
     });
 
     if (!existing) {
@@ -527,6 +569,58 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
     return reply.status(201).send(newMember);
   });
 
+  fastify.put('/members/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    if (!checkAdminOrPrincipal(currentUser)) {
+      return reply.status(403).send({ message: 'सदस्य नीति सम्पादन गर्न एडमिन वा प्रधानाध्यापकको अनुमति आवश्यक छ' });
+    }
+
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+
+    const existing = await db.query.libraryMembers.findFirst({
+      where: (t: any, { eq, and }: any) => and(eq(t.id, id), eq(t.schoolId, currentUser.schoolId)),
+    });
+    if (!existing) {
+      return reply.status(404).send({ message: 'सदस्य फेला परेन' });
+    }
+
+    const updates: any = {};
+    if (body.maxAllowedBooks !== undefined) {
+      const limit = Number(body.maxAllowedBooks);
+      if (isNaN(limit) || limit < 1 || limit > 50) {
+        return reply.status(400).send({ message: 'पुस्तक सीमा १ देखि ५० को बीचमा हुनुपर्छ' });
+      }
+      updates.maxAllowedBooks = limit;
+    }
+    if (body.maxIssueDays !== undefined) {
+      const days = Number(body.maxIssueDays);
+      if (isNaN(days) || days < 1 || days > 180) {
+        return reply.status(400).send({ message: 'जारी दिन सीमा १ देखि १८० दिनको बीचमा हुनुपर्छ' });
+      }
+      updates.maxIssueDays = days;
+    }
+    if (body.status !== undefined) {
+      if (!['ACTIVE', 'SUSPENDED'].includes(body.status)) {
+        return reply.status(400).send({ message: 'अमान्य स्थिति (ACTIVE वा SUSPENDED हुनुपर्छ)' });
+      }
+      updates.status = body.status;
+    }
+
+    await db.update(schema.libraryMembers).set(updates).where(eq(schema.libraryMembers.id, id));
+
+    const updated = await db.query.libraryMembers.findFirst({
+      where: (t: any, { eq }: any) => eq(t.id, id),
+    });
+    return reply.send({
+      success: true,
+      member: updated,
+      message: 'सदस्यता नीति तथा सीमा सफलतापूर्वक अद्यावधिक गरियो',
+    });
+  });
+
   // ==========================================
   // 5. Circulation (पुस्तक जारी, फिर्ता र नविकरण)
   // ==========================================
@@ -804,9 +898,12 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
 
     // Record Fine in library_fines if late
     let fineRecord = null;
+    let jvResult: any = null;
     if (calculatedFine > 0) {
+      const fineId = crypto.randomUUID();
+      const receiptNumber = finePaid ? `RCP-FINE-${Date.now().toString().slice(-6)}` : null;
       fineRecord = {
-        id: crypto.randomUUID(),
+        id: fineId,
         schoolId: currentUser.schoolId,
         circulationId: circulation.id,
         memberId: circulation.memberId,
@@ -816,11 +913,27 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
         waivedAmount: 0,
         paidAmount: finePaid ? calculatedFine : 0,
         paymentStatus: finePaid ? 'PAID' : 'UNPAID',
-        receiptNumber: finePaid ? `RCP-FINE-${Date.now().toString().slice(-6)}` : null,
+        receiptNumber,
         paymentDateBs: finePaid ? returnDateBs : null,
         collectedById: finePaid ? currentUser.userId : null,
       };
       await db.insert(schema.libraryFines).values(fineRecord);
+
+      if (finePaid) {
+        const mem = await db.query.libraryMembers.findFirst({
+          where: (t: any, { eq }: any) => eq(t.id, circulation.memberId),
+        });
+        jvResult = await createLibraryFineJournalVoucher({
+          db,
+          currentUser,
+          fineId,
+          amount: calculatedFine,
+          receiptNumber: receiptNumber!,
+          paymentDateBs: returnDateBs,
+          cardNumber: mem?.cardNumber,
+          paymentMode: body.paymentMode || 'CASH',
+        });
+      }
     }
 
     return reply.send({
@@ -829,6 +942,7 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       overdueDays,
       fineAmount: calculatedFine,
       finePaid,
+      voucherNumber: jvResult?.voucherNumber || null,
     });
   });
 
@@ -867,6 +981,132 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       message: 'पुस्तक नविकरण भयो (Book renewed successfully)',
     });
   });
+
+  // Helper: Create Double-Entry Journal Voucher for Library Fine Collection
+  async function createLibraryFineJournalVoucher(params: {
+    db: any;
+    currentUser: any;
+    fineId: string;
+    amount: number;
+    receiptNumber: string;
+    paymentDateBs: string;
+    cardNumber?: string;
+    memberName?: string;
+    paymentMode?: 'CASH' | 'BANK';
+  }) {
+    const { db, currentUser, fineId, amount, receiptNumber, paymentDateBs, cardNumber, memberName, paymentMode = 'CASH' } = params;
+    if (amount <= 0) return null;
+
+    try {
+      const coaList = await db.query.chartOfAccounts.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+      });
+
+      const isBank = paymentMode === 'BANK';
+      const debitAcc = isBank
+        ? (coaList.find((a: any) => a.code === '1002') || coaList.find((a: any) => a.code === '1001'))
+        : (coaList.find((a: any) => a.code === '1001') || coaList.find((a: any) => a.code === '1002'));
+
+      let creditAcc = coaList.find((a: any) => a.code === '4005');
+      if (!creditAcc) {
+        const groups = await db.query.accountGroups.findMany({
+          where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+        });
+        const revGroup = groups.find((g: any) => g.code === '4000' || g.nature === 'REVENUE') || groups[0];
+        if (revGroup) {
+          const newAccId = crypto.randomUUID();
+          await db.insert(schema.chartOfAccounts).values({
+            id: newAccId,
+            schoolId: currentUser.schoolId,
+            code: '4005',
+            nameEn: 'Library Fine & Penalties Income',
+            nameNp: 'पुस्तकालय जरिवाना तथा विलम्ब शुल्क आम्दानी',
+            groupId: revGroup.id,
+            openingBalanceDr: 0,
+            openingBalanceCr: 0,
+            currentBalanceDr: 0,
+            currentBalanceCr: 0,
+            isSystemAccount: true,
+            isActive: true,
+          });
+          creditAcc = { id: newAccId, currentBalanceDr: 0, currentBalanceCr: 0 };
+        } else {
+          creditAcc = coaList.find((a: any) => a.code.startsWith('40')) || coaList[0];
+        }
+      }
+
+      if (debitAcc && creditAcc) {
+        const vouchers = await db.query.journalVouchers.findMany({
+          where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+        });
+        const vSeq = vouchers.length + 1;
+        const vType = isBank ? 'BR' : 'CR';
+        const yearPrefix = (paymentDateBs || '2083').split('-')[0] || '2083';
+        const vNum = `${vType}-${yearPrefix}-${String(vSeq).padStart(4, '0')}`;
+        const vId = crypto.randomUUID();
+        const payDateAd = new Date().toISOString().split('T')[0];
+
+        await db.insert(schema.journalVouchers).values({
+          id: vId,
+          schoolId: currentUser.schoolId,
+          voucherNumber: vNum,
+          voucherType: vType,
+          voucherDateBs: paymentDateBs || getTodayBs(),
+          voucherDateAd: payDateAd,
+          fiscalYearBs: '2082/083',
+          narration: `पुस्तकालय विलम्ब शुल्क संकलन - रसिद नं. ${receiptNumber} (कार्ड नं: ${cardNumber || '—'}, सदस्य: ${memberName || '—'})`,
+          totalDebit: amount,
+          totalCredit: amount,
+          status: 'POSTED',
+          referenceModule: 'LIBRARY_FINE',
+          referenceId: fineId,
+          createdById: currentUser.userId || currentUser.id,
+          approvedById: currentUser.userId || currentUser.id,
+        });
+
+        // Dr Cash / Bank
+        await db.insert(schema.journalVoucherItems).values({
+          id: crypto.randomUUID(),
+          voucherId: vId,
+          accountId: debitAcc.id,
+          particulars: `To Cash/Bank received for Library Fine Receipt ${receiptNumber}`,
+          debitAmount: amount,
+          creditAmount: 0,
+          displayOrder: 1,
+        });
+
+        // Cr Library Fine Income
+        await db.insert(schema.journalVoucherItems).values({
+          id: crypto.randomUUID(),
+          voucherId: vId,
+          accountId: creditAcc.id,
+          particulars: `By Library Fine & Penalties Income against Card ${cardNumber || '—'}`,
+          debitAmount: 0,
+          creditAmount: amount,
+          displayOrder: 2,
+        });
+
+        // Update running balances
+        await db.update(schema.chartOfAccounts).set({
+          currentBalanceDr: (debitAcc.currentBalanceDr || 0) + amount,
+        }).where(eq(schema.chartOfAccounts.id, debitAcc.id));
+
+        await db.update(schema.chartOfAccounts).set({
+          currentBalanceCr: (creditAcc.currentBalanceCr || 0) + amount,
+        }).where(eq(schema.chartOfAccounts.id, creditAcc.id));
+
+        // Link voucherId in library_fines
+        await db.update(schema.libraryFines).set({
+          voucherId: vId,
+        }).where(eq(schema.libraryFines.id, fineId));
+
+        return { voucherId: vId, voucherNumber: vNum };
+      }
+    } catch (jvErr) {
+      console.error('[Library Fine Journal Voucher Error]', jvErr);
+    }
+    return null;
+  }
 
   // ==========================================
   // 6. Overdue Fines & Settlements (जरिवाना संकलन)
@@ -909,6 +1149,11 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
     });
     const bookMap = new Map<string, any>(books.map((b: any) => [b.id, b]));
 
+    const vouchers = await db.query.journalVouchers.findMany({
+      where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId),
+    });
+    const voucherMap = new Map<string, any>(vouchers.map((v: any) => [v.id, v]));
+
     const result = fines.map((f: any) => {
       const mem = memberMap.get(f.memberId);
       const cir = cirMap.get(f.circulationId);
@@ -940,6 +1185,7 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
         bookTitleEn: book?.titleEn || '',
         bookTitleNp: book?.titleNp || '',
         accessionNumber: copy?.accessionNumber || '',
+        voucherNumber: f.voucherId ? voucherMap.get(f.voucherId)?.voucherNumber || null : null,
       };
     });
 
@@ -975,10 +1221,34 @@ export default async function libraryRoutes(fastify: FastifyInstance) {
       collectedById: currentUser.userId || null,
     }).where(eq(schema.libraryFines.id, id));
 
+    let jvResult: any = null;
+    if (paidAmount > 0) {
+      const mem = await db.query.libraryMembers.findFirst({
+        where: (t: any, { eq }: any) => eq(t.id, fine.memberId),
+      });
+      const s = mem?.studentId ? await db.query.students.findFirst({ where: (t: any, { eq }: any) => eq(t.id, mem.studentId) }) : null;
+      const st = mem?.staffId ? await db.query.staff.findFirst({ where: (t: any, { eq }: any) => eq(t.id, mem.staffId) }) : null;
+      const memName = s ? `${s.firstNameNp || s.firstNameEn} ${s.lastNameNp || s.lastNameEn}` : (st ? (st.fullNameNp || st.fullNameEn) : 'Member');
+
+      jvResult = await createLibraryFineJournalVoucher({
+        db,
+        currentUser,
+        fineId: id,
+        amount: paidAmount,
+        receiptNumber,
+        paymentDateBs: todayBs,
+        cardNumber: mem?.cardNumber,
+        memberName: memName,
+        paymentMode: body.paymentMode || 'CASH',
+      });
+    }
+
     return reply.send({
       success: true,
       receiptNumber,
-      message: 'जरिवाना भुक्तानी दर्ता गरियो',
+      voucherId: jvResult?.voucherId || null,
+      voucherNumber: jvResult?.voucherNumber || null,
+      message: 'जरिवाना भुक्तानी दर्ता गरियो (लेखा भौचर प्रविष्ट भयो)',
     });
   });
 

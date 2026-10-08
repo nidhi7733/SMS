@@ -1050,9 +1050,18 @@ export async function runMigrationsAndSeed() {
       receipt_number TEXT,
       payment_date_bs TEXT,
       collected_by_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      voucher_id TEXT REFERENCES journal_vouchers(id) ON DELETE SET NULL,
       created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  try {
+    await db.execute(sql`
+      ALTER TABLE library_fines ADD COLUMN IF NOT EXISTS voucher_id TEXT REFERENCES journal_vouchers(id) ON DELETE SET NULL
+    `);
+  } catch (altErr) {
+    // column already exists or table freshly created
+  }
 
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
@@ -2552,6 +2561,7 @@ export async function runMigrationsAndSeed() {
       { code: '4001', nameEn: 'Monthly Tuition Fee Income', nameNp: 'मासिक पढाइ शुल्क आम्दानी', groupCode: '4000', isSystemAccount: true, openingCr: 0, currentCr: 0 },
       { code: '4002', nameEn: 'Admission & Annual Fee Income', nameNp: 'भर्ना तथा वार्षिक शुल्क आम्दानी', groupCode: '4000', isSystemAccount: false, openingCr: 0, currentCr: 0 },
       { code: '4003', nameEn: 'Examination Fee Income', nameNp: 'परीक्षा शुल्क आम्दानी', groupCode: '4000', isSystemAccount: false, openingCr: 0, currentCr: 0 },
+      { code: '4005', nameEn: 'Library Fine & Penalties Income', nameNp: 'पुस्तकालय जरिवाना तथा विलम्ब शुल्क आम्दानी', groupCode: '4000', isSystemAccount: true, openingCr: 0, currentCr: 0 },
       { code: '4101', nameEn: 'Government Grants & Aid', nameNp: 'सरकारी अनुदान तथा राहत', groupCode: '4100', isSystemAccount: false, openingCr: 0, currentCr: 0 },
       { code: '5001', nameEn: 'Staff Salary & Allowance Expense', nameNp: 'शिक्षक तथा कर्मचारी पारिश्रमिक खर्च', groupCode: '5000', isSystemAccount: false, openingDr: 0, currentDr: 0 },
       { code: '5002', nameEn: 'Office Stationery & Printing Expense', nameNp: 'कार्यालय स्टेसनरी तथा छपाइ खर्च', groupCode: '5000', isSystemAccount: false, openingDr: 0, currentDr: 0 },

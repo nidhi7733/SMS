@@ -975,6 +975,7 @@ export const libraryFines = pgTable('library_fines', {
   receiptNumber: text('receipt_number'),
   paymentDateBs: text('payment_date_bs'),
   collectedById: text('collected_by_id').references(() => users.id, { onDelete: 'set null' }),
+  voucherId: text('voucher_id').references(() => journalVouchers.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
