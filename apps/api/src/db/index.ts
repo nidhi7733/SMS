@@ -29,28 +29,44 @@ export async function getDb() {
     }
     console.log(`[DB] Initializing embedded persistent PostgreSQL at ${dataDir}...`);
     // Clean up any stale postmaster.pid or lock file left by previous process crash
-    const pidFile = path.join(dataDir, 'postmaster.pid');
-    if (fs.existsSync(pidFile)) {
-      try {
-        fs.unlinkSync(pidFile);
-        console.log(`[DB] Removed stale ${pidFile}`);
-      } catch (e) {
-        // ignore
+    const cleanStaleLocks = (dir: string) => {
+      const lockFiles = ['postmaster.pid', '.s.PGSQL.5432.lock', '.s.PGSQL.5432.lock.out'];
+      for (const f of lockFiles) {
+        const filePath = path.join(dir, f);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`[DB] Removed stale ${filePath}`);
+          } catch {
+            // ignore
+          }
+        }
       }
-    }
-    const lockFile = path.join(dataDir, '.s.PGSQL.5432.lock.out');
-    if (fs.existsSync(lockFile)) {
-      try {
-        fs.unlinkSync(lockFile);
-        console.log(`[DB] Removed stale ${lockFile}`);
-      } catch (e) {
-        // ignore
-      }
-    }
+    };
 
-    const pglite = new PGlite(dataDir);
-    await pglite.waitReady;
-    dbInstance = drizzlePglite(pglite, { schema });
+    cleanStaleLocks(dataDir);
+
+    try {
+      const pglite = new PGlite(dataDir);
+      await pglite.waitReady;
+      dbInstance = drizzlePglite(pglite, { schema });
+    } catch (err: any) {
+      console.error('[DB] Warning: Failed to resume existing database due to corruption or torn WAL:', err?.message || err);
+      console.log('[DB] Recovering database: backing up corrupted store and re-initializing cleanly...');
+      const backupDir = `${dataDir}_corrupt_${Date.now()}`;
+      try {
+        fs.renameSync(dataDir, backupDir);
+        console.log(`[DB] Corrupted data moved to ${backupDir}`);
+      } catch (renameErr) {
+        console.error('[DB] Could not rename corrupted dir:', renameErr);
+      }
+      fs.mkdirSync(dataDir, { recursive: true });
+      cleanStaleLocks(dataDir);
+      const freshPglite = new PGlite(dataDir);
+      await freshPglite.waitReady;
+      dbInstance = drizzlePglite(freshPglite, { schema });
+      console.log('[DB] Fresh database initialized successfully.');
+    }
   }
 
   return dbInstance;

@@ -178,6 +178,15 @@ export const Login: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setDemoUser('admin_staff')}
+                className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold transition text-left flex items-center space-x-1.5"
+                title="प्रशासनिक कर्मचारी (Prakash Adhikari)"
+              >
+                <span>🗂️</span>
+                <span className="truncate">Admin Staff</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setDemoUser('librarian')}
                 className="px-2 py-1.5 text-xs bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/40 hover:text-blue-700 dark:hover:text-blue-300 rounded-lg border border-slate-200 dark:border-slate-700 font-semibold transition text-left flex items-center space-x-1.5"
                 title="पुस्तकालय प्रमुख (Santosh Shrestha)"
