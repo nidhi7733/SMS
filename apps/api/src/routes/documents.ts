@@ -563,6 +563,19 @@ export default async function documentRoutes(fastify: FastifyInstance) {
     return reply.status(201).send(newIssued);
   });
 
+  fastify.delete('/issued/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const currentUser = (request as any).user;
+    const { id } = request.params as { id: string };
+
+    await db
+      .delete(schema.issuedOfficialLetters)
+      .where(and(eq(schema.issuedOfficialLetters.id, id), eq(schema.issuedOfficialLetters.schoolId, currentUser.schoolId)));
+
+    return reply.send({ message: 'जारी गरिएको पत्र हटाइयो' });
+  });
+
   // ==========================================
   // 6. Institutional Archives (संस्थागत अभिलेखालय)
   // ==========================================

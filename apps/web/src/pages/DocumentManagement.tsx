@@ -151,6 +151,12 @@ export const DocumentManagement: React.FC = () => {
   const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
   const [printLetterData, setPrintLetterData] = useState<IssuedLetter | null>(null);
 
+  // Edit states
+  const [editingInward, setEditingInward] = useState<InwardDoc | null>(null);
+  const [editingOutward, setEditingOutward] = useState<OutwardDoc | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
+  const [editingArchive, setEditingArchive] = useState<InstitutionalArchive | null>(null);
+
   // Form states
   const [inwardForm, setInwardForm] = useState({
     dartaNo: '',
@@ -208,6 +214,131 @@ export const DocumentManagement: React.FC = () => {
     tags: '',
     confidentialityLevel: 'RESTRICTED',
   });
+
+  // Modal Open Handlers
+  const openAddInward = () => {
+    setEditingInward(null);
+    setInwardForm({
+      dartaNo: '',
+      fiscalYear: fiscalYearFilter || '2082/083',
+      registeredDateBs: '2083-01-15',
+      senderOrganization: '',
+      senderLetterNo: '',
+      senderLetterDateBs: '',
+      subject: '',
+      category: 'GOVERNMENT',
+      priority: 'NORMAL',
+      status: 'PENDING',
+      scannedFileUrl: '',
+      receiverStaffId: '',
+      remarks: '',
+    });
+    setIsInwardModalOpen(true);
+  };
+
+  const openEditInward = (doc: InwardDoc) => {
+    setEditingInward(doc);
+    setInwardForm({
+      dartaNo: String(doc.dartaNo),
+      fiscalYear: doc.fiscalYear,
+      registeredDateBs: doc.registeredDateBs,
+      senderOrganization: doc.senderOrganization,
+      senderLetterNo: doc.senderLetterNo || '',
+      senderLetterDateBs: doc.senderLetterDateBs || '',
+      subject: doc.subject,
+      category: doc.category,
+      priority: doc.priority,
+      status: doc.status,
+      scannedFileUrl: doc.scannedFileUrl || '',
+      receiverStaffId: doc.receiverStaffId || '',
+      remarks: doc.remarks || '',
+    });
+    setIsInwardModalOpen(true);
+  };
+
+  const openAddOutward = () => {
+    setEditingOutward(null);
+    setOutwardForm({
+      chalaniNo: '',
+      fiscalYear: fiscalYearFilter || '2082/083',
+      dispatchDateBs: '2083-01-15',
+      recipientOrganization: '',
+      subject: '',
+      category: 'RECOMMENDATION',
+      dispatchMode: 'HAND_DELIVERY',
+      signatoryStaffId: '',
+      scannedFileUrl: '',
+      remarks: '',
+    });
+    setIsOutwardModalOpen(true);
+  };
+
+  const openEditOutward = (doc: OutwardDoc) => {
+    setEditingOutward(doc);
+    setOutwardForm({
+      chalaniNo: String(doc.chalaniNo),
+      fiscalYear: doc.fiscalYear,
+      dispatchDateBs: doc.dispatchDateBs,
+      recipientOrganization: doc.recipientOrganization,
+      subject: doc.subject,
+      category: doc.category,
+      dispatchMode: doc.dispatchMode,
+      signatoryStaffId: doc.signatoryStaffId || '',
+      scannedFileUrl: doc.scannedFileUrl || '',
+      remarks: doc.remarks || '',
+    });
+    setIsOutwardModalOpen(true);
+  };
+
+  const openAddTemplate = () => {
+    setEditingTemplate(null);
+    setTemplateForm({
+      code: '',
+      titleEn: '',
+      titleNp: '',
+      category: 'GENERAL',
+      templateBodyHtml: '',
+    });
+    setIsTemplateModalOpen(true);
+  };
+
+  const openEditTemplate = (tpl: LetterTemplate) => {
+    setEditingTemplate(tpl);
+    setTemplateForm({
+      code: tpl.code,
+      titleEn: tpl.titleEn,
+      titleNp: tpl.titleNp,
+      category: tpl.category,
+      templateBodyHtml: tpl.templateBodyHtml,
+    });
+    setIsTemplateModalOpen(true);
+  };
+
+  const openAddArchive = () => {
+    setEditingArchive(null);
+    setArchiveForm({
+      title: '',
+      category: 'MISCELLANEOUS',
+      documentYearBs: 2083,
+      fileUrl: '',
+      tags: '',
+      confidentialityLevel: 'RESTRICTED',
+    });
+    setIsArchiveModalOpen(true);
+  };
+
+  const openEditArchive = (arch: InstitutionalArchive) => {
+    setEditingArchive(arch);
+    setArchiveForm({
+      title: arch.title,
+      category: arch.category,
+      documentYearBs: arch.documentYearBs || 2083,
+      fileUrl: arch.fileUrl,
+      tags: Array.isArray(arch.tags) ? arch.tags.join(', ') : (arch.tags || ''),
+      confidentialityLevel: arch.confidentialityLevel,
+    });
+    setIsArchiveModalOpen(true);
+  };
 
   const getAuthHeaders = (extra: Record<string, string> = {}) => {
     const token = localStorage.getItem('sms_token') || '';
@@ -270,13 +401,16 @@ export const DocumentManagement: React.FC = () => {
   const handleSaveInward = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/documents/inward', {
-        method: 'POST',
+      const url = editingInward ? `/api/documents/inward/${editingInward.id}` : '/api/documents/inward';
+      const method = editingInward ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(inwardForm),
       });
       if (res.ok) {
         setIsInwardModalOpen(false);
+        setEditingInward(null);
         fetchData();
         setInwardForm({
           dartaNo: '',
@@ -295,7 +429,7 @@ export const DocumentManagement: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        alert(err.message || 'Error creating inward record');
+        alert(err.message || 'Error saving inward record');
       }
     } catch (err) {
       console.error(err);
@@ -305,13 +439,16 @@ export const DocumentManagement: React.FC = () => {
   const handleSaveOutward = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/documents/outward', {
-        method: 'POST',
+      const url = editingOutward ? `/api/documents/outward/${editingOutward.id}` : '/api/documents/outward';
+      const method = editingOutward ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(outwardForm),
       });
       if (res.ok) {
         setIsOutwardModalOpen(false);
+        setEditingOutward(null);
         fetchData();
         setOutwardForm({
           chalaniNo: '',
@@ -327,7 +464,7 @@ export const DocumentManagement: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        alert(err.message || 'Error creating outward record');
+        alert(err.message || 'Error saving outward record');
       }
     } catch (err) {
       console.error(err);
@@ -359,13 +496,16 @@ export const DocumentManagement: React.FC = () => {
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/documents/templates', {
-        method: 'POST',
+      const url = editingTemplate ? `/api/documents/templates/${editingTemplate.id}` : '/api/documents/templates';
+      const method = editingTemplate ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(templateForm),
       });
       if (res.ok) {
         setIsTemplateModalOpen(false);
+        setEditingTemplate(null);
         fetchData();
         setTemplateForm({
           code: '',
@@ -374,6 +514,9 @@ export const DocumentManagement: React.FC = () => {
           category: 'GENERAL',
           templateBodyHtml: '',
         });
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Error saving template');
       }
     } catch (err) {
       console.error(err);
@@ -383,13 +526,16 @@ export const DocumentManagement: React.FC = () => {
   const handleSaveArchive = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/documents/archives', {
-        method: 'POST',
+      const url = editingArchive ? `/api/documents/archives/${editingArchive.id}` : '/api/documents/archives';
+      const method = editingArchive ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(archiveForm),
       });
       if (res.ok) {
         setIsArchiveModalOpen(false);
+        setEditingArchive(null);
         fetchData();
         setArchiveForm({
           title: '',
@@ -399,6 +545,9 @@ export const DocumentManagement: React.FC = () => {
           tags: '',
           confidentialityLevel: 'RESTRICTED',
         });
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Error saving archive');
       }
     } catch (err) {
       console.error(err);
@@ -438,7 +587,7 @@ export const DocumentManagement: React.FC = () => {
           {activeTab === 'inward' && (
             <button
               data-testid="btn-add-inward"
-              onClick={() => setIsInwardModalOpen(true)}
+              onClick={openAddInward}
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -447,7 +596,7 @@ export const DocumentManagement: React.FC = () => {
           )}
           {activeTab === 'outward' && (
             <button
-              onClick={() => setIsOutwardModalOpen(true)}
+              onClick={openAddOutward}
               className="flex items-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -464,7 +613,7 @@ export const DocumentManagement: React.FC = () => {
                 {isNp ? 'सिफारिस पत्र जारी' : 'Issue Official Letter'}
               </button>
               <button
-                onClick={() => setIsTemplateModalOpen(true)}
+                onClick={openAddTemplate}
                 className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -474,7 +623,7 @@ export const DocumentManagement: React.FC = () => {
           )}
           {activeTab === 'archives' && (
             <button
-              onClick={() => setIsArchiveModalOpen(true)}
+              onClick={openAddArchive}
               className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -709,14 +858,23 @@ export const DocumentManagement: React.FC = () => {
                           {doc.status}
                         </span>
                       </td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => handleDelete('inward', doc.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => openEditInward(doc)}
+                            className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded"
+                            title={isNp ? 'दर्ता सम्पादन' : 'Edit Inward'}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('inward', doc.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -805,14 +963,23 @@ export const DocumentManagement: React.FC = () => {
                       <td className="p-3 text-xs text-slate-600 dark:text-slate-400">
                         {doc.signatoryStaffName || '-'}
                       </td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => handleDelete('outward', doc.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => openEditOutward(doc)}
+                            className="p-1 text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 rounded"
+                            title={isNp ? 'चलानी सम्पादन' : 'Edit Outward'}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('outward', doc.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -852,7 +1019,23 @@ export const DocumentManagement: React.FC = () => {
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">{tpl.titleEn}</p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEditTemplate(tpl)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded"
+                        title={isNp ? 'ढाँचा सम्पादन' : 'Edit Template'}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete('templates', tpl.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded"
+                        title={isNp ? 'ढाँचा मेटाउनुहोस्' : 'Delete Template'}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         setIssueForm((prev) => ({ ...prev, templateId: tpl.id }));
@@ -912,14 +1095,23 @@ export const DocumentManagement: React.FC = () => {
                         <td className="p-3 text-xs text-slate-600 dark:text-slate-400">
                           {letItem.signatoryStaffName || '-'}
                         </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => setPrintLetterData(letItem)}
-                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded"
-                            title="View / Print"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setPrintLetterData(letItem)}
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded"
+                              title={isNp ? 'प्रिन्ट / हेर्नुहोस्' : 'View / Print'}
+                            >
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete('issued', letItem.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded"
+                              title={isNp ? 'मेटाउनुहोस्' : 'Delete'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -983,8 +1175,16 @@ export const DocumentManagement: React.FC = () => {
                       {isNp ? 'खोल्नुहोस्' : 'View'}
                     </a>
                     <button
+                      onClick={() => openEditArchive(arch)}
+                      className="p-1.5 text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded"
+                      title={isNp ? 'अभिलेख सम्पादन' : 'Edit Archive'}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => handleDelete('archives', arch.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 rounded"
+                      title={isNp ? 'मेटाउनुहोस्' : 'Delete'}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1005,7 +1205,9 @@ export const DocumentManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Inbox className="w-5 h-5 text-emerald-600" />
-                {isNp ? 'नयाँ दर्ता प्रविष्टि' : 'New Inward Registration'}
+                {editingInward
+                  ? (isNp ? 'दर्ता विवरण सम्पादन' : 'Edit Inward Registration')
+                  : (isNp ? 'नयाँ दर्ता प्रविष्टि' : 'New Inward Registration')}
               </h3>
               <button onClick={() => setIsInwardModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1192,7 +1394,9 @@ export const DocumentManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'दर्ता सुरक्षित गर्नुहोस्' : 'Save Registration'}
+                  {editingInward
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Record')
+                    : (isNp ? 'दर्ता सुरक्षित गर्नुहोस्' : 'Save Registration')}
                 </button>
               </div>
             </form>
@@ -1209,7 +1413,9 @@ export const DocumentManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Send className="w-5 h-5 text-sky-600" />
-                {isNp ? 'नयाँ चलानी प्रविष्टि' : 'New Outward Registration'}
+                {editingOutward
+                  ? (isNp ? 'चलानी विवरण सम्पादन' : 'Edit Outward Entry')
+                  : (isNp ? 'नयाँ चलानी प्रविष्टि' : 'New Outward Registration')}
               </h3>
               <button onClick={() => setIsOutwardModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1339,7 +1545,9 @@ export const DocumentManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-sky-600 hover:bg-sky-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'चलानी सुरक्षित गर्नुहोस्' : 'Save Chalani'}
+                  {editingOutward
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Record')
+                    : (isNp ? 'चलानी सुरक्षित गर्नुहोस्' : 'Save Chalani')}
                 </button>
               </div>
             </form>
@@ -1543,7 +1751,9 @@ export const DocumentManagement: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-xl max-w-xl w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                {isNp ? 'नयाँ सिफारिस पत्र ढाँचा सिर्जना' : 'Create New Letter Template'}
+                {editingTemplate
+                  ? (isNp ? 'सिफारिस ढाँचा सम्पादन' : 'Edit Recommendation Template')
+                  : (isNp ? 'नयाँ सिफारिस पत्र ढाँचा सिर्जना' : 'Create New Letter Template')}
               </h3>
               <button onClick={() => setIsTemplateModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1640,7 +1850,9 @@ export const DocumentManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-slate-800 hover:bg-slate-900 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'ढाँचा सुरक्षित गर्नुहोस्' : 'Save Template'}
+                  {editingTemplate
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Template')
+                    : (isNp ? 'ढाँचा सुरक्षित गर्नुहोस्' : 'Save Template')}
                 </button>
               </div>
             </form>
@@ -1657,7 +1869,9 @@ export const DocumentManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Archive className="w-5 h-5 text-purple-600" />
-                {isNp ? 'संस्थागत डिजिटल अभिलेखालयमा कागजात थप्नुहोस्' : 'Add to Institutional Archive'}
+                {editingArchive
+                  ? (isNp ? 'अभिलेख सम्पादन' : 'Edit Archived Document')
+                  : (isNp ? 'संस्थागत डिजिटल अभिलेखालयमा कागजात थप्नुहोस्' : 'Add to Institutional Archive')}
               </h3>
               <button onClick={() => setIsArchiveModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1767,7 +1981,9 @@ export const DocumentManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'अभिलेख सुरक्षित गर्नुहोस्' : 'Save Archive'}
+                  {editingArchive
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Document')
+                    : (isNp ? 'अभिलेख सुरक्षित गर्नुहोस्' : 'Save Archive')}
                 </button>
               </div>
             </form>

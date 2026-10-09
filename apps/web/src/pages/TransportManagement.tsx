@@ -161,6 +161,13 @@ export const TransportManagement: React.FC = () => {
   const [isMaintModalOpen, setIsMaintModalOpen] = useState(false);
   const [printManifestData, setPrintManifestData] = useState<TransportRoute | null>(null);
 
+  // Editing states
+  const [editingVehicle, setEditingVehicle] = useState<TransportVehicle | null>(null);
+  const [editingRoute, setEditingRoute] = useState<TransportRoute | null>(null);
+  const [editingStop, setEditingStop] = useState<TransportStop | null>(null);
+  const [editingAlloc, setEditingAlloc] = useState<StudentAllocation | null>(null);
+  const [editingMaint, setEditingMaint] = useState<MaintenanceLog | null>(null);
+
   // Forms
   const [vehicleForm, setVehicleForm] = useState({
     vehicleNumber: '',
@@ -214,6 +221,155 @@ export const TransportManagement: React.FC = () => {
     invoiceNo: '',
     remarks: '',
   });
+
+  // Open Add / Edit Handlers
+  const openAddVehicle = () => {
+    setEditingVehicle(null);
+    setVehicleForm({
+      vehicleNumber: '',
+      vehicleType: 'BUS',
+      capacity: 32,
+      fuelType: 'DIESEL',
+      modelYear: '2022',
+      bluebookExpiryBs: '2083-12-30',
+      insuranceExpiryBs: '2083-12-30',
+      pollutionExpiryBs: '2083-12-30',
+      status: 'ACTIVE',
+      notes: '',
+    });
+    setIsVehicleModalOpen(true);
+  };
+
+  const openEditVehicle = (v: TransportVehicle) => {
+    setEditingVehicle(v);
+    setVehicleForm({
+      vehicleNumber: v.vehicleNumber,
+      vehicleType: v.vehicleType,
+      capacity: v.capacity,
+      fuelType: v.fuelType,
+      modelYear: v.modelYear || '2022',
+      bluebookExpiryBs: v.bluebookExpiryBs,
+      insuranceExpiryBs: v.insuranceExpiryBs,
+      pollutionExpiryBs: v.pollutionExpiryBs || '2083-12-30',
+      status: v.status,
+      notes: v.notes || '',
+    });
+    setIsVehicleModalOpen(true);
+  };
+
+  const openAddRoute = () => {
+    setEditingRoute(null);
+    setRouteForm({
+      routeNameEn: '',
+      routeNameNp: '',
+      startPoint: '',
+      endPoint: '',
+      vehicleId: '',
+      driverId: '',
+      helperId: '',
+    });
+    setIsRouteModalOpen(true);
+  };
+
+  const openEditRoute = (rt: TransportRoute) => {
+    setEditingRoute(rt);
+    setRouteForm({
+      routeNameEn: rt.routeNameEn,
+      routeNameNp: rt.routeNameNp,
+      startPoint: rt.startPoint,
+      endPoint: rt.endPoint,
+      vehicleId: rt.vehicleId || '',
+      driverId: rt.driverId || '',
+      helperId: rt.helperId || '',
+    });
+    setIsRouteModalOpen(true);
+  };
+
+  const openAddStop = (routeId: string, currentStopCount: number) => {
+    setEditingStop(null);
+    setSelectedRouteForStop(routeId);
+    setStopForm({
+      routeId,
+      stopOrder: currentStopCount + 1,
+      stopNameEn: '',
+      stopNameNp: '',
+      morningPickupTime: '07:30',
+      eveningDropTime: '16:00',
+      monthlyFare: 1500,
+    });
+    setIsStopModalOpen(true);
+  };
+
+  const openEditStop = (st: TransportStop, routeId: string) => {
+    setEditingStop(st);
+    setSelectedRouteForStop(routeId);
+    setStopForm({
+      routeId,
+      stopOrder: st.stopOrder,
+      stopNameEn: st.stopNameEn,
+      stopNameNp: st.stopNameNp,
+      morningPickupTime: st.morningPickupTime,
+      eveningDropTime: st.eveningDropTime,
+      monthlyFare: st.monthlyFare,
+    });
+    setIsStopModalOpen(true);
+  };
+
+  const openAddAllocation = () => {
+    setEditingAlloc(null);
+    setAllocForm({
+      studentId: '',
+      routeId: '',
+      stopId: '',
+      startDateBs: '2083-01-15',
+      remarks: '',
+    });
+    setIsAllocModalOpen(true);
+  };
+
+  const openEditAlloc = (al: StudentAllocation) => {
+    setEditingAlloc(al);
+    setAllocForm({
+      studentId: al.studentId,
+      routeId: al.routeId,
+      stopId: al.stopId,
+      startDateBs: al.startDateBs,
+      remarks: al.remarks || '',
+    });
+    setIsAllocModalOpen(true);
+  };
+
+  const openAddMaintenance = () => {
+    setEditingMaint(null);
+    setMaintForm({
+      vehicleId: '',
+      logDateBs: '2083-01-15',
+      logType: 'FUEL',
+      odometerKm: '',
+      fuelQuantityLiters: '',
+      totalCost: '',
+      vendorName: '',
+      invoiceNo: '',
+      remarks: '',
+    });
+    setIsMaintModalOpen(true);
+  };
+
+  const openEditMaint = (log: MaintenanceLog) => {
+    setEditingMaint(log);
+    setMaintForm({
+      vehicleId: log.vehicleId,
+      logDateBs: log.logDateBs,
+      logType: log.logType,
+      odometerKm: log.odometerKm !== undefined && log.odometerKm !== null ? String(log.odometerKm) : '',
+      fuelQuantityLiters: log.fuelQuantityLiters !== undefined && log.fuelQuantityLiters !== null ? String(log.fuelQuantityLiters) : '',
+      totalCost: String(log.totalCost),
+      vendorName: log.vendorName || '',
+      invoiceNo: log.invoiceNo || '',
+      remarks: log.remarks || '',
+    });
+    setIsMaintModalOpen(true);
+  };
 
   const getAuthHeaders = (extra: Record<string, string> = {}) => {
     const token = localStorage.getItem('sms_token') || '';
@@ -275,13 +431,16 @@ export const TransportManagement: React.FC = () => {
   const handleSaveVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/transport/vehicles', {
-        method: 'POST',
+      const url = editingVehicle ? `/api/transport/vehicles/${editingVehicle.id}` : '/api/transport/vehicles';
+      const method = editingVehicle ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(vehicleForm),
       });
       if (res.ok) {
         setIsVehicleModalOpen(false);
+        setEditingVehicle(null);
         fetchData();
         setVehicleForm({
           vehicleNumber: '',
@@ -297,7 +456,7 @@ export const TransportManagement: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        alert(err.message || 'Error creating vehicle');
+        alert(err.message || 'Error saving vehicle');
       }
     } catch (err) {
       console.error(err);
@@ -307,13 +466,16 @@ export const TransportManagement: React.FC = () => {
   const handleSaveRoute = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/transport/routes', {
-        method: 'POST',
+      const url = editingRoute ? `/api/transport/routes/${editingRoute.id}` : '/api/transport/routes';
+      const method = editingRoute ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(routeForm),
       });
       if (res.ok) {
         setIsRouteModalOpen(false);
+        setEditingRoute(null);
         fetchData();
         setRouteForm({
           routeNameEn: '',
@@ -326,7 +488,7 @@ export const TransportManagement: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        alert(err.message || 'Error creating route');
+        alert(err.message || 'Error saving route');
       }
     } catch (err) {
       console.error(err);
@@ -336,13 +498,16 @@ export const TransportManagement: React.FC = () => {
   const handleSaveStop = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/transport/stops', {
-        method: 'POST',
+      const url = editingStop ? `/api/transport/stops/${editingStop.id}` : '/api/transport/stops';
+      const method = editingStop ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify({ ...stopForm, routeId: selectedRouteForStop }),
       });
       if (res.ok) {
         setIsStopModalOpen(false);
+        setEditingStop(null);
         fetchData();
         setStopForm({
           routeId: '',
@@ -353,6 +518,9 @@ export const TransportManagement: React.FC = () => {
           eveningDropTime: '16:00',
           monthlyFare: 1500,
         });
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Error saving stop');
       }
     } catch (err) {
       console.error(err);
@@ -362,13 +530,16 @@ export const TransportManagement: React.FC = () => {
   const handleSaveAllocation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/transport/allocations', {
-        method: 'POST',
+      const url = editingAlloc ? `/api/transport/allocations/${editingAlloc.id}` : '/api/transport/allocations';
+      const method = editingAlloc ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(allocForm),
       });
       if (res.ok) {
         setIsAllocModalOpen(false);
+        setEditingAlloc(null);
         fetchData();
         setAllocForm({
           studentId: '',
@@ -379,7 +550,7 @@ export const TransportManagement: React.FC = () => {
         });
       } else {
         const err = await res.json();
-        alert(err.message || 'Error allocating student');
+        alert(err.message || 'Error saving allocation');
       }
     } catch (err) {
       console.error(err);
@@ -389,13 +560,16 @@ export const TransportManagement: React.FC = () => {
   const handleSaveMaintenance = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/transport/maintenance', {
-        method: 'POST',
+      const url = editingMaint ? `/api/transport/maintenance/${editingMaint.id}` : '/api/transport/maintenance';
+      const method = editingMaint ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getAuthHeaders(),
         body: JSON.stringify(maintForm),
       });
       if (res.ok) {
         setIsMaintModalOpen(false);
+        setEditingMaint(null);
         fetchData();
         setMaintForm({
           vehicleId: '',
@@ -408,6 +582,9 @@ export const TransportManagement: React.FC = () => {
           invoiceNo: '',
           remarks: '',
         });
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Error saving maintenance log');
       }
     } catch (err) {
       console.error(err);
@@ -453,7 +630,7 @@ export const TransportManagement: React.FC = () => {
         <div className="flex items-center gap-2">
           {activeTab === 'vehicles' && (
             <button
-              onClick={() => setIsVehicleModalOpen(true)}
+              onClick={openAddVehicle}
               className="flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -462,7 +639,7 @@ export const TransportManagement: React.FC = () => {
           )}
           {activeTab === 'routes' && (
             <button
-              onClick={() => setIsRouteModalOpen(true)}
+              onClick={openAddRoute}
               className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -471,7 +648,7 @@ export const TransportManagement: React.FC = () => {
           )}
           {activeTab === 'allocations' && (
             <button
-              onClick={() => setIsAllocModalOpen(true)}
+              onClick={openAddAllocation}
               className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -480,7 +657,7 @@ export const TransportManagement: React.FC = () => {
           )}
           {activeTab === 'maintenance' && (
             <button
-              onClick={() => setIsMaintModalOpen(true)}
+              onClick={openAddMaintenance}
               className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium text-sm shadow-sm transition-colors"
             >
               <Plus className="w-4 h-4" />
@@ -678,11 +855,18 @@ export const TransportManagement: React.FC = () => {
 
               {v.notes && <p className="text-xs text-slate-400 italic">{v.notes}</p>}
 
-              <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => openEditVehicle(v)}
+                  className="p-1.5 text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 rounded transition-colors"
+                  title={isNp ? 'सवारी साधन सम्पादन' : 'Edit Vehicle'}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
                 <button
                   onClick={() => handleDelete('vehicles', v.id)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded"
-                  title="Delete"
+                  className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors"
+                  title={isNp ? 'मेटाउनुहोस्' : 'Delete'}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -718,11 +902,7 @@ export const TransportManagement: React.FC = () => {
                     {isNp ? `${toDevanagariDigits(rt.totalAllocatedStudents || 0)} जना विद्यार्थी` : `${rt.totalAllocatedStudents || 0} Students`}
                   </span>
                   <button
-                    onClick={() => {
-                      setSelectedRouteForStop(rt.id);
-                      setStopForm({ ...stopForm, routeId: rt.id, stopOrder: (rt.stops?.length || 0) + 1 });
-                      setIsStopModalOpen(true);
-                    }}
+                    onClick={() => openAddStop(rt.id, rt.stops?.length || 0)}
                     className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-md transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -734,6 +914,20 @@ export const TransportManagement: React.FC = () => {
                   >
                     <Printer className="w-3.5 h-3.5" />
                     {isNp ? 'यात्री सूची' : 'Manifest'}
+                  </button>
+                  <button
+                    onClick={() => openEditRoute(rt)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-slate-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                    title={isNp ? 'रुट सम्पादन' : 'Edit Route'}
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete('routes', rt.id)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+                    title={isNp ? 'रुट मेटाउनुहोस्' : 'Delete Route'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -774,7 +968,7 @@ export const TransportManagement: React.FC = () => {
                         <th className="p-2 w-28">{isNp ? 'बिहानी पिकअप' : 'Pickup'}</th>
                         <th className="p-2 w-28">{isNp ? 'बेलुकी ड्रप' : 'Drop'}</th>
                         <th className="p-2 w-28">{isNp ? 'मासिक भाडा' : 'Monthly Fare'}</th>
-                        <th className="p-2 w-12 text-center">{isNp ? 'हटाउनु' : 'Del'}</th>
+                        <th className="p-2 w-16 text-center">{isNp ? 'कार्य' : 'Action'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -791,13 +985,23 @@ export const TransportManagement: React.FC = () => {
                             <td className="p-2 font-bold text-slate-800 dark:text-slate-200">
                               रू. {isNp ? toDevanagariDigits(st.monthlyFare) : st.monthlyFare}
                             </td>
-                            <td className="p-2 text-center">
-                              <button
-                                onClick={() => handleDelete('stops', st.id)}
-                                className="text-slate-400 hover:text-rose-600"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                            <td className="p-2 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => openEditStop(st, rt.id)}
+                                  className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-0.5"
+                                  title={isNp ? 'स्टप सम्पादन' : 'Edit Stop'}
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete('stops', st.id)}
+                                  className="text-slate-400 hover:text-rose-600 p-0.5"
+                                  title={isNp ? 'स्टप मेटाउनुहोस्' : 'Delete Stop'}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -904,14 +1108,23 @@ export const TransportManagement: React.FC = () => {
                         <td className="p-3 font-semibold text-slate-900 dark:text-slate-100">
                           रू. {isNp ? toDevanagariDigits(al.monthlyFare) : al.monthlyFare}
                         </td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleDelete('allocations', al.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                            title="Unassign"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        <td className="p-3 text-center whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => openEditAlloc(al)}
+                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded"
+                              title={isNp ? 'बाँडफाँड सम्पादन' : 'Edit Allocation'}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete('allocations', al.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                              title={isNp ? 'बाँडफाँड रद्द' : 'Unassign'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -975,13 +1188,23 @@ export const TransportManagement: React.FC = () => {
                         {log.vendorName || '-'}
                         {log.invoiceNo && <span className="block text-slate-400">Inv: {log.invoiceNo}</span>}
                       </td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => handleDelete('maintenance', log.id)}
-                          className="text-slate-400 hover:text-rose-600"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="p-3 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => openEditMaint(log)}
+                            className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1"
+                            title={isNp ? 'लग सम्पादन' : 'Edit Log'}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete('maintenance', log.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1"
+                            title={isNp ? 'लग मेटाउनुहोस्' : 'Delete'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -1001,7 +1224,9 @@ export const TransportManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Bus className="w-5 h-5 text-amber-500" />
-                {isNp ? 'नयाँ सवारी साधन दर्ता' : 'Register Vehicle'}
+                {editingVehicle
+                  ? (isNp ? 'सवारी साधन सम्पादन' : 'Edit Vehicle Details')
+                  : (isNp ? 'नयाँ सवारी साधन दर्ता' : 'Register Vehicle')}
               </h3>
               <button onClick={() => setIsVehicleModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1124,7 +1349,9 @@ export const TransportManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-amber-600 hover:bg-amber-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'सुरक्षित गर्नुहोस्' : 'Save Vehicle'}
+                  {editingVehicle
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Vehicle')
+                    : (isNp ? 'सुरक्षित गर्नुहोस्' : 'Save Vehicle')}
                 </button>
               </div>
             </form>
@@ -1141,7 +1368,9 @@ export const TransportManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-600" />
-                {isNp ? 'नयाँ रुट निर्माण' : 'Create Route'}
+                {editingRoute
+                  ? (isNp ? 'रुट विवरण सम्पादन' : 'Edit Transport Route')
+                  : (isNp ? 'नयाँ रुट निर्माण' : 'Create Route')}
               </h3>
               <button onClick={() => setIsRouteModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1276,7 +1505,9 @@ export const TransportManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'रुट सुरक्षित गर्नुहोस्' : 'Save Route'}
+                  {editingRoute
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Route')
+                    : (isNp ? 'रुट सुरक्षित गर्नुहोस्' : 'Save Route')}
                 </button>
               </div>
             </form>
@@ -1293,7 +1524,9 @@ export const TransportManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-600" />
-                {isNp ? 'बस स्टप थप्नुहोस्' : 'Add Stop'}
+                {editingStop
+                  ? (isNp ? 'बस स्टप सम्पादन' : 'Edit Bus Stop')
+                  : (isNp ? 'बस स्टप थप्नुहोस्' : 'Add Stop')}
               </h3>
               <button onClick={() => setIsStopModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1394,7 +1627,9 @@ export const TransportManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'स्टप थप्नुहोस्' : 'Save Stop'}
+                  {editingStop
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Stop')
+                    : (isNp ? 'स्टप थप्नुहोस्' : 'Save Stop')}
                 </button>
               </div>
             </form>
@@ -1411,7 +1646,9 @@ export const TransportManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Users className="w-5 h-5 text-indigo-600" />
-                {isNp ? 'विद्यार्थी सिट बाँडफाँड' : 'Allocate Student to Bus'}
+                {editingAlloc
+                  ? (isNp ? 'सिट बाँडफाँड सम्पादन' : 'Edit Seat Allocation')
+                  : (isNp ? 'विद्यार्थी सिट बाँडफाँड' : 'Allocate Student to Bus')}
               </h3>
               <button onClick={() => setIsAllocModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1425,9 +1662,10 @@ export const TransportManagement: React.FC = () => {
                 </label>
                 <select
                   required
+                  disabled={!!editingAlloc}
                   value={allocForm.studentId}
                   onChange={(e) => setAllocForm({ ...allocForm, studentId: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700 disabled:opacity-60 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                 >
                   <option value="">-- विद्यार्थी छनोट --</option>
                   {students.map((st) => (
@@ -1504,7 +1742,9 @@ export const TransportManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'बाँडफाँड गर्नुहोस्' : 'Confirm Allocation'}
+                  {editingAlloc
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Allocation')
+                    : (isNp ? 'बाँडफाँड गर्नुहोस्' : 'Confirm Allocation')}
                 </button>
               </div>
             </form>
@@ -1521,7 +1761,9 @@ export const TransportManagement: React.FC = () => {
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Wrench className="w-5 h-5 text-rose-600" />
-                {isNp ? 'सवारी खर्च तथा इन्धन लगबुक' : 'Log Maintenance / Fuel Expense'}
+                {editingMaint
+                  ? (isNp ? 'लग प्रविष्टि सम्पादन' : 'Edit Maintenance / Fuel Log')
+                  : (isNp ? 'सवारी खर्च तथा इन्धन लगबुक' : 'Log Maintenance / Fuel Expense')}
               </h3>
               <button onClick={() => setIsMaintModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -1663,7 +1905,9 @@ export const TransportManagement: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-md font-semibold"
                 >
-                  {isNp ? 'खर्च सुरक्षित गर्नुहोस्' : 'Save Expense'}
+                  {editingMaint
+                    ? (isNp ? 'अद्यावधिक गर्नुहोस्' : 'Update Expense')
+                    : (isNp ? 'खर्च सुरक्षित गर्नुहोस्' : 'Save Expense')}
                 </button>
               </div>
             </form>
