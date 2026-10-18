@@ -409,6 +409,20 @@ export const staffLeaves = pgTable('staff_leaves', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 23.5. School Calendar Event Categories (डायनामिक क्यालेन्डर विधा / प्रकार)
+export const schoolCalendarEventCategories = pgTable('school_calendar_event_categories', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  code: text('code').notNull(),
+  nameNp: text('name_np').notNull(),
+  nameEn: text('name_en').notNull(),
+  color: text('color').notNull().default('#3b82f6'),
+  isHoliday: boolean('is_holiday').notNull().default(false),
+  isSystem: boolean('is_system').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // 24. School Calendar Events (Bikram Sambat Academic Calendar)
 export const schoolCalendarEvents = pgTable('school_calendar_events', {
   id: text('id').primaryKey(),
@@ -417,12 +431,16 @@ export const schoolCalendarEvents = pgTable('school_calendar_events', {
   titleEn: text('title_en').notNull(),
   titleNp: text('title_np').notNull(),
   description: text('description'),
-  eventType: text('event_type').notNull(), // PUBLIC_HOLIDAY, SCHOOL_HOLIDAY, EXAM_DAY, EVENT_SPORTS, EVENT_CULTURAL, MEETING, TRAINING
+  eventType: text('event_type').notNull(), // code matching school_calendar_event_categories.code
   startDateBs: text('start_date_bs').notNull(),
   endDateBs: text('end_date_bs').notNull(),
   startDateAd: text('start_date_ad').notNull(),
   endDateAd: text('end_date_ad').notNull(),
   isTeachingDay: boolean('is_teaching_day').notNull().default(false),
+  showOnWebsite: boolean('show_on_website').notNull().default(false),
+  eventTime: text('event_time'),
+  venueNp: text('venue_np'),
+  venueEn: text('venue_en'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -22,6 +22,54 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     return school?.id || 'default-school';
   };
 
+  const getPublicEvents = async (db: any, schoolId: string, limit?: number) => {
+    const syncedCalendarEvents = await db.query.schoolCalendarEvents.findMany({
+      where: (table: any, { eq, and }: any) =>
+        and(eq(table.schoolId, schoolId), eq(table.showOnWebsite, true)),
+      orderBy: (table: any, { asc }: any) => [asc(table.startDateBs)],
+      limit: limit || undefined,
+    });
+
+    if (syncedCalendarEvents.length > 0) {
+      const categories = await db.query.schoolCalendarEventCategories.findMany({
+        where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      });
+      const catMap = new Map<string, any>(categories.map((c: any) => [c.code, c]));
+
+      return syncedCalendarEvents.map((ev: any) => {
+        const cat: any = catMap.get(ev.eventType);
+        const dateDisplay =
+          ev.startDateBs === ev.endDateBs || !ev.endDateBs
+            ? ev.startDateBs
+            : `${ev.startDateBs} - ${ev.endDateBs}`;
+        return {
+          id: ev.id,
+          schoolId: ev.schoolId,
+          titleNp: ev.titleNp,
+          titleEn: ev.titleEn,
+          descriptionNp: ev.description || '',
+          descriptionEn: ev.description || '',
+          eventDateBs: dateDisplay,
+          eventTime: ev.eventTime || null,
+          venueNp: ev.venueNp || 'विद्यालय प्राङ्गण',
+          venueEn: ev.venueEn || 'School Premises',
+          categoryCode: ev.eventType,
+          categoryNameNp: cat?.nameNp || 'कार्यक्रम',
+          categoryNameEn: cat?.nameEn || 'Event',
+          categoryColor: cat?.color || '#3b82f6',
+          status: 'UPCOMING',
+          createdAt: ev.createdAt,
+        };
+      });
+    }
+
+    return await db.query.websiteEvents.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      orderBy: (table: any, { asc }: any) => [asc(table.eventDateBs)],
+      limit: limit || undefined,
+    });
+  };
+
   // =========================================================================
   // PUBLIC WEBSITE ENDPOINTS (Unauthenticated, for public school website)
   // =========================================================================
@@ -64,12 +112,8 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       limit: 10,
     });
 
-    // Fetch upcoming events
-    const upcomingEvents = await db.query.websiteEvents.findMany({
-      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
-      orderBy: (table: any, { asc }: any) => [asc(table.eventDateBs)],
-      limit: 6,
-    });
+    // Fetch upcoming events (from calendar events if showOnWebsite = true, fallback to website_events)
+    const upcomingEvents = await getPublicEvents(db, schoolId, 6);
 
     // Fetch featured gallery albums with images
     const albums = await db.query.websiteGalleryAlbums.findMany({
@@ -172,10 +216,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const db = await getDb();
     const schoolId = await getPublicSchoolId();
 
-    const events = await db.query.websiteEvents.findMany({
-      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
-      orderBy: (table: any, { asc }: any) => [asc(table.eventDateBs)],
-    });
+    const events = await getPublicEvents(db, schoolId);
 
     return reply.send({ events });
   });

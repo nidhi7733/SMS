@@ -455,9 +455,33 @@ export async function runMigrationsAndSeed() {
       start_date_ad TEXT,
       end_date_ad TEXT,
       is_teaching_day BOOLEAN NOT NULL DEFAULT false,
+      show_on_website BOOLEAN NOT NULL DEFAULT false,
+      event_time TEXT,
+      venue_np TEXT,
+      venue_en TEXT,
       created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS school_calendar_event_categories (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      name_np TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#3b82f6',
+      is_holiday BOOLEAN NOT NULL DEFAULT false,
+      is_system BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`ALTER TABLE school_calendar_events ADD COLUMN IF NOT EXISTS show_on_website BOOLEAN NOT NULL DEFAULT false;`);
+  await db.execute(sql`ALTER TABLE school_calendar_events ADD COLUMN IF NOT EXISTS event_time TEXT;`);
+  await db.execute(sql`ALTER TABLE school_calendar_events ADD COLUMN IF NOT EXISTS venue_np TEXT;`);
+  await db.execute(sql`ALTER TABLE school_calendar_events ADD COLUMN IF NOT EXISTS venue_en TEXT;`);
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS timetables (
@@ -3958,6 +3982,180 @@ export async function runMigrationsAndSeed() {
         vendorName: 'साझा सेवा पेट्रोल पम्प',
         invoiceNo: 'SS-9082',
         remarks: '५० लिटर डिजेल खरिद',
+      },
+    ]);
+  }
+
+  // =========================================================================
+  // 14.5. SEED SCHOOL CALENDAR CATEGORIES & SAMPLE EVENTS
+  // =========================================================================
+  const existingCalCategories = await db.query.schoolCalendarEventCategories.findFirst({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  if (!existingCalCategories) {
+    console.log('[Seed] Seeding default School Calendar Event Categories...');
+    await db.insert(schema.schoolCalendarEventCategories).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'PUBLIC_HOLIDAY',
+        nameNp: 'सार्वजनिक बिदा',
+        nameEn: 'Public Holiday',
+        color: '#f43f5e',
+        isHoliday: true,
+        isSystem: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'SCHOOL_HOLIDAY',
+        nameNp: 'स्थानीय / विद्यालय बिदा',
+        nameEn: 'School Holiday',
+        color: '#dc2626',
+        isHoliday: true,
+        isSystem: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'EXAM_DAY',
+        nameNp: 'परीक्षा तालिका',
+        nameEn: 'Exam Day',
+        color: '#2563eb',
+        isHoliday: false,
+        isSystem: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'EVENT_SPORTS',
+        nameNp: 'खेलकुद तथा अतिरिक्त',
+        nameEn: 'Sports & Athletics',
+        color: '#16a34a',
+        isHoliday: false,
+        isSystem: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'EVENT_CULTURAL',
+        nameNp: 'सांस्कृतिक तथा उत्सव',
+        nameEn: 'Cultural & Festival',
+        color: '#9333ea',
+        isHoliday: false,
+        isSystem: true,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'MEETING',
+        nameNp: 'बैठक तथा भेला',
+        nameEn: 'Meeting & Assembly',
+        color: '#d97706',
+        isHoliday: false,
+        isSystem: false,
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        code: 'TRAINING',
+        nameNp: 'शिक्षक तालिम',
+        nameEn: 'Teacher Training',
+        color: '#0d9488',
+        isHoliday: false,
+        isSystem: false,
+      },
+    ]);
+  }
+
+  const existingCalendarEvents = await db.query.schoolCalendarEvents.findFirst({
+    where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+  });
+
+  const activeAcadYear = await db.query.academicYears.findFirst({
+    where: (table: any, { eq, and }: any) => and(eq(table.schoolId, schoolId), eq(table.isCurrent, true)),
+  });
+  const currentAcademicYearId =
+    activeAcadYear?.id ||
+    (await db.query.academicYears.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    }))?.id;
+
+  if (!existingCalendarEvents && currentAcademicYearId) {
+    console.log('[Seed] Seeding initial School Calendar Events (including Website highlights)...');
+    await db.insert(schema.schoolCalendarEvents).values([
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        academicYearId: currentAcademicYearId,
+        titleNp: 'अन्तर-सदन वार्षिक खेलकुद सप्ताह २०८३',
+        titleEn: 'Annual Inter-House Sports Meet 2083',
+        description: 'फुटबल, भलिबल, एथलेटिक्स, ब्याडमिन्टन तथा चेस प्रतियोगिताहरू सञ्चालन हुने।',
+        eventType: 'EVENT_SPORTS',
+        startDateBs: '2083-08-10',
+        endDateBs: '2083-08-15',
+        startDateAd: '2026-11-26',
+        endDateAd: '2026-12-01',
+        isTeachingDay: false,
+        showOnWebsite: true,
+        eventTime: '१०:०० AM - ४:०० PM',
+        venueNp: 'विद्यालयको मूल खेलमैदान, नगराइन',
+        venueEn: 'Main School Grounds, Nagarain',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        academicYearId: currentAcademicYearId,
+        titleNp: 'सामुदायिक विज्ञान, रोबोटिक्स तथा नवप्रवर्तन मेला',
+        titleEn: 'Community Science, Robotics & Innovation Expo',
+        description: 'कक्षा ८ देखि १२ सम्मका विद्यार्थीहरूले निर्माण गरेका ५० भन्दा बढी वैज्ञानिक प्रोजेक्टहरूको सार्वजनिक प्रदर्शनी।',
+        eventType: 'EVENT_CULTURAL',
+        startDateBs: '2083-09-05',
+        endDateBs: '2083-09-06',
+        startDateAd: '2026-12-21',
+        endDateAd: '2026-12-22',
+        isTeachingDay: true,
+        showOnWebsite: true,
+        eventTime: '११:०० AM - ३:३० PM',
+        venueNp: 'विद्यालयको मल्टिपर्पज हल',
+        venueEn: 'School Multipurpose Auditorium',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        academicYearId: currentAcademicYearId,
+        titleNp: 'प्रथम त्रैमासिक परीक्षा २०८३',
+        titleEn: 'First Terminal Examination 2083',
+        description: 'कक्षा १ देखि १२ सम्मको पहिलो त्रैमासिक परीक्षा तालिका।',
+        eventType: 'EXAM_DAY',
+        startDateBs: '2083-05-15',
+        endDateBs: '2083-05-25',
+        startDateAd: '2026-08-31',
+        endDateAd: '2026-09-10',
+        isTeachingDay: false,
+        showOnWebsite: true,
+        eventTime: '१०:३० AM - १:३० PM',
+        venueNp: 'परीक्षा हलहरू',
+        venueEn: 'Examination Halls',
+      },
+      {
+        id: crypto.randomUUID(),
+        schoolId,
+        academicYearId: currentAcademicYearId,
+        titleNp: 'अभिभावक-शिक्षक अन्तरक्रिया तथा पहिलो त्रैमासिक प्रगति समीक्षा',
+        titleEn: 'Parent-Teacher Conference & Academic Progress Review',
+        description: 'विद्यार्थीहरूको शैक्षिक प्रगति, गृहकार्य तथा अनुशासन सम्बन्धी गहन समीक्षा बैठक।',
+        eventType: 'MEETING',
+        startDateBs: '2083-06-02',
+        endDateBs: '2083-06-02',
+        startDateAd: '2026-09-18',
+        endDateAd: '2026-09-18',
+        isTeachingDay: true,
+        showOnWebsite: true,
+        eventTime: '१:०० PM - ४:०० PM',
+        venueNp: 'आ-आफ्नो कक्षाकोठा',
+        venueEn: 'Respective Classrooms',
       },
     ]);
   }

@@ -154,6 +154,10 @@ export interface WebsiteEvent {
   eventTime?: string | null;
   venueNp?: string | null;
   venueEn?: string | null;
+  categoryCode?: string | null;
+  categoryNameNp?: string | null;
+  categoryNameEn?: string | null;
+  categoryColor?: string | null;
   status: 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   createdAt?: string;
   updatedAt?: string;

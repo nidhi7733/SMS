@@ -791,24 +791,58 @@ export const App: React.FC = () => {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {events.map((ev) => (
-                <div key={ev.id} className="border border-slate-200 rounded-2xl p-5 hover:border-indigo-400 transition space-y-3 bg-slate-50">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-extrabold text-indigo-600 px-2 py-0.5 bg-indigo-100 rounded-md">
-                      {ev.eventDateBs}
-                    </span>
-                    <span className="text-slate-500 font-medium">{ev.eventTime}</span>
+            {events.length === 0 ? (
+              <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-slate-500 text-sm">
+                <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                {isNp ? 'हाल कुनै आगामी सार्वजनिक कार्यक्रम तय गरिएको छैन।' : 'No upcoming public events scheduled at this moment.'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {events.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="border border-slate-200 rounded-2xl p-5 hover:border-indigo-400 hover:shadow-md transition space-y-3 bg-slate-50 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <span className="font-extrabold text-indigo-700 px-2.5 py-1 bg-indigo-100 rounded-lg text-xs flex items-center gap-1.5 shadow-2xs">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {ev.eventDateBs}
+                        </span>
+                        {(ev.categoryNameNp || ev.categoryNameEn) && (
+                          <span
+                            className="text-[10px] font-bold px-2.5 py-0.5 rounded-full text-white shrink-0 shadow-2xs"
+                            style={{ backgroundColor: ev.categoryColor || '#4f46e5' }}
+                          >
+                            {isNp ? (ev.categoryNameNp || 'कार्यक्रम') : (ev.categoryNameEn || 'Event')}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900 leading-snug">
+                        {isNp ? ev.titleNp : ev.titleEn}
+                      </h3>
+                      {(ev.descriptionNp || ev.descriptionEn) && (
+                        <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
+                          {isNp ? ev.descriptionNp : ev.descriptionEn}
+                        </p>
+                      )}
+                    </div>
+                    <div className="pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[150px]">{isNp ? (ev.venueNp || 'विद्यालय प्राङ्गण') : (ev.venueEn || 'School Premises')}</span>
+                      </div>
+                      {ev.eventTime && (
+                        <div className="flex items-center gap-1 text-slate-600">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{ev.eventTime}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900">{isNp ? ev.titleNp : ev.titleEn}</h3>
-                  <p className="text-xs text-slate-600 line-clamp-2">{isNp ? ev.descriptionNp : ev.descriptionEn}</p>
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{isNp ? ev.venueNp : ev.venueEn}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Photo Gallery Albums */}

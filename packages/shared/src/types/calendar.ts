@@ -1,11 +1,17 @@
-export type CalendarEventType =
-  | 'PUBLIC_HOLIDAY'
-  | 'SCHOOL_HOLIDAY'
-  | 'EXAM_DAY'
-  | 'EVENT_SPORTS'
-  | 'EVENT_CULTURAL'
-  | 'MEETING'
-  | 'TRAINING';
+export type CalendarEventType = string;
+
+export interface CalendarEventCategory {
+  id: string;
+  schoolId: string;
+  code: string;
+  nameNp: string;
+  nameEn: string;
+  color: string;
+  isHoliday: boolean;
+  isSystem: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export interface CalendarEvent {
   id: string;
@@ -14,11 +20,16 @@ export interface CalendarEvent {
   titleEn: string;
   titleNp: string;
   description?: string | null;
-  eventType: CalendarEventType;
+  eventType: string; // references category code
   startDateBs: string;
   endDateBs: string;
   startDateAd: string;
   endDateAd: string;
   isTeachingDay: boolean;
-  createdAt: string;
+  showOnWebsite?: boolean;
+  eventTime?: string | null;
+  venueNp?: string | null;
+  venueEn?: string | null;
+  category?: CalendarEventCategory | null;
+  createdAt?: string;
 }

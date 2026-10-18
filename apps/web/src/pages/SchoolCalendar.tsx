@@ -14,7 +14,12 @@ import {
   AlertTriangle,
   Clock,
   Sparkles,
+  Tag,
+  Globe,
+  MapPin,
+  Palette,
 } from 'lucide-react';
+import { CalendarEventCategory } from '@sms/shared';
 
 export const EVENT_COLORS: Record<
   string,
@@ -103,6 +108,7 @@ export const SchoolCalendar: React.FC = () => {
 
   const [selectedMonthBs, setSelectedMonthBs] = useState<number>(() => todayBs.month);
   const [events, setEvents] = useState<any[]>([]);
+  const [categories, setCategories] = useState<CalendarEventCategory[]>([]);
   const [stats, setStats] = useState<any>({
     totalEvents: 0,
     holidayCount: 0,
@@ -125,7 +131,24 @@ export const SchoolCalendar: React.FC = () => {
     endDateBs: '',
     isTeachingDay: false,
     description: '',
+    showOnWebsite: false,
+    eventTime: '',
+    venueNp: '',
+    venueEn: '',
   });
+
+  // Category Manager Modal state
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<CalendarEventCategory | null>(null);
+  const [categoryForm, setCategoryForm] = useState({
+    nameNp: '',
+    nameEn: '',
+    code: '',
+    color: '#4f46e5',
+    isHoliday: false,
+  });
+  const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
 
   const nepaliMonths = [
     { num: 1, nameEn: 'Baisakh', nameNp: 'वैशाख' },
@@ -163,6 +186,20 @@ export const SchoolCalendar: React.FC = () => {
     }
   })();
 
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch('/api/calendar/categories', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
+
   const fetchEvents = async () => {
     setIsLoading(true);
     try {
@@ -192,6 +229,120 @@ export const SchoolCalendar: React.FC = () => {
     fetchEvents();
   }, [selectedMonthBs]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const handleOpenAddCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({
+      nameNp: '',
+      nameEn: '',
+      code: '',
+      color: '#4f46e5',
+      isHoliday: false,
+    });
+    setCategoryError(null);
+  };
+
+  const handleOpenEditCategory = (cat: CalendarEventCategory) => {
+    setEditingCategory(cat);
+    setCategoryForm({
+      nameNp: cat.nameNp,
+      nameEn: cat.nameEn,
+      code: cat.code,
+      color: cat.color || '#4f46e5',
+      isHoliday: Boolean(cat.isHoliday),
+    });
+    setCategoryError(null);
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingCategory(true);
+    setCategoryError(null);
+    try {
+      const url = editingCategory
+        ? `/api/calendar/categories/${editingCategory.id}`
+        : '/api/calendar/categories';
+      const method = editingCategory ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(categoryForm),
+      });
+
+      if (res.ok) {
+        handleOpenAddCategory();
+        await fetchCategories();
+      } else {
+        const err = await res.json();
+        setCategoryError(err.message || 'विधा सुरक्षित गर्न असफल भयो');
+      }
+    } catch (err: any) {
+      setCategoryError(err.message);
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (cat: CalendarEventCategory) => {
+    if (!window.confirm(isNp ? `के तपाईँ "${cat.nameNp}" विधा हटाउन निश्चित हुनुहुन्छ?` : `Are you sure you want to delete category "${cat.nameEn}"?`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/calendar/categories/${cat.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        await fetchCategories();
+        if (editingCategory?.id === cat.id) {
+          handleOpenAddCategory();
+        }
+      } else {
+        const err = await res.json();
+        alert(err.message || 'विधा हटाउन सकिएन');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const getCatInfo = (code: string) => {
+    const found = categories.find((c) => c.code === code);
+    if (found) {
+      return {
+        labelNp: found.nameNp,
+        labelEn: found.nameEn,
+        color: found.color || '#3b82f6',
+        isHoliday: found.isHoliday,
+        isSystem: found.isSystem,
+      };
+    }
+    const fallback = EVENT_COLORS[code];
+    if (fallback) {
+      return {
+        labelNp: fallback.labelNp,
+        labelEn: fallback.labelEn,
+        color: code.includes('PUBLIC') ? '#f43f5e' : code.includes('SCHOOL') ? '#dc2626' : '#2563eb',
+        isHoliday: code.includes('HOLIDAY'),
+        isSystem: true,
+      };
+    }
+    return {
+      labelNp: code,
+      labelEn: code,
+      color: '#64748b',
+      isHoliday: false,
+      isSystem: false,
+    };
+  };
+
   const handleOpenAdd = (defaultDay?: number) => {
     if (!isPrincipalOrAdmin) return;
     const dayPadded = defaultDay
@@ -199,15 +350,21 @@ export const SchoolCalendar: React.FC = () => {
       : String(todayBs.day).padStart(2, '0');
     const monthPadded = String(selectedMonthBs).padStart(2, '0');
     const defaultDateStr = `2083-${monthPadded}-${dayPadded}`;
+    const defaultCat = categories[0]?.code || 'PUBLIC_HOLIDAY';
+    const cat = categories.find((c) => c.code === defaultCat);
 
     setFormData({
       titleEn: '',
       titleNp: '',
-      eventType: 'PUBLIC_HOLIDAY',
+      eventType: defaultCat,
       startDateBs: defaultDateStr,
       endDateBs: defaultDateStr,
-      isTeachingDay: false,
+      isTeachingDay: cat ? !cat.isHoliday : false,
       description: '',
+      showOnWebsite: false,
+      eventTime: '',
+      venueNp: '',
+      venueEn: '',
     });
     setShowAddModal(true);
   };
@@ -223,6 +380,10 @@ export const SchoolCalendar: React.FC = () => {
       endDateBs: ev.endDateBs || ev.startDateBs,
       isTeachingDay: ev.isTeachingDay,
       description: ev.description || '',
+      showOnWebsite: Boolean(ev.showOnWebsite),
+      eventTime: ev.eventTime || '',
+      venueNp: ev.venueNp || '',
+      venueEn: ev.venueEn || '',
     });
     setShowEditModal(true);
   };
@@ -349,13 +510,26 @@ export const SchoolCalendar: React.FC = () => {
             </button>
 
             {isPrincipalOrAdmin && (
-              <button
-                onClick={() => handleOpenAdd()}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{isNp ? 'बिदा / कार्यक्रम थप्नुहोस्' : 'Add Event / Holiday'}</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    handleOpenAddCategory();
+                    setShowCategoryModal(true);
+                  }}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-sm font-semibold transition shadow-xs"
+                >
+                  <Tag className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>{isNp ? 'विधा व्यवस्थापन' : 'Categories'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenAdd()}
+                  className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isNp ? 'बिदा / कार्यक्रम थप्नुहोस्' : 'Add Event / Holiday'}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -402,8 +576,22 @@ export const SchoolCalendar: React.FC = () => {
 
       {/* Interactive Color Legend Strip */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-sm">
-        <div className="flex items-center space-x-2 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-          <span>{isNp ? 'क्यालेन्डर रंग संकेत (Color Legend):' : 'Color Legend:'}</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span>{isNp ? 'क्यालेन्डर रंग संकेत (Color Legend):' : 'Color Legend:'}</span>
+          </div>
+          {isPrincipalOrAdmin && (
+            <button
+              onClick={() => {
+                handleOpenAddCategory();
+                setShowCategoryModal(true);
+              }}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1 transition"
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>{isNp ? 'विधा थप वा सम्पादन गर्नुहोस्' : 'Manage Categories'}</span>
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Sunday & Saturday Weekend Badge */}
@@ -412,13 +600,13 @@ export const SchoolCalendar: React.FC = () => {
             <span>{isNp ? 'शनिबार र आइतबार (साप्ताहिक बिदा)' : 'Saturday & Sunday (Weekend Holiday)'}</span>
           </div>
 
-          {Object.entries(EVENT_COLORS).map(([key, cfg]) => (
+          {(categories.length > 0 ? categories : Object.entries(EVENT_COLORS).map(([code, cfg]) => ({ code, nameNp: cfg.labelNp, nameEn: cfg.labelEn, color: code.includes('PUBLIC') ? '#f43f5e' : code.includes('SCHOOL') ? '#dc2626' : '#2563eb' }))).map((cat: any) => (
             <div
-              key={key}
-              className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${cfg.badgeBg}`}
+              key={cat.id || cat.code}
+              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
             >
-              <span className={`w-2 h-2 rounded-full ${cfg.dotBg}`}></span>
-              <span>{isNp ? cfg.labelNp : cfg.labelEn}</span>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#3b82f6' }}></span>
+              <span>{isNp ? cat.nameNp : cat.nameEn}</span>
             </div>
           ))}
         </div>
@@ -563,7 +751,7 @@ export const SchoolCalendar: React.FC = () => {
                   {/* Day Events Badges */}
                   <div className="space-y-1 mt-1">
                     {dayEvents.map((ev: any) => {
-                      const cfg = EVENT_COLORS[ev.eventType] || EVENT_COLORS.PUBLIC_HOLIDAY;
+                      const catInfo = getCatInfo(ev.eventType);
                       return (
                         <div
                           key={ev.id}
@@ -571,12 +759,16 @@ export const SchoolCalendar: React.FC = () => {
                             e.stopPropagation();
                             if (isPrincipalOrAdmin) handleOpenEdit(ev);
                           }}
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate transition shadow-xs flex items-center justify-between ${cfg.pillBg} ${
+                          style={{ backgroundColor: catInfo.color }}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded truncate transition shadow-xs text-white flex items-center justify-between ${
                             isPrincipalOrAdmin ? 'hover:opacity-90' : ''
                           }`}
-                          title={`${isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp} (${isNp ? cfg.labelNp : cfg.labelEn})`}
+                          title={`${isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp} (${isNp ? catInfo.labelNp : catInfo.labelEn})`}
                         >
-                          <span className="truncate">{isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp}</span>
+                          <span className="truncate flex items-center gap-1">
+                            {ev.showOnWebsite && <Globe className="w-2.5 h-2.5 shrink-0 opacity-90" />}
+                            <span>{isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp}</span>
+                          </span>
                           {isPrincipalOrAdmin && <Edit2 className="w-2.5 h-2.5 shrink-0 opacity-75 ml-1" />}
                         </div>
                       );
@@ -606,7 +798,7 @@ export const SchoolCalendar: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {events.map((ev) => {
-                const cfg = EVENT_COLORS[ev.eventType] || EVENT_COLORS.PUBLIC_HOLIDAY;
+                const catInfo = getCatInfo(ev.eventType);
                 return (
                   <div
                     key={ev.id}
@@ -615,14 +807,26 @@ export const SchoolCalendar: React.FC = () => {
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-1.5">
-                          <span className={`w-2.5 h-2.5 rounded-full ${cfg.dotBg} shrink-0`} />
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: catInfo.color }} />
                           <span className="font-bold text-sm text-slate-900 dark:text-white">
                             {isNp ? ev.titleNp || ev.titleEn : ev.titleEn || ev.titleNp}
                           </span>
                         </div>
-                        <div className="text-xs font-mono font-medium text-slate-500">
-                          {ev.startDateBs} {ev.endDateBs && ev.endDateBs !== ev.startDateBs ? `${isNp ? 'देखि' : 'to'} ${ev.endDateBs}` : ''}
+                        <div className="text-xs font-mono font-medium text-slate-500 flex items-center gap-2">
+                          <span>{ev.startDateBs} {ev.endDateBs && ev.endDateBs !== ev.startDateBs ? `${isNp ? 'देखि' : 'to'} ${ev.endDateBs}` : ''}</span>
+                          {ev.eventTime && (
+                            <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-sans">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {ev.eventTime}
+                            </span>
+                          )}
                         </div>
+                        {(ev.venueNp || ev.venueEn) && (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{isNp ? (ev.venueNp || ev.venueEn) : (ev.venueEn || ev.venueNp)}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Principal-Only Action Buttons */}
@@ -647,12 +851,23 @@ export const SchoolCalendar: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${cfg.badgeBg}`}>
-                        {isNp ? cfg.labelNp : cfg.labelEn}
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-bold text-white shadow-2xs"
+                        style={{ backgroundColor: catInfo.color }}
+                      >
+                        {isNp ? catInfo.labelNp : catInfo.labelEn}
                       </span>
-                      <span className="text-slate-400">
-                        {ev.isTeachingDay ? (isNp ? 'पढाइ हुने दिन' : 'Teaching Day') : (isNp ? 'पढाइ नहुने (बिदा)' : 'No Teaching')}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        {ev.showOnWebsite && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                            <Globe className="w-3 h-3" />
+                            <span>{isNp ? 'वेबसाइट' : 'Website'}</span>
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400">
+                          {ev.isTeachingDay ? (isNp ? 'पढाइ हुने दिन' : 'Teaching Day') : (isNp ? 'बिदा' : 'No Teaching')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -706,21 +921,35 @@ export const SchoolCalendar: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  कार्यक्रमको प्रकार (Event Category) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
+                    कार्यक्रमको प्रकार (Event Category) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenAddCategory();
+                      setShowCategoryModal(true);
+                    }}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{isNp ? 'विधा थप्नुहोस्' : 'Add Category'}</span>
+                  </button>
+                </div>
                 <select
                   value={formData.eventType}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const isTeach = val !== 'PUBLIC_HOLIDAY' && val !== 'SCHOOL_HOLIDAY';
+                    const cat = categories.find((c) => c.code === val);
+                    const isTeach = cat ? !cat.isHoliday : (val !== 'PUBLIC_HOLIDAY' && val !== 'SCHOOL_HOLIDAY');
                     setFormData({ ...formData, eventType: val, isTeachingDay: isTeach });
                   }}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm dark:text-white"
                 >
-                  {Object.entries(EVENT_COLORS).map(([key, cfg]) => (
-                    <option key={key} value={key}>
-                      {cfg.labelNp} ({cfg.labelEn})
+                  {(categories.length > 0 ? categories : Object.entries(EVENT_COLORS).map(([code, cfg]) => ({ code, nameNp: cfg.labelNp, nameEn: cfg.labelEn }))).map((c: any) => (
+                    <option key={c.id || c.code} value={c.code}>
+                      {c.nameNp} ({c.nameEn})
                     </option>
                   ))}
                 </select>
@@ -765,6 +994,69 @@ export const SchoolCalendar: React.FC = () => {
                 <label htmlFor="teachingDayCheck" className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
                   {isNp ? 'यस दिन पठनपाठन हुन्छ (Counts as Teaching Day)' : 'Counts toward 190 Teaching Days'}
                 </label>
+              </div>
+
+              {/* Show on Website Options */}
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/60 space-y-2.5">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="showOnWebsiteCheckAdd"
+                    checked={formData.showOnWebsite}
+                    onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label
+                    htmlFor="showOnWebsiteCheckAdd"
+                    className="text-xs font-bold text-indigo-950 dark:text-indigo-200 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{isNp ? 'सार्वजनिक वेबसाइटमा देखाउने (Show on Public Website)' : 'Publish to School Public Website'}</span>
+                  </label>
+                </div>
+
+                {formData.showOnWebsite && (
+                  <div className="space-y-2 pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                        समय (Event Time)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isNp ? 'उदा. बिहान १०:०० बजे देखि' : 'e.g. 10:00 AM onwards'}
+                        value={formData.eventTime}
+                        onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                          स्थान (Venue Np)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={isNp ? 'उदा. विद्यालय प्राङ्गण' : 'e.g. विद्यालय प्राङ्गण'}
+                          value={formData.venueNp}
+                          onChange={(e) => setFormData({ ...formData, venueNp: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                          Venue (English)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. School Grounds"
+                          value={formData.venueEn}
+                          onChange={(e) => setFormData({ ...formData, venueEn: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-2 pt-3 border-t border-slate-200 dark:border-slate-800">
@@ -829,21 +1121,35 @@ export const SchoolCalendar: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
-                  कार्यक्रमको प्रकार (Event Category) *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase">
+                    कार्यक्रमको प्रकार (Event Category) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenAddCategory();
+                      setShowCategoryModal(true);
+                    }}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>{isNp ? 'विधा थप्नुहोस्' : 'Add Category'}</span>
+                  </button>
+                </div>
                 <select
                   value={formData.eventType}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const isTeach = val !== 'PUBLIC_HOLIDAY' && val !== 'SCHOOL_HOLIDAY';
+                    const cat = categories.find((c) => c.code === val);
+                    const isTeach = cat ? !cat.isHoliday : (val !== 'PUBLIC_HOLIDAY' && val !== 'SCHOOL_HOLIDAY');
                     setFormData({ ...formData, eventType: val, isTeachingDay: isTeach });
                   }}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm dark:text-white"
                 >
-                  {Object.entries(EVENT_COLORS).map(([key, cfg]) => (
-                    <option key={key} value={key}>
-                      {cfg.labelNp} ({cfg.labelEn})
+                  {(categories.length > 0 ? categories : Object.entries(EVENT_COLORS).map(([code, cfg]) => ({ code, nameNp: cfg.labelNp, nameEn: cfg.labelEn }))).map((c: any) => (
+                    <option key={c.id || c.code} value={c.code}>
+                      {c.nameNp} ({c.nameEn})
                     </option>
                   ))}
                 </select>
@@ -888,6 +1194,69 @@ export const SchoolCalendar: React.FC = () => {
                 </label>
               </div>
 
+              {/* Show on Website Options */}
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/60 space-y-2.5">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="showOnWebsiteCheckEdit"
+                    checked={formData.showOnWebsite}
+                    onChange={(e) => setFormData({ ...formData, showOnWebsite: e.target.checked })}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <label
+                    htmlFor="showOnWebsiteCheckEdit"
+                    className="text-xs font-bold text-indigo-950 dark:text-indigo-200 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{isNp ? 'सार्वजनिक वेबसाइटमा देखाउने (Show on Public Website)' : 'Publish to School Public Website'}</span>
+                  </label>
+                </div>
+
+                {formData.showOnWebsite && (
+                  <div className="space-y-2 pt-2 border-t border-indigo-200/60 dark:border-indigo-800/60">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                        समय (Event Time)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isNp ? 'उदा. बिहान १०:०० बजे देखि' : 'e.g. 10:00 AM onwards'}
+                        value={formData.eventTime}
+                        onChange={(e) => setFormData({ ...formData, eventTime: e.target.value })}
+                        className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                          स्थान (Venue Np)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={isNp ? 'उदा. विद्यालय प्राङ्गण' : 'e.g. विद्यालय प्राङ्गण'}
+                          value={formData.venueNp}
+                          onChange={(e) => setFormData({ ...formData, venueNp: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase mb-0.5">
+                          Venue (English)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. School Grounds"
+                          value={formData.venueEn}
+                          onChange={(e) => setFormData({ ...formData, venueEn: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
@@ -915,6 +1284,253 @@ export const SchoolCalendar: React.FC = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Manage Categories Modal (Principal & Admin only) */}
+      {showCategoryModal && isPrincipalOrAdmin && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {isNp ? 'कार्यक्रम विधा व्यवस्थापन' : 'Manage Event Categories'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isNp
+                      ? 'क्यालेन्डर र वेबसाइट दुवैमा देखिने कार्यक्रमका विधाहरू थप्न, सम्पादन वा हटाउन सक्नुहुन्छ।'
+                      : 'Add, edit, and organize calendar & website event categories with custom colors.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  handleOpenAddCategory();
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* List Existing Categories */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                <span>{isNp ? 'मौजुदा विधाहरू' : 'Existing Categories'} ({categories.length})</span>
+                {editingCategory && (
+                  <button
+                    type="button"
+                    onClick={handleOpenAddCategory}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline capitalize"
+                  >
+                    + {isNp ? 'नयाँ थप्नुहोस्' : 'Create New'}
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-56 overflow-y-auto p-1">
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id || cat.code}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between transition ${
+                      editingCategory?.id === cat.id
+                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-1 ring-indigo-500'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <span
+                        className="w-4 h-4 rounded-full shrink-0 shadow-xs"
+                        style={{ backgroundColor: cat.color || '#3b82f6' }}
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          {isNp ? cat.nameNp : cat.nameEn}
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate flex items-center gap-1.5">
+                          <span>{cat.nameEn}</span>
+                          {cat.isHoliday && (
+                            <span className="px-1 py-0.2 rounded bg-rose-100 text-rose-700 text-[9px] font-bold">
+                              {isNp ? 'बिदा' : 'Holiday'}
+                            </span>
+                          )}
+                          {cat.isSystem && (
+                            <span className="px-1 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px]">
+                              {isNp ? 'सिस्टम' : 'System'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1 shrink-0 ml-2">
+                      <button
+                        onClick={() => handleOpenEditCategory(cat)}
+                        className="p-1 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition"
+                        title={isNp ? 'सम्पादन' : 'Edit'}
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      {!cat.isSystem && (
+                        <button
+                          onClick={() => handleDeleteCategory(cat)}
+                          className="p-1 text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded transition"
+                          title={isNp ? 'हटाउनुहोस्' : 'Delete'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Add or Edit Category Form */}
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Palette className="w-4 h-4 text-indigo-600" />
+                <span>
+                  {editingCategory
+                    ? (isNp ? `विधा सम्पादन: ${editingCategory.nameNp}` : `Edit Category: ${editingCategory.nameEn}`)
+                    : (isNp ? 'नयाँ विधा थप्नुहोस् (Create New Category)' : 'Add New Category')}
+                </span>
+              </h4>
+
+              {categoryError && (
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-lg text-xs text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{categoryError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveCategory} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                      विधाको नाम (नेपाली) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="उदा. वार्षिकोत्सव तथा पुरस्कार"
+                      value={categoryForm.nameNp}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, nameNp: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                      Category Name (English) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Annual Day & Award"
+                      value={categoryForm.nameEn}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const codeGen = editingCategory
+                          ? categoryForm.code
+                          : val.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+                        setCategoryForm({
+                          ...categoryForm,
+                          nameEn: val,
+                          code: codeGen,
+                        });
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase mb-1">
+                      रंग संकेत (Category Color) *
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          '#f43f5e',
+                          '#dc2626',
+                          '#ea580c',
+                          '#d97706',
+                          '#16a34a',
+                          '#0d9488',
+                          '#2563eb',
+                          '#4f46e5',
+                          '#7c3aed',
+                          '#db2777',
+                          '#475569',
+                        ].map((c) => (
+                          <button
+                            type="button"
+                            key={c}
+                            onClick={() => setCategoryForm({ ...categoryForm, color: c })}
+                            className={`w-6 h-6 rounded-full transition transform hover:scale-110 ${
+                              categoryForm.color === c ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : ''
+                            }`}
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+                      <input
+                        type="color"
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                        className="w-8 h-8 rounded border border-slate-300 cursor-pointer p-0 shrink-0"
+                        title="Custom Color"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={categoryForm.isHoliday}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, isHoliday: e.target.checked })}
+                        className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
+                      />
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        {isNp ? 'यो विधा बिदा हो (Counts as School Holiday)' : 'This is a Holiday category'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                  {editingCategory && (
+                    <button
+                      type="button"
+                      onClick={handleOpenAddCategory}
+                      className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300"
+                    >
+                      {isNp ? 'रद्द गर्नुहोस्' : 'Cancel Edit'}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={isSavingCategory}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-50"
+                  >
+                    {isSavingCategory
+                      ? (isNp ? 'सुरक्षित गर्दै...' : 'Saving...')
+                      : editingCategory
+                      ? (isNp ? 'विधा अपडेट गर्नुहोस्' : 'Update Category')
+                      : (isNp ? 'विधा थप्नुहोस्' : 'Create Category')}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
