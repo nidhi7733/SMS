@@ -152,6 +152,23 @@ export const App: React.FC = () => {
   const downloads = overview?.downloads || [];
   const stats = overview?.stats;
 
+  // Dynamic Ticker / Marquee Computation
+  const isTickerVisible = settings?.tickerVisible !== false;
+  const tickerTitle = isNp
+    ? (settings?.tickerTitleNp || 'ताजा सूचना')
+    : (settings?.tickerTitleEn || 'Latest News');
+  const tickerMode = settings?.tickerMode || 'NOTICES'; // 'NOTICES' | 'CUSTOM' | 'BOTH'
+  const customTickerText = isNp
+    ? (settings?.tickerCustomTextNp || settings?.tickerCustomTextEn)
+    : (settings?.tickerCustomTextEn || settings?.tickerCustomTextNp);
+  const hasCustom = Boolean(customTickerText && customTickerText.trim().length > 0);
+  const hasNotices = notices.length > 0;
+  const showTicker = isTickerVisible && (
+    (tickerMode === 'CUSTOM' && hasCustom) ||
+    (tickerMode === 'NOTICES' && (hasNotices || hasCustom)) ||
+    (tickerMode === 'BOTH' && (hasNotices || hasCustom))
+  );
+
   const defaultNavItems: WebsiteNavItem[] = [
     { id: '1', schoolId: '', titleNp: 'गृहपृष्ठ', titleEn: 'Home', url: '#home', isExternal: false, sortOrder: 1, isVisible: true },
     { id: '2', schoolId: '', titleNp: 'हाम्रो बारेमा', titleEn: 'About', url: '#about', isExternal: false, sortOrder: 2, isVisible: true },
@@ -350,26 +367,42 @@ export const App: React.FC = () => {
     </div>
 
       {/* ========================================================= */}
-      {/* 3. LATEST NOTICES TICKER */}
+      {/* 3. LATEST NOTICES & BREAKING NEWS MARQUEE TICKER */}
       {/* ========================================================= */}
-      {notices.length > 0 && (
-        <div className="bg-amber-500 text-slate-950 text-xs py-2 px-4 flex items-center shadow-xs overflow-hidden">
+      {showTicker && (
+        <div className="bg-amber-500 text-slate-950 text-xs py-2 px-4 flex items-center shadow-xs overflow-hidden border-b border-amber-600/20">
           <div className="max-w-7xl mx-auto w-full flex items-center gap-3">
             <span className="font-extrabold uppercase shrink-0 px-2.5 py-0.5 bg-slate-950 text-amber-400 rounded-full text-[11px] flex items-center gap-1 shadow-xs">
               <Bell className="w-3.5 h-3.5 animate-pulse" />
-              {isNp ? 'ताजा सूचना' : 'Latest News'}
+              {tickerTitle}
             </span>
             <div className="overflow-hidden whitespace-nowrap flex-1">
               <div className="inline-block animate-ticker cursor-pointer">
-                {notices.map((n, i) => (
-                  <span
-                    key={n.id}
-                    onClick={() => setSelectedNotice(n)}
-                    className="inline-block mr-12 hover:underline font-bold"
-                  >
-                    📌 [{n.publishDateBs}] {isNp ? n.titleNp : n.titleEn}
+                {/* 1. Custom Announcement Item (if mode is CUSTOM or BOTH) */}
+                {(tickerMode === 'CUSTOM' || tickerMode === 'BOTH') && hasCustom && (
+                  <span className="inline-block mr-12 font-bold text-slate-950 bg-amber-400/90 px-2.5 py-0.5 rounded-sm border border-amber-600/30">
+                    📢 {customTickerText}
                   </span>
-                ))}
+                )}
+
+                {/* 2. Public Notices Items (if mode is NOTICES or BOTH) */}
+                {(tickerMode === 'NOTICES' || tickerMode === 'BOTH') &&
+                  notices.map((n) => (
+                    <span
+                      key={n.id}
+                      onClick={() => setSelectedNotice(n)}
+                      className="inline-block mr-12 hover:underline font-bold"
+                    >
+                      📌 [{n.publishDateBs}] {isNp ? n.titleNp : n.titleEn}
+                    </span>
+                  ))}
+
+                {/* 3. Fallback if NOTICES mode selected but no notices yet, display custom text if available */}
+                {tickerMode === 'NOTICES' && !hasNotices && hasCustom && (
+                  <span className="inline-block mr-12 font-bold text-slate-950">
+                    📢 {customTickerText}
+                  </span>
+                )}
               </div>
             </div>
           </div>

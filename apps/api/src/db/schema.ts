@@ -1306,6 +1306,14 @@ export const websiteSettings = pgTable('website_settings', {
   customTotalTeachers: integer('custom_total_teachers'),
   customTotalClassrooms: integer('custom_total_classrooms'),
 
+  // 3. Latest News / Notice Marquee Ticker (ताजा सूचना मार्की)
+  tickerVisible: boolean('ticker_visible').notNull().default(true),
+  tickerTitleNp: text('ticker_title_np'),
+  tickerTitleEn: text('ticker_title_en'),
+  tickerMode: text('ticker_mode').notNull().default('NOTICES'), // 'NOTICES' | 'CUSTOM' | 'BOTH'
+  tickerCustomTextNp: text('ticker_custom_text_np'),
+  tickerCustomTextEn: text('ticker_custom_text_en'),
+
   // Footer
   footerCopyrightTextNp: text('footer_copyright_text_np'),
   footerCopyrightTextEn: text('footer_copyright_text_en'),

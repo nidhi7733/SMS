@@ -76,6 +76,14 @@ export interface WebsiteSettings {
   customTotalTeachers?: number | null;
   customTotalClassrooms?: number | null;
 
+  // Ticker / Marquee Settings (ताजा सूचना मार्की)
+  tickerVisible?: boolean;
+  tickerTitleNp?: string | null;
+  tickerTitleEn?: string | null;
+  tickerMode?: 'NOTICES' | 'CUSTOM' | 'BOTH';
+  tickerCustomTextNp?: string | null;
+  tickerCustomTextEn?: string | null;
+
   // Footer
   footerCopyrightTextNp?: string | null;
   footerCopyrightTextEn?: string | null;

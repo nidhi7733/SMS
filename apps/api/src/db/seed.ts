@@ -1549,6 +1549,12 @@ export async function runMigrationsAndSeed() {
     'custom_total_classrooms INTEGER',
     'footer_copyright_text_np TEXT',
     'footer_copyright_text_en TEXT',
+    'ticker_visible BOOLEAN DEFAULT true',
+    'ticker_title_np TEXT DEFAULT \'ताजा सूचना\'',
+    'ticker_title_en TEXT DEFAULT \'Latest News\'',
+    'ticker_mode TEXT DEFAULT \'NOTICES\'',
+    'ticker_custom_text_np TEXT',
+    'ticker_custom_text_en TEXT',
   ];
   for (const col of newWebsiteSettingsColumns) {
     try {
@@ -4226,6 +4232,12 @@ export async function runMigrationsAndSeed() {
       portalButtonTextNp: persistedCms?.portalButtonTextNp || 'पोर्टल लगइन (SMS Login)',
       portalButtonTextEn: persistedCms?.portalButtonTextEn || 'Portal Login (SMS)',
       portalUrl: persistedCms?.portalUrl || 'http://localhost:5173/login',
+      tickerVisible: persistedCms?.tickerVisible !== undefined ? persistedCms.tickerVisible : true,
+      tickerTitleNp: persistedCms?.tickerTitleNp || 'ताजा सूचना',
+      tickerTitleEn: persistedCms?.tickerTitleEn || 'Latest News',
+      tickerMode: persistedCms?.tickerMode || 'NOTICES',
+      tickerCustomTextNp: persistedCms?.tickerCustomTextNp || '',
+      tickerCustomTextEn: persistedCms?.tickerCustomTextEn || '',
     };
 
     if (!existingWebSettings) {

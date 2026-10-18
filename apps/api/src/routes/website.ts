@@ -451,6 +451,14 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       customTotalTeachers: body.customTotalTeachers ? Number(body.customTotalTeachers) : null,
       customTotalClassrooms: body.customTotalClassrooms ? Number(body.customTotalClassrooms) : null,
 
+      // 3. Latest News / Notice Marquee Ticker (ताजा सूचना मार्की)
+      tickerVisible: body.tickerVisible !== undefined ? Boolean(body.tickerVisible) : true,
+      tickerTitleNp: body.tickerTitleNp !== undefined ? body.tickerTitleNp : 'ताजा सूचना',
+      tickerTitleEn: body.tickerTitleEn !== undefined ? body.tickerTitleEn : 'Latest News',
+      tickerMode: body.tickerMode || 'NOTICES',
+      tickerCustomTextNp: body.tickerCustomTextNp || null,
+      tickerCustomTextEn: body.tickerCustomTextEn || null,
+
       // Footer
       footerCopyrightTextNp: body.footerCopyrightTextNp,
       footerCopyrightTextEn: body.footerCopyrightTextEn,

@@ -1046,6 +1046,220 @@ export const WebsiteManagement: React.FC = () => {
             </div>
           </div>
 
+          {/* Card: Latest News / Notices Marquee Ticker (ताजा सूचना तथा न्युज मार्की) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span className="p-1.5 bg-amber-100 dark:bg-amber-950/60 text-amber-600 rounded-lg">
+                    <Bell className="w-5 h-5 animate-pulse" />
+                  </span>
+                  {isNp ? 'ताजा सूचना / न्युज मार्की (Latest News & Notices Marquee)' : 'Latest News & Notices Marquee'}
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isNp
+                    ? 'वेबसाइटको हेडर मुनि निरन्तर स्क्रोल हुने ताजा सूचना, हेडलाइन वा ब्रेकिङ न्युज यहाँबाट नियन्त्रण गर्नुहोस्।'
+                    : 'Control the scrolling marquee bar displayed directly beneath the website navigation header.'}
+                </p>
+              </div>
+
+              {/* Ticker Visibility Toggle */}
+              <label className="inline-flex items-center gap-2 cursor-pointer bg-slate-50 dark:bg-slate-800 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                <input
+                  type="checkbox"
+                  checked={settings.tickerVisible !== false}
+                  onChange={(e) => setSettings({ ...settings, tickerVisible: e.target.checked })}
+                  className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
+                />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  {settings.tickerVisible !== false
+                    ? (isNp ? 'मार्की सक्रिय (दिखाइने)' : 'Marquee Active')
+                    : (isNp ? 'मार्की निष्क्रिय (लुकाइएको)' : 'Marquee Hidden')}
+                </span>
+              </label>
+            </div>
+
+            {/* Live Ticker Preview */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                {isNp ? 'लाइभ वेबसाइट प्रिभ्यु (Live Website Preview)' : 'Live Website Preview'}
+              </div>
+              <div className="bg-amber-500 text-slate-950 text-xs py-2 px-4 rounded-xl flex items-center shadow-xs overflow-hidden">
+                <span className="font-extrabold uppercase shrink-0 px-2.5 py-0.5 bg-slate-950 text-amber-400 rounded-full text-[11px] flex items-center gap-1 shadow-xs">
+                  <Bell className="w-3.5 h-3.5 animate-pulse" />
+                  {isNp ? (settings.tickerTitleNp || 'ताजा सूचना') : (settings.tickerTitleEn || 'Latest News')}
+                </span>
+                <div className="ml-3 overflow-hidden whitespace-nowrap flex-1 text-xs font-bold">
+                  {(settings.tickerMode === 'CUSTOM' || settings.tickerMode === 'BOTH') && (settings.tickerCustomTextNp || settings.tickerCustomTextEn) ? (
+                    <span className="mr-6">
+                      📢 {isNp ? (settings.tickerCustomTextNp || settings.tickerCustomTextEn) : (settings.tickerCustomTextEn || settings.tickerCustomTextNp)}
+                    </span>
+                  ) : null}
+                  {(settings.tickerMode === 'NOTICES' || settings.tickerMode === 'BOTH' || !settings.tickerMode) && notices.length > 0 ? (
+                    <span>
+                      📌 [{notices[0].publishDateBs}] {isNp ? notices[0].titleNp : notices[0].titleEn}
+                    </span>
+                  ) : (
+                    (!settings.tickerCustomTextNp && !settings.tickerCustomTextEn) && (
+                      <span className="italic text-slate-800">
+                        {isNp ? 'कुनै सूचना वा कस्टम सन्देश राखिएको छैन।' : 'No active notices or custom text set.'}
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Ticker Settings Inputs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मार्की ब्याज शीर्षक (नेपाली)' : 'Marquee Badge Label (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.tickerTitleNp || ''}
+                  onChange={(e) => setSettings({ ...settings, tickerTitleNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="ताजा सूचना"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मार्की ब्याज शीर्षक (English)' : 'Marquee Badge Label (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.tickerTitleEn || ''}
+                  onChange={(e) => setSettings({ ...settings, tickerTitleEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Latest News"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'प्रदर्शित गर्ने सामग्रीको स्रोत (Content Source)' : 'Marquee Content Source'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">
+                  {[
+                    {
+                      value: 'NOTICES',
+                      labelNp: 'सार्वजनिक सूचनाहरूबाट स्वचालित',
+                      labelEn: 'Auto from Public Notices',
+                      descNp: 'सूचना खण्डका सक्रिय सूचनाहरू स्वतः देखाउने',
+                      descEn: 'Scrolls all active notices automatically',
+                    },
+                    {
+                      value: 'CUSTOM',
+                      labelNp: 'कस्टम हेडलाइन मात्र',
+                      labelEn: 'Custom Headline Only',
+                      descNp: 'तल टाइप गरिएको कस्टम सन्देश मात्र देखाउने',
+                      descEn: 'Shows only the custom text entered below',
+                    },
+                    {
+                      value: 'BOTH',
+                      labelNp: 'दुवै (कस्टम + सूचनाहरू)',
+                      labelEn: 'Both (Custom + Notices)',
+                      descNp: 'कस्टम सन्देश र सूचनाहरू दुवै सँगै देखाउने',
+                      descEn: 'Shows custom headline followed by notices',
+                    },
+                  ].map((mode) => {
+                    const isSelected = (settings.tickerMode || 'NOTICES') === mode.value;
+                    return (
+                      <div
+                        key={mode.value}
+                        onClick={() => setSettings({ ...settings, tickerMode: mode.value as any })}
+                        className={`flex flex-col p-3 rounded-xl border cursor-pointer transition ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 ring-1 ring-amber-500'
+                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="tickerMode"
+                            checked={isSelected}
+                            onChange={() => setSettings({ ...settings, tickerMode: mode.value as any })}
+                            className="text-amber-600 focus:ring-amber-500"
+                          />
+                          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                            {isNp ? mode.labelNp : mode.labelEn}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 mt-1 pl-5">
+                          {isNp ? mode.descNp : mode.descEn}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Headline Inputs */}
+              <div className="md:col-span-2 p-4 bg-amber-50/40 dark:bg-amber-950/10 rounded-xl border border-amber-200/60 dark:border-amber-800/40 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <span>📢</span>
+                    <span>{isNp ? 'कस्टम हेडलाइन / ब्रेकिङ न्युज सन्देश' : 'Custom Headline / Breaking News Text'}</span>
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    {isNp ? '(कस्टम वा दुवै मोडमा प्रयोग हुने)' : '(Used when Custom or Both is selected)'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {isNp ? 'कस्टम सन्देश (नेपाली)' : 'Custom Text (Nepali)'}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={settings.tickerCustomTextNp || ''}
+                      onChange={(e) => setSettings({ ...settings, tickerCustomTextNp: e.target.value })}
+                      className="w-full text-xs mt-1 p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                      placeholder="उदा: शैक्षिक सत्र २०८३ को नयाँ भर्ना खुल्यो! तुरुन्त सम्पर्क राख्नुहोला।"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {isNp ? 'कस्टम सन्देश (English)' : 'Custom Text (English)'}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={settings.tickerCustomTextEn || ''}
+                      onChange={(e) => setSettings({ ...settings, tickerCustomTextEn: e.target.value })}
+                      className="w-full text-xs mt-1 p-2.5 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                      placeholder="e.g. Admissions open for Academic Session 2083 BS! Contact school office."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Link to Public Notices Tab */}
+            <div className="pt-2 flex flex-col sm:flex-row justify-between items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                <Bell className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>
+                  {isNp
+                    ? `हाल ${notices.length} वटा सार्वजनिक सूचनाहरू सुरक्षित छन्। सूचनाहरू थपघट वा सम्पादन गर्न चाहनुहुन्छ?`
+                    : `Currently ${notices.length} public notices exist. Want to add, edit or delete notices?`}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('notices')}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shrink-0 shadow-2xs transition"
+              >
+                {isNp ? '👉 सार्वजनिक सूचनाहरू व्यवस्थापन गर्नुहोस्' : '👉 Manage Public Notices'}
+              </button>
+            </div>
+          </div>
+
           {/* Card 2: Homepage Hero Titles */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -1985,6 +2199,31 @@ export const WebsiteManagement: React.FC = () => {
             </button>
           </div>
 
+          {/* Informational Callout: Synced with Website Ticker & Notices section */}
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 text-amber-900 dark:text-amber-200">
+              <span className="p-2 bg-amber-200/80 dark:bg-amber-900/60 rounded-lg shrink-0">
+                <Bell className="w-4 h-4 text-amber-700 dark:text-amber-300 animate-pulse" />
+              </span>
+              <div>
+                <span className="font-extrabold text-amber-950 dark:text-amber-100">
+                  {isNp ? 'वेबसाइट मार्की तथा सूचना खण्ड सिङ्क:' : 'Website Marquee & Notices Sync:'}
+                </span>{' '}
+                <span>
+                  {isNp
+                    ? 'यहाँ रहेका सम्पूर्ण सक्रिय (Active) सूचनाहरू वेबसाइटको हेडर मुनि निरन्तर गुड्ने "ताजा सूचना" मार्की र होमपेजको "सूचनाहरू" सेक्सनमा प्रत्यक्ष प्रदर्शित हुन्छन्।'
+                    : 'All active notices listed here directly appear in the scrolling "Latest News" marquee under the website header and on the homepage notices section.'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="px-3.5 py-1.5 bg-amber-200/80 hover:bg-amber-300/80 dark:bg-amber-900/60 text-amber-950 dark:text-amber-100 font-bold rounded-lg shrink-0 transition"
+            >
+              {isNp ? 'मार्की सेटिङ हेर्नुहोस्' : 'Marquee Settings'}
+            </button>
+          </div>
+
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -2789,17 +3028,32 @@ export const WebsiteManagement: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveNotice} className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'सूचनाको शीर्षक (नेपाली) *' : 'Title (Nepali) *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={noticeForm.titleNp}
-                  onChange={(e) => setNoticeForm({ ...noticeForm, titleNp: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'सूचनाको शीर्षक (नेपाली) *' : 'Title (Nepali) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={noticeForm.titleNp}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, titleNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="उदा: प्रथम त्रैमासिक परीक्षा तालिका प्रकाशन"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'सूचनाको शीर्षक (English)' : 'Title (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={noticeForm.titleEn}
+                    onChange={(e) => setNoticeForm({ ...noticeForm, titleEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="e.g. Notice on First Terminal Exam Routine"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -2840,11 +3094,24 @@ export const WebsiteManagement: React.FC = () => {
                   {isNp ? 'सूचनाको पूर्ण विवरण (नेपाली) *' : 'Content (Nepali) *'}
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   required
                   value={noticeForm.contentNp}
                   onChange={(e) => setNoticeForm({ ...noticeForm, contentNp: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'सूचनाको पूर्ण विवरण (English)' : 'Content (English)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={noticeForm.contentEn}
+                  onChange={(e) => setNoticeForm({ ...noticeForm, contentEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Notice description in English..."
                 />
               </div>
 
