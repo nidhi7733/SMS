@@ -2060,10 +2060,35 @@ export const WebsiteManagement: React.FC = () => {
       {/* TAB 4: EVENTS */}
       {activeTab === 'events' && (
         <div className="space-y-4">
+          {/* Calendar Sync Informational Banner */}
+          <div className="p-3.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <Calendar className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-blue-900 dark:text-blue-200">
+                  {isNp ? 'शैक्षिक क्यालेन्डरसँग प्रत्यक्ष सिङ्क (Calendar Synced)' : 'Directly Synced with School Calendar'}
+                </span>
+                <p className="text-slate-600 dark:text-slate-400 mt-0.5">
+                  {isNp
+                    ? 'यहाँ देखिने कार्यक्रमहरू SMS को शैक्षिक क्यालेन्डरबाट सार्वजनिक वेबसाइटका लागि छानिएका हुन्। यहाँबाट कार्यक्रम थप्दा वा मेटाउँदा वेबसाइट र क्यालेन्डर दुवैमा स्वतः अद्यावधिक हुन्छ।'
+                    : 'Events shown here are selected from SMS School Calendar. Creating, editing, or deleting events here synchronizes with both the public website and the calendar.'}
+                </p>
+              </div>
+            </div>
+            <a
+              href="/calendar"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-lg text-blue-700 dark:text-blue-300 font-bold hover:bg-blue-50 dark:hover:bg-slate-700 transition shrink-0"
+            >
+              <span>{isNp ? 'क्यालेन्डर हेर्नुहोस्' : 'Open Calendar'}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
           <div className="flex justify-between items-center">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-indigo-600" />
               {isNp ? 'सार्वजनिक विद्यालय कार्यक्रमहरू' : 'Upcoming & Past Events'}
+              <span className="text-xs font-normal text-slate-500">({events.length})</span>
             </h2>
             <button
               onClick={openAddEvent}
@@ -2074,48 +2099,73 @@ export const WebsiteManagement: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {events.map((ev) => (
-              <div
-                key={ev.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-                      {ev.status}
-                    </span>
-                    <span className="text-xs font-bold text-indigo-600">{ev.eventDateBs}</span>
+          {events.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 text-xs">
+              <Calendar className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              {isNp ? 'हाल वेबसाइटमा देखाउन कुनै कार्यक्रम छैन।' : 'No events scheduled for the website.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {events.map((ev) => (
+                <div
+                  key={ev.id}
+                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-xs space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-xs font-bold text-indigo-600 px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-md">
+                        {ev.eventDateBs}
+                      </span>
+                      {(ev.categoryNameNp || ev.categoryNameEn) ? (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-2xs"
+                          style={{ backgroundColor: ev.categoryColor || '#4f46e5' }}
+                        >
+                          {isNp ? (ev.categoryNameNp || 'कार्यक्रम') : (ev.categoryNameEn || 'Event')}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                          {ev.status || 'UPCOMING'}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      {isNp ? ev.titleNp : ev.titleEn}
+                    </h3>
+                    {(ev.descriptionNp || ev.descriptionEn) && (
+                      <p className="text-xs text-slate-500 line-clamp-2">{isNp ? ev.descriptionNp : ev.descriptionEn}</p>
+                    )}
+                    <div className="text-[11px] text-slate-400 flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{isNp ? (ev.venueNp || 'विद्यालय प्राङ्गण') : (ev.venueEn || 'School Premises')}</span>
+                      </div>
+                      {ev.eventTime && (
+                        <span className="text-slate-500 font-medium">{ev.eventTime}</span>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {isNp ? ev.titleNp : ev.titleEn}
-                  </h3>
-                  <p className="text-xs text-slate-500 line-clamp-2">{isNp ? ev.descriptionNp : ev.descriptionEn}</p>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>{isNp ? ev.venueNp : ev.venueEn}</span>
-                  </div>
-                </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-1">
-                  <button
-                    onClick={() => openEditEvent(ev)}
-                    className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md"
-                    title={isNp ? 'सम्पादन' : 'Edit'}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteEvent(ev.id)}
-                    className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md"
-                    title={isNp ? 'हटाउनुहोस्' : 'Delete'}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-1">
+                    <button
+                      onClick={() => openEditEvent(ev)}
+                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-md"
+                      title={isNp ? 'सम्पादन' : 'Edit'}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-md"
+                      title={isNp ? 'हटाउनुहोस्' : 'Delete'}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

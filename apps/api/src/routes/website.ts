@@ -316,10 +316,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       orderBy: (table: any, { desc }: any) => [desc(table.createdAt)],
     });
 
-    const events = await db.query.websiteEvents.findMany({
-      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
-      orderBy: (table: any, { desc }: any) => [desc(table.eventDateBs)],
-    });
+    const events = await getPublicEvents(db, schoolId);
 
     const albums = await db.query.websiteGalleryAlbums.findMany({
       where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
@@ -640,7 +637,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     return reply.send({ message: 'Notice deleted successfully' });
   });
 
-  // 11. Events (Add, Edit, Delete)
+  // 11. Events (Add, Edit, Delete) - Synced with schoolCalendarEvents
   fastify.post('/cms/events', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!(await authenticate(request, reply))) return;
     const db = await getDb();
@@ -651,24 +648,40 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ message: 'Title and event date are required' });
     }
 
-    const newEvent = {
+    const activeYear = await db.query.academicYears.findFirst({
+      where: (table: any, { eq, and }: any) =>
+        and(eq(table.schoolId, schoolId), eq(table.isCurrent, true)),
+    });
+    const currentAcademicYearId =
+      activeYear?.id ||
+      (await db.query.academicYears.findFirst({ where: (table: any, { eq }: any) => eq(table.schoolId, schoolId) }))?.id;
+
+    const defaultCategory = await db.query.schoolCalendarEventCategories.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    const newCalendarEvent = {
       id: crypto.randomUUID(),
       schoolId,
-      titleNp: body.titleNp,
-      titleEn: body.titleEn || body.titleNp,
-      descriptionNp: body.descriptionNp || null,
-      descriptionEn: body.descriptionEn || null,
-      eventDateBs: body.eventDateBs,
-      eventTime: body.eventTime || null,
-      venueNp: body.venueNp || null,
-      venueEn: body.venueEn || null,
-      status: body.status || 'UPCOMING',
+      academicYearId: currentAcademicYearId || '2083-default',
+      titleEn: body.titleEn?.trim() || body.titleNp.trim(),
+      titleNp: body.titleNp.trim(),
+      description: body.descriptionNp?.trim() || body.descriptionEn?.trim() || null,
+      eventType: body.categoryCode || defaultCategory?.code || 'EVENT_SPORTS',
+      startDateBs: body.eventDateBs.trim(),
+      endDateBs: body.endDateBs?.trim() || body.eventDateBs.trim(),
+      startDateAd: '2026-04-14',
+      endDateAd: '2026-04-14',
+      isTeachingDay: true,
+      showOnWebsite: true,
+      eventTime: body.eventTime?.trim() || null,
+      venueNp: body.venueNp?.trim() || null,
+      venueEn: body.venueEn?.trim() || null,
       createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
-    await db.insert(schema.websiteEvents).values(newEvent);
-    return reply.status(201).send({ message: 'Event added successfully', event: newEvent });
+    await db.insert(schema.schoolCalendarEvents).values(newCalendarEvent);
+    return reply.status(201).send({ message: 'Event added successfully', event: newCalendarEvent });
   });
 
   fastify.put('/cms/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -676,6 +689,29 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const db = await getDb();
     const { id } = request.params as any;
     const body = request.body as any;
+
+    const existingCal = await db.query.schoolCalendarEvents.findFirst({
+      where: (table: any, { eq }: any) => eq(table.id, id),
+    });
+
+    if (existingCal) {
+      const updates: any = {};
+      if (body.titleNp) updates.titleNp = body.titleNp.trim();
+      if (body.titleEn) updates.titleEn = body.titleEn.trim();
+      if (body.descriptionNp !== undefined) updates.description = body.descriptionNp?.trim() || null;
+      if (body.eventDateBs) {
+        updates.startDateBs = body.eventDateBs.trim();
+        updates.endDateBs = body.endDateBs?.trim() || body.eventDateBs.trim();
+      }
+      if (body.eventTime !== undefined) updates.eventTime = body.eventTime?.trim() || null;
+      if (body.venueNp !== undefined) updates.venueNp = body.venueNp?.trim() || null;
+      if (body.venueEn !== undefined) updates.venueEn = body.venueEn?.trim() || null;
+      if (body.categoryCode !== undefined) updates.eventType = body.categoryCode;
+      if (body.status !== undefined) updates.showOnWebsite = body.status !== 'CANCELLED';
+
+      await db.update(schema.schoolCalendarEvents).set(updates).where(eq(schema.schoolCalendarEvents.id, id));
+      return reply.send({ message: 'Event updated successfully' });
+    }
 
     await db
       .update(schema.websiteEvents)
@@ -701,6 +737,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const db = await getDb();
     const { id } = request.params as any;
 
+    await db.delete(schema.schoolCalendarEvents).where(eq(schema.schoolCalendarEvents.id, id));
     await db.delete(schema.websiteEvents).where(eq(schema.websiteEvents.id, id));
     return reply.send({ message: 'Event deleted successfully' });
   });
