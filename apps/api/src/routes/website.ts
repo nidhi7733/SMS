@@ -98,6 +98,18 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       limit: 10,
     });
 
+    // Fetch navigation menu items
+    const navItems = await db.query.websiteNavItems.findMany({
+      where: (table: any, { eq, and }: any) => and(eq(table.schoolId, schoolId), eq(table.isVisible, true)),
+      orderBy: (table: any, { asc }: any) => [asc(table.sortOrder)],
+    });
+
+    // Fetch academic programs
+    const academicPrograms = await db.query.websiteAcademicPrograms.findMany({
+      where: (table: any, { eq, and }: any) => and(eq(table.schoolId, schoolId), eq(table.isActive, true)),
+      orderBy: (table: any, { asc }: any) => [asc(table.sortOrder)],
+    });
+
     // Real stats from SMS
     const totalStudents = await db.select({ count: sql`count(*)` }).from(schema.students).where(eq(schema.students.schoolId, schoolId));
     const totalTeachers = await db.select({ count: sql`count(*)` }).from(schema.staff).where(eq(schema.staff.schoolId, schoolId));
@@ -119,16 +131,18 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
         addressEn: school.addressEn,
       },
       settings,
+      navItems,
+      academicPrograms,
       heroSlides,
       latestNotices,
       upcomingEvents,
       featuredAlbums,
       downloads,
       stats: {
-        totalStudents: Number(totalStudents[0]?.count) || 450,
-        totalTeachers: Number(totalTeachers[0]?.count) || 28,
-        totalClassrooms: Number(totalClassrooms[0]?.count) || 16,
-        establishedYearBs: school.establishedBsYear || 2028,
+        totalStudents: settings.customTotalStudents || Number(totalStudents[0]?.count) || 450,
+        totalTeachers: settings.customTotalTeachers || Number(totalTeachers[0]?.count) || 28,
+        totalClassrooms: settings.customTotalClassrooms || Number(totalClassrooms[0]?.count) || 16,
+        establishedYearBs: settings.establishedYearBs || school.establishedBsYear || 2028,
       },
     });
   });
@@ -293,8 +307,20 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       orderBy: (table: any, { desc }: any) => [desc(table.createdAt)],
     });
 
+    const navItems = await db.query.websiteNavItems.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      orderBy: (table: any, { asc }: any) => [asc(table.sortOrder)],
+    });
+
+    const academicPrograms = await db.query.websiteAcademicPrograms.findMany({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+      orderBy: (table: any, { asc }: any) => [asc(table.sortOrder)],
+    });
+
     return reply.send({
       settings,
+      navItems,
+      academicPrograms,
       slides,
       notices,
       events,
@@ -315,46 +341,109 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
     });
 
+    const settingsData = {
+      // Header & School Identity
+      logoUrl: body.logoUrl,
+      schoolNameNp: body.schoolNameNp,
+      schoolNameEn: body.schoolNameEn,
+      mottoNp: body.mottoNp,
+      mottoEn: body.mottoEn,
+      iemisCode: body.iemisCode,
+      establishedYearBs: body.establishedYearBs ? Number(body.establishedYearBs) : null,
+      affiliationTextNp: body.affiliationTextNp,
+      affiliationTextEn: body.affiliationTextEn,
+
+      // Hero
+      heroTitleNp: body.heroTitleNp,
+      heroTitleEn: body.heroTitleEn,
+      heroSubtitleNp: body.heroSubtitleNp,
+      heroSubtitleEn: body.heroSubtitleEn,
+
+      // About
+      aboutTitleNp: body.aboutTitleNp,
+      aboutTitleEn: body.aboutTitleEn,
+      aboutContentNp: body.aboutContentNp,
+      aboutContentEn: body.aboutContentEn,
+      aboutImageUrl: body.aboutImageUrl,
+      aboutImageCaptionNp: body.aboutImageCaptionNp,
+      aboutImageCaptionEn: body.aboutImageCaptionEn,
+
+      // Leadership Messages
+      principalNameNp: body.principalNameNp,
+      principalNameEn: body.principalNameEn,
+      principalDesignationNp: body.principalDesignationNp,
+      principalDesignationEn: body.principalDesignationEn,
+      principalMessageNp: body.principalMessageNp,
+      principalMessageEn: body.principalMessageEn,
+      principalPhotoUrl: body.principalPhotoUrl,
+      principalVisible: body.principalVisible !== undefined ? Boolean(body.principalVisible) : true,
+
+      smcChairNameNp: body.smcChairNameNp,
+      smcChairNameEn: body.smcChairNameEn,
+      smcChairDesignationNp: body.smcChairDesignationNp,
+      smcChairDesignationEn: body.smcChairDesignationEn,
+      smcChairMessageNp: body.smcChairMessageNp,
+      smcChairMessageEn: body.smcChairMessageEn,
+      smcChairPhotoUrl: body.smcChairPhotoUrl,
+      smcChairVisible: body.smcChairVisible !== undefined ? Boolean(body.smcChairVisible) : true,
+
+      // Contact & Office Hours
+      contactAddressNp: body.contactAddressNp,
+      contactAddressEn: body.contactAddressEn,
+      contactPhone: body.contactPhone,
+      contactEmail: body.contactEmail,
+      officeHoursNp: body.officeHoursNp,
+      officeHoursEn: body.officeHoursEn,
+      facebookUrl: body.facebookUrl,
+      youtubeUrl: body.youtubeUrl,
+
+      // Admissions & Portal Links
+      admissionOpen: body.admissionOpen !== undefined ? Boolean(body.admissionOpen) : true,
+      admissionBannerTextNp: body.admissionBannerTextNp,
+      admissionBannerTextEn: body.admissionBannerTextEn,
+      portalButtonTextNp: body.portalButtonTextNp,
+      portalButtonTextEn: body.portalButtonTextEn,
+      portalUrl: body.portalUrl,
+
+      // Custom Stats Overrides
+      customTotalStudents: body.customTotalStudents ? Number(body.customTotalStudents) : null,
+      customTotalTeachers: body.customTotalTeachers ? Number(body.customTotalTeachers) : null,
+      customTotalClassrooms: body.customTotalClassrooms ? Number(body.customTotalClassrooms) : null,
+
+      // Footer
+      footerCopyrightTextNp: body.footerCopyrightTextNp,
+      footerCopyrightTextEn: body.footerCopyrightTextEn,
+
+      updatedAt: new Date(),
+    };
+
     if (existing) {
       await db
         .update(schema.websiteSettings)
-        .set({
-          heroTitleNp: body.heroTitleNp,
-          heroTitleEn: body.heroTitleEn,
-          heroSubtitleNp: body.heroSubtitleNp,
-          heroSubtitleEn: body.heroSubtitleEn,
-          aboutTitleNp: body.aboutTitleNp,
-          aboutTitleEn: body.aboutTitleEn,
-          aboutContentNp: body.aboutContentNp,
-          aboutContentEn: body.aboutContentEn,
-          principalNameNp: body.principalNameNp,
-          principalNameEn: body.principalNameEn,
-          principalMessageNp: body.principalMessageNp,
-          principalMessageEn: body.principalMessageEn,
-          principalPhotoUrl: body.principalPhotoUrl,
-          smcChairNameNp: body.smcChairNameNp,
-          smcChairNameEn: body.smcChairNameEn,
-          smcChairMessageNp: body.smcChairMessageNp,
-          smcChairMessageEn: body.smcChairMessageEn,
-          smcChairPhotoUrl: body.smcChairPhotoUrl,
-          contactAddressNp: body.contactAddressNp,
-          contactAddressEn: body.contactAddressEn,
-          contactPhone: body.contactPhone,
-          contactEmail: body.contactEmail,
-          facebookUrl: body.facebookUrl,
-          youtubeUrl: body.youtubeUrl,
-          admissionOpen: body.admissionOpen !== undefined ? Boolean(body.admissionOpen) : true,
-          admissionBannerTextNp: body.admissionBannerTextNp,
-          admissionBannerTextEn: body.admissionBannerTextEn,
-          updatedAt: new Date(),
-        })
+        .set(settingsData)
         .where(eq(schema.websiteSettings.id, existing.id));
     } else {
       await db.insert(schema.websiteSettings).values({
         id: crypto.randomUUID(),
         schoolId,
-        ...body,
+        ...settingsData,
       });
+    }
+
+    // Optionally sync basic school info in schools table as well
+    if (body.schoolNameNp || body.schoolNameEn || body.logoUrl) {
+      await db
+        .update(schema.schools)
+        .set({
+          nameNp: body.schoolNameNp || undefined,
+          nameEn: body.schoolNameEn || undefined,
+          logoUrl: body.logoUrl || undefined,
+          mottoNp: body.mottoNp || undefined,
+          mottoEn: body.mottoEn || undefined,
+          phone: body.contactPhone || undefined,
+          email: body.contactEmail || undefined,
+        })
+        .where(eq(schema.schools.id, schoolId));
     }
 
     const updated = await db.query.websiteSettings.findFirst({
@@ -745,5 +834,125 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
 
     await db.delete(schema.websiteInquiries).where(eq(schema.websiteInquiries.id, id));
     return reply.send({ message: 'Inquiry deleted successfully' });
+  });
+
+  // 15. Navigation Menu CMS (Add, Edit, Delete)
+  fastify.post('/cms/nav-items', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const schoolId = (request as any).user.schoolId;
+    const body = request.body as any;
+
+    if (!body?.titleNp || !body?.titleEn || !body?.url) {
+      return reply.status(400).send({ message: 'Nepali title, English title, and URL are required' });
+    }
+
+    const newItem = {
+      id: crypto.randomUUID(),
+      schoolId,
+      titleNp: body.titleNp.trim(),
+      titleEn: body.titleEn.trim(),
+      url: body.url.trim(),
+      isExternal: Boolean(body.isExternal),
+      sortOrder: Number(body.sortOrder) || 0,
+      isVisible: body.isVisible !== undefined ? Boolean(body.isVisible) : true,
+      createdAt: new Date(),
+    };
+
+    await db.insert(schema.websiteNavItems).values(newItem);
+    return reply.status(201).send({ message: 'Menu item created successfully', item: newItem });
+  });
+
+  fastify.put('/cms/nav-items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const { id } = request.params as any;
+    const body = request.body as any;
+
+    await db
+      .update(schema.websiteNavItems)
+      .set({
+        titleNp: body.titleNp?.trim(),
+        titleEn: body.titleEn?.trim(),
+        url: body.url?.trim(),
+        isExternal: body.isExternal !== undefined ? Boolean(body.isExternal) : undefined,
+        sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,
+        isVisible: body.isVisible !== undefined ? Boolean(body.isVisible) : undefined,
+      })
+      .where(eq(schema.websiteNavItems.id, id));
+
+    return reply.send({ message: 'Menu item updated successfully' });
+  });
+
+  fastify.delete('/cms/nav-items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const { id } = request.params as any;
+
+    await db.delete(schema.websiteNavItems).where(eq(schema.websiteNavItems.id, id));
+    return reply.send({ message: 'Menu item deleted successfully' });
+  });
+
+  // 16. Academic Programs CMS (Add, Edit, Delete)
+  fastify.post('/cms/academic-programs', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const schoolId = (request as any).user.schoolId;
+    const body = request.body as any;
+
+    if (!body?.titleNp || !body?.titleEn || !body?.descriptionNp || !body?.descriptionEn) {
+      return reply.status(400).send({ message: 'Title and description in both languages are required' });
+    }
+
+    const newProgram = {
+      id: crypto.randomUUID(),
+      schoolId,
+      titleNp: body.titleNp.trim(),
+      titleEn: body.titleEn.trim(),
+      descriptionNp: body.descriptionNp.trim(),
+      descriptionEn: body.descriptionEn.trim(),
+      icon: body.icon || 'BookOpen',
+      badgeNp: body.badgeNp?.trim() || null,
+      badgeEn: body.badgeEn?.trim() || null,
+      sortOrder: Number(body.sortOrder) || 0,
+      isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+      createdAt: new Date(),
+    };
+
+    await db.insert(schema.websiteAcademicPrograms).values(newProgram);
+    return reply.status(201).send({ message: 'Academic program created successfully', program: newProgram });
+  });
+
+  fastify.put('/cms/academic-programs/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const { id } = request.params as any;
+    const body = request.body as any;
+
+    await db
+      .update(schema.websiteAcademicPrograms)
+      .set({
+        titleNp: body.titleNp?.trim(),
+        titleEn: body.titleEn?.trim(),
+        descriptionNp: body.descriptionNp?.trim(),
+        descriptionEn: body.descriptionEn?.trim(),
+        icon: body.icon || undefined,
+        badgeNp: body.badgeNp !== undefined ? body.badgeNp?.trim() : undefined,
+        badgeEn: body.badgeEn !== undefined ? body.badgeEn?.trim() : undefined,
+        sortOrder: body.sortOrder !== undefined ? Number(body.sortOrder) : undefined,
+        isActive: body.isActive !== undefined ? Boolean(body.isActive) : undefined,
+      })
+      .where(eq(schema.websiteAcademicPrograms.id, id));
+
+    return reply.send({ message: 'Academic program updated successfully' });
+  });
+
+  fastify.delete('/cms/academic-programs/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!(await authenticate(request, reply))) return;
+    const db = await getDb();
+    const { id } = request.params as any;
+
+    await db.delete(schema.websiteAcademicPrograms).where(eq(schema.websiteAcademicPrograms.id, id));
+    return reply.send({ message: 'Academic program deleted successfully' });
   });
 }

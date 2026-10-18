@@ -22,10 +22,20 @@ import {
   Pin,
   Search,
   Eye,
+  EyeOff,
   AlertCircle,
+  Navigation,
+  GraduationCap,
+  BookOpen,
+  Award,
+  Sparkles,
+  Layers,
+  Building,
 } from 'lucide-react';
 import {
   WebsiteSettings,
+  WebsiteNavItem,
+  WebsiteAcademicProgram,
   WebsiteHeroSlide,
   WebsiteNotice,
   WebsiteEvent,
@@ -40,7 +50,7 @@ export const WebsiteManagement: React.FC = () => {
   const isNp = language === 'np';
 
   const [activeTab, setActiveTab] = useState<
-    'settings' | 'slides' | 'notices' | 'events' | 'gallery' | 'downloads' | 'inquiries'
+    'settings' | 'nav_menu' | 'academics' | 'slides' | 'notices' | 'events' | 'gallery' | 'downloads' | 'inquiries'
   >('settings');
 
   const [isLoading, setIsLoading] = useState(true);
@@ -49,6 +59,8 @@ export const WebsiteManagement: React.FC = () => {
 
   // Data states
   const [settings, setSettings] = useState<Partial<WebsiteSettings>>({});
+  const [navItems, setNavItems] = useState<WebsiteNavItem[]>([]);
+  const [academicPrograms, setAcademicPrograms] = useState<WebsiteAcademicProgram[]>([]);
   const [slides, setSlides] = useState<WebsiteHeroSlide[]>([]);
   const [notices, setNotices] = useState<WebsiteNotice[]>([]);
   const [events, setEvents] = useState<WebsiteEvent[]>([]);
@@ -56,7 +68,33 @@ export const WebsiteManagement: React.FC = () => {
   const [downloads, setDownloads] = useState<WebsiteDownload[]>([]);
   const [inquiries, setInquiries] = useState<WebsiteInquiry[]>([]);
 
-  // Modals
+  // Navigation Menu Modals
+  const [isNavModalOpen, setIsNavModalOpen] = useState(false);
+  const [editingNavItem, setEditingNavItem] = useState<WebsiteNavItem | null>(null);
+  const [navForm, setNavForm] = useState({
+    titleNp: '',
+    titleEn: '',
+    url: '#home',
+    isExternal: false,
+    sortOrder: 0,
+    isVisible: true,
+  });
+
+  // Academic Programs Modals
+  const [isProgramModalOpen, setIsProgramModalOpen] = useState(false);
+  const [editingProgram, setEditingProgram] = useState<WebsiteAcademicProgram | null>(null);
+  const [programForm, setProgramForm] = useState({
+    titleNp: '',
+    titleEn: '',
+    descriptionNp: '',
+    descriptionEn: '',
+    icon: 'BookOpen',
+    badgeNp: '',
+    badgeEn: '',
+    sortOrder: 0,
+    isActive: true,
+  });
+
   const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<WebsiteHeroSlide | null>(null);
   const [slideForm, setSlideForm] = useState({
@@ -160,6 +198,8 @@ export const WebsiteManagement: React.FC = () => {
       if (!res.ok) throw new Error('Failed to fetch CMS overview');
       const data = await res.json();
       setSettings(data.settings || {});
+      setNavItems(data.navItems || []);
+      setAcademicPrograms(data.academicPrograms || []);
       setSlides(data.slides || []);
       setNotices(data.notices || []);
       setEvents(data.events || []);
@@ -192,6 +232,172 @@ export const WebsiteManagement: React.FC = () => {
       fetchCmsData();
     } catch (err: any) {
       showNotification(err.message || 'Error updating settings', true);
+    }
+  };
+
+  // Handlers for Navigation Menu
+  const openAddNavItem = () => {
+    setEditingNavItem(null);
+    setNavForm({
+      titleNp: '',
+      titleEn: '',
+      url: '#home',
+      isExternal: false,
+      sortOrder: navItems.length + 1,
+      isVisible: true,
+    });
+    setIsNavModalOpen(true);
+  };
+
+  const openEditNavItem = (item: WebsiteNavItem) => {
+    setEditingNavItem(item);
+    setNavForm({
+      titleNp: item.titleNp,
+      titleEn: item.titleEn,
+      url: item.url,
+      isExternal: item.isExternal,
+      sortOrder: item.sortOrder,
+      isVisible: item.isVisible,
+    });
+    setIsNavModalOpen(true);
+  };
+
+  const handleSaveNavItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const url = editingNavItem ? `/api/cms/nav-items/${editingNavItem.id}` : '/api/cms/nav-items';
+      const method = editingNavItem ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(navForm),
+      });
+      if (!res.ok) throw new Error('Failed to save menu item');
+      setIsNavModalOpen(false);
+      showNotification(isNp ? 'मेनु सफलतापूर्वक सुरक्षित गरियो!' : 'Menu item saved successfully!');
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message || 'Failed to save menu item', true);
+    }
+  };
+
+  const handleDeleteNavItem = async (id: string) => {
+    if (!window.confirm(isNp ? 'के तपाईं यो मेनु हटाउन निश्चित हुनुहुन्छ?' : 'Are you sure you want to delete this menu item?')) return;
+    try {
+      const res = await fetch(`/api/cms/nav-items/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to delete menu item');
+      showNotification(isNp ? 'मेनु मेटाइयो!' : 'Menu item deleted successfully!');
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message, true);
+    }
+  };
+
+  const handleToggleNavVisibility = async (item: WebsiteNavItem) => {
+    try {
+      const res = await fetch(`/api/cms/nav-items/${item.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ isVisible: !item.isVisible }),
+      });
+      if (!res.ok) throw new Error('Failed to toggle visibility');
+      showNotification(
+        isNp
+          ? item.isVisible ? 'मेनु निष्कृय गरियो!' : 'मेनु सक्रिय गरियो!'
+          : item.isVisible ? 'Menu hidden' : 'Menu visible'
+      );
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message, true);
+    }
+  };
+
+  // Handlers for Academic Programs
+  const openAddProgram = () => {
+    setEditingProgram(null);
+    setProgramForm({
+      titleNp: '',
+      titleEn: '',
+      descriptionNp: '',
+      descriptionEn: '',
+      icon: 'BookOpen',
+      badgeNp: '',
+      badgeEn: '',
+      sortOrder: academicPrograms.length + 1,
+      isActive: true,
+    });
+    setIsProgramModalOpen(true);
+  };
+
+  const openEditProgram = (prog: WebsiteAcademicProgram) => {
+    setEditingProgram(prog);
+    setProgramForm({
+      titleNp: prog.titleNp,
+      titleEn: prog.titleEn,
+      descriptionNp: prog.descriptionNp,
+      descriptionEn: prog.descriptionEn,
+      icon: prog.icon || 'BookOpen',
+      badgeNp: prog.badgeNp || '',
+      badgeEn: prog.badgeEn || '',
+      sortOrder: prog.sortOrder,
+      isActive: prog.isActive,
+    });
+    setIsProgramModalOpen(true);
+  };
+
+  const handleSaveProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const url = editingProgram ? `/api/cms/academic-programs/${editingProgram.id}` : '/api/cms/academic-programs';
+      const method = editingProgram ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(programForm),
+      });
+      if (!res.ok) throw new Error('Failed to save academic program');
+      setIsProgramModalOpen(false);
+      showNotification(isNp ? 'शैक्षिक कार्यक्रम सुरक्षित गरियो!' : 'Academic program saved successfully!');
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message || 'Failed to save program', true);
+    }
+  };
+
+  const handleDeleteProgram = async (id: string) => {
+    if (!window.confirm(isNp ? 'के तपाईं यो शैक्षिक कार्यक्रम हटाउन निश्चित हुनुहुन्छ?' : 'Are you sure you want to delete this program?')) return;
+    try {
+      const res = await fetch(`/api/cms/academic-programs/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to delete program');
+      showNotification(isNp ? 'कार्यक्रम मेटाइयो!' : 'Program deleted successfully!');
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message, true);
+    }
+  };
+
+  const handleToggleProgramActive = async (prog: WebsiteAcademicProgram) => {
+    try {
+      const res = await fetch(`/api/cms/academic-programs/${prog.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ isActive: !prog.isActive }),
+      });
+      if (!res.ok) throw new Error('Failed to toggle status');
+      showNotification(
+        isNp
+          ? prog.isActive ? 'कार्यक्रम निष्कृय गरियो!' : 'कार्यक्रम सक्रिय गरियो!'
+          : prog.isActive ? 'Program deactivated' : 'Program activated'
+      );
+      fetchCmsData();
+    } catch (err: any) {
+      showNotification(err.message, true);
     }
   };
 
@@ -637,6 +843,8 @@ export const WebsiteManagement: React.FC = () => {
       <div className="flex overflow-x-auto border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 rounded-xl shadow-2xs gap-1">
         {[
           { id: 'settings', labelNp: 'सामान्य विवरण र मन्तव्य', labelEn: 'General & Messages', icon: Sliders },
+          { id: 'nav_menu', labelNp: 'वेबसाइट मेनु', labelEn: 'Navigation Menu', icon: Navigation, count: navItems.length },
+          { id: 'academics', labelNp: 'शैक्षिक कार्यक्रम', labelEn: 'Academic Programs', icon: GraduationCap, count: academicPrograms.length },
           { id: 'slides', labelNp: 'ब्यानर तथा स्लाइडहरू', labelEn: 'Hero Banners', icon: Sliders, count: slides.length },
           { id: 'notices', labelNp: 'सार्वजनिक सूचनाहरू', labelEn: 'Public Notices', icon: Bell, count: notices.length },
           { id: 'events', labelNp: 'कार्यक्रम तथा क्यालेन्डर', labelEn: 'Events', icon: Calendar, count: events.length },
@@ -668,13 +876,172 @@ export const WebsiteManagement: React.FC = () => {
         })}
       </div>
 
-      {/* TAB 1: GENERAL SETTINGS & MESSAGES */}
+      {/* TAB 1: GENERAL SETTINGS, LOGO & MESSAGES */}
       {activeTab === 'settings' && (
         <form onSubmit={handleSaveSettings} className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-6">
+          {/* Card 1: School Identity & Logo */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Building className="w-5 h-5 text-indigo-600" />
+              {isNp ? 'विद्यालयको पहिचान, लोगो तथा नाम' : 'School Identity, Logo & Names'}
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+              {/* Logo Preview & Input */}
+              <div className="md:col-span-4 p-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center text-center space-y-3">
+                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shadow-sm p-1.5">
+                  {settings.logoUrl ? (
+                    <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-3xl">🏛️</span>
+                  )}
+                </div>
+                <div className="w-full space-y-2">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    {isNp ? 'विद्यालय लोगो लिङ्क (Logo URL)' : 'School Logo URL'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.logoUrl || ''}
+                    onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
+                    className="w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-900 dark:border-slate-700 font-mono"
+                    placeholder="https://.../logo.png"
+                  />
+                  <div className="flex justify-center gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, logoUrl: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=120&auto=format&fit=crop&q=80' })}
+                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300"
+                    >
+                      {isNp ? 'नमुना १' : 'Demo 1'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, logoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=120&auto=format&fit=crop&q=80' })}
+                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300"
+                    >
+                      {isNp ? 'नमुना २' : 'Demo 2'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, logoUrl: '' })}
+                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300 text-rose-600"
+                    >
+                      {isNp ? 'हटाउनुहोस्' : 'Clear'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Names & Motto */}
+              <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'विद्यालयको नाम (नेपाली) *' : 'School Name (Nepali) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.schoolNameNp || ''}
+                    onChange={(e) => setSettings({ ...settings, schoolNameNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="श्री शान्ति माध्यमिक विद्यालय"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'विद्यालयको नाम (English) *' : 'School Name (English) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.schoolNameEn || ''}
+                    onChange={(e) => setSettings({ ...settings, schoolNameEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Shree Shanti Secondary School"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'विद्यालयको मूल मन्त्र / नारा (नेपाली)' : 'School Motto (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.mottoNp || ''}
+                    onChange={(e) => setSettings({ ...settings, mottoNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं."
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'विद्यालयको मूल मन्त्र / नारा (English)' : 'School Motto (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.mottoEn || ''}
+                    onChange={(e) => setSettings({ ...settings, mottoEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Education for Truth and Enlightenment"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'सम्बद्धता / मान्यता ब्याड्ज (नेपाली)' : 'Affiliation Badge (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.affiliationTextNp || ''}
+                    onChange={(e) => setSettings({ ...settings, affiliationTextNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="नेपाल सरकार | CEHRD मान्यता प्राप्त"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'सम्बद्धता / मान्यता ब्याड्ज (English)' : 'Affiliation Badge (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.affiliationTextEn || ''}
+                    onChange={(e) => setSettings({ ...settings, affiliationTextEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Govt. of Nepal | CEHRD Aligned"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'IEMIS कोड' : 'CEHRD IEMIS Code'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.iemisCode || ''}
+                    onChange={(e) => setSettings({ ...settings, iemisCode: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="270010001"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'स्थापना वर्ष (वि.सं.)' : 'Established Year (BS)'}
+                  </label>
+                  <input
+                    type="number"
+                    value={settings.establishedYearBs || 2028}
+                    onChange={(e) => setSettings({ ...settings, establishedYearBs: Number(e.target.value) })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Homepage Hero Titles */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <Sliders className="w-5 h-5 text-indigo-600" />
-              {isNp ? 'होमपेज शीर्षक तथा मुख्य नारा' : 'Homepage Hero Titles & Subtitle'}
+              {isNp ? 'होमपेज ब्यानर शीर्षक तथा मुख्य नारा' : 'Homepage Hero Titles & Subtitle'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -717,11 +1084,11 @@ export const WebsiteManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* About Us Section */}
+          {/* Card 3: About Us & Campus Photo */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <Globe className="w-5 h-5 text-indigo-600" />
-              {isNp ? 'विद्यालयको विस्तृत परिचय (About Us)' : 'About School Content'}
+              {isNp ? 'विद्यालयको विस्तृत परिचय तथा क्याम्पस फोटो (About Us)' : 'About School & Campus Photo'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -758,39 +1125,119 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Principal & SMC Messages */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Principal */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                👨‍🏫 {isNp ? 'प्रधानाध्यापकको मन्तव्य (Principal)' : "Principal's Message"}
-              </h3>
               <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'प्रधानाध्यापकको नाम (नेपाली)' : 'Principal Name (Nepali)'}
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'क्याम्पस फोटो लिङ्क (Campus Photo URL)' : 'Campus Photo URL'}
                 </label>
                 <input
                   type="text"
-                  value={settings.principalNameNp || ''}
-                  onChange={(e) => setSettings({ ...settings, principalNameNp: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फोटो लिङ्क (Photo URL)' : 'Photo URL'}
-                </label>
-                <input
-                  type="text"
-                  value={settings.principalPhotoUrl || ''}
-                  onChange={(e) => setSettings({ ...settings, principalPhotoUrl: e.target.value })}
+                  value={settings.aboutImageUrl || ''}
+                  onChange={(e) => setSettings({ ...settings, aboutImageUrl: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                   placeholder="https://..."
                 />
               </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'फोटो क्याप्सन (नेपाली)' : 'Photo Caption (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.aboutImageCaptionNp || ''}
+                  onChange={(e) => setSettings({ ...settings, aboutImageCaptionNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="शान्त तथा बालमैत्री परिसर"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Leadership Messages */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Principal */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  👨‍🏫 {isNp ? 'प्रधानाध्यापकको मन्तव्य (Principal)' : "Principal's Message"}
+                </h3>
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.principalVisible !== false}
+                    onChange={(e) => setSettings({ ...settings, principalVisible: e.target.checked })}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
+                  />
+                  <span>{isNp ? 'देखाउनुहोस्' : 'Visible'}</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'नाम (नेपाली)' : 'Name (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.principalNameNp || ''}
+                    onChange={(e) => setSettings({ ...settings, principalNameNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'नाम (English)' : 'Name (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.principalNameEn || ''}
+                    onChange={(e) => setSettings({ ...settings, principalNameEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'पद / Designation (नेपाली)' : 'Designation (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.principalDesignationNp || ''}
+                    onChange={(e) => setSettings({ ...settings, principalDesignationNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="प्रधानाध्यापक"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'पद / Designation (English)' : 'Designation (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.principalDesignationEn || ''}
+                    onChange={(e) => setSettings({ ...settings, principalDesignationEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Principal"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'फोटो लिङ्क (Photo URL)' : 'Photo URL'}
+                </label>
+                <div className="flex gap-2 items-center mt-1">
+                  {settings.principalPhotoUrl && (
+                    <img src={settings.principalPhotoUrl} alt="Principal" className="w-10 h-10 rounded-full object-cover border" />
+                  )}
+                  <input
+                    type="text"
+                    value={settings.principalPhotoUrl || ''}
+                    onChange={(e) => setSettings({ ...settings, principalPhotoUrl: e.target.value })}
+                    className="w-full text-sm px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'मन्तव्य सन्देश (नेपाली)' : 'Message (Nepali)'}
@@ -802,36 +1249,104 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मन्तव्य सन्देश (English)' : 'Message (English)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={settings.principalMessageEn || ''}
+                  onChange={(e) => setSettings({ ...settings, principalMessageEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
             </div>
 
             {/* SMC Chairperson */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                🏛️ {isNp ? 'वि.व्य.स. अध्यक्षको मन्तव्य (SMC Chair)' : "SMC Chairperson's Message"}
-              </h3>
-              <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'अध्यक्षको नाम (नेपाली)' : 'Chairperson Name (Nepali)'}
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  🏛️ {isNp ? 'वि.व्य.स. अध्यक्षको मन्तव्य (SMC Chair)' : "SMC Chairperson's Message"}
+                </h3>
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.smcChairVisible !== false}
+                    onChange={(e) => setSettings({ ...settings, smcChairVisible: e.target.checked })}
+                    className="w-3.5 h-3.5 text-indigo-600 rounded"
+                  />
+                  <span>{isNp ? 'देखाउनुहोस्' : 'Visible'}</span>
                 </label>
-                <input
-                  type="text"
-                  value={settings.smcChairNameNp || ''}
-                  onChange={(e) => setSettings({ ...settings, smcChairNameNp: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'नाम (नेपाली)' : 'Name (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.smcChairNameNp || ''}
+                    onChange={(e) => setSettings({ ...settings, smcChairNameNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'नाम (English)' : 'Name (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.smcChairNameEn || ''}
+                    onChange={(e) => setSettings({ ...settings, smcChairNameEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'पद / Designation (नेपाली)' : 'Designation (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.smcChairDesignationNp || ''}
+                    onChange={(e) => setSettings({ ...settings, smcChairDesignationNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="अध्यक्ष, विद्यालय व्यवस्थापन समिति"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {isNp ? 'पद / Designation (English)' : 'Designation (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.smcChairDesignationEn || ''}
+                    onChange={(e) => setSettings({ ...settings, smcChairDesignationEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="SMC Chairperson"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'फोटो लिङ्क (Photo URL)' : 'Photo URL'}
                 </label>
-                <input
-                  type="text"
-                  value={settings.smcChairPhotoUrl || ''}
-                  onChange={(e) => setSettings({ ...settings, smcChairPhotoUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://..."
-                />
+                <div className="flex gap-2 items-center mt-1">
+                  {settings.smcChairPhotoUrl && (
+                    <img src={settings.smcChairPhotoUrl} alt="SMC Chair" className="w-10 h-10 rounded-full object-cover border" />
+                  )}
+                  <input
+                    type="text"
+                    value={settings.smcChairPhotoUrl || ''}
+                    onChange={(e) => setSettings({ ...settings, smcChairPhotoUrl: e.target.value })}
+                    className="w-full text-sm px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="https://..."
+                  />
+                </div>
               </div>
+
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'मन्तव्य सन्देश (नेपाली)' : 'Message (Nepali)'}
@@ -843,14 +1358,26 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मन्तव्य सन्देश (English)' : 'Message (English)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={settings.smcChairMessageEn || ''}
+                  onChange={(e) => setSettings({ ...settings, smcChairMessageEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Admission & Contact Settings */}
+          {/* Card 5: Admission, Portal & Contact Settings */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <Phone className="w-5 h-5 text-indigo-600" />
-              {isNp ? 'भर्ना सूचना तथा सम्पर्क विवरण' : 'Admission Banner & Contact Info'}
+              {isNp ? 'कार्यालय समय, सम्पर्क तथा भर्ना सेटिङ' : 'Office Hours, Contact & Admissions'}
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -867,7 +1394,7 @@ export const WebsiteManagement: React.FC = () => {
                 </label>
               </div>
 
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'भर्ना ब्यानर सन्देश (नेपाली)' : 'Admission Banner Text (Nepali)'}
                 </label>
@@ -877,6 +1404,32 @@ export const WebsiteManagement: React.FC = () => {
                   onChange={(e) => setSettings({ ...settings, admissionBannerTextNp: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                   placeholder="शैक्षिक सत्र २०८३ का लागि नयाँ भर्ना खुल्यो!"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'पोर्टल लगइन बटन पाठ' : 'Portal Button Text'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.portalButtonTextNp || ''}
+                  onChange={(e) => setSettings({ ...settings, portalButtonTextNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="पोर्टल लगइन (SMS Login)"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'कार्यालय समय (नेपाली)' : 'Office Hours (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.officeHoursNp || ''}
+                  onChange={(e) => setSettings({ ...settings, officeHoursNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:००"
                 />
               </div>
 
@@ -906,6 +1459,18 @@ export const WebsiteManagement: React.FC = () => {
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'ठेगाना (नेपाली)' : 'Address (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.contactAddressNp || ''}
+                  onChange={(e) => setSettings({ ...settings, contactAddressNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'फेसबुक पेज लिङ्क' : 'Facebook Page URL'}
                 </label>
                 <input
@@ -913,7 +1478,65 @@ export const WebsiteManagement: React.FC = () => {
                   value={settings.facebookUrl || ''}
                   onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://facebook.com/..."
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'युट्युब च्यानल लिङ्क' : 'YouTube Channel URL'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.youtubeUrl || ''}
+                  onChange={(e) => setSettings({ ...settings, youtubeUrl: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 6: Custom Key Stats Overrides */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Award className="w-5 h-5 text-indigo-600" />
+              {isNp ? 'तथ्याङ्कमा हाम्रो विद्यालय (Key Stats Counter Overrides)' : 'Key Stats Overrides'}
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'विद्यार्थी सङ्ख्या (Total Students)' : 'Total Students'}
+                </label>
+                <input
+                  type="number"
+                  value={settings.customTotalStudents || ''}
+                  onChange={(e) => setSettings({ ...settings, customTotalStudents: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="४५०+ (स्वत: गणना खाली राखेमा)"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'शिक्षक सङ्ख्या (Total Educators)' : 'Total Educators'}
+                </label>
+                <input
+                  type="number"
+                  value={settings.customTotalTeachers || ''}
+                  onChange={(e) => setSettings({ ...settings, customTotalTeachers: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="२८+ (स्वत: गणना खाली राखेमा)"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'कक्षाकोठा सङ्ख्या (Classrooms)' : 'Classrooms'}
+                </label>
+                <input
+                  type="number"
+                  value={settings.customTotalClassrooms || ''}
+                  onChange={(e) => setSettings({ ...settings, customTotalClassrooms: e.target.value ? Number(e.target.value) : null })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="१६+ (स्वत: गणना खाली राखेमा)"
                 />
               </div>
             </div>
@@ -929,6 +1552,185 @@ export const WebsiteManagement: React.FC = () => {
             </button>
           </div>
         </form>
+      )}
+
+      {/* TAB 2: NAVIGATION MENU MANAGEMENT */}
+      {activeTab === 'nav_menu' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Navigation className="w-5 h-5 text-indigo-600" />
+                {isNp ? 'विद्यालय वेबसाइट नेभिगेसन मेनु' : 'Website Navigation Menu'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isNp ? 'वेबसाइटको मुख्य हेडर तथा मोबाइल मेनुमा देखिने लिङ्कहरू थप्ने, मिलाउने र मेटाउने' : 'Manage top header and mobile navigation links'}
+              </p>
+            </div>
+            <button
+              onClick={openAddNavItem}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              {isNp ? '+ नयाँ मेनु थप्नुहोस्' : '+ Add Menu Item'}
+            </button>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold uppercase">
+                <tr>
+                  <th className="py-3 px-4 w-14">क्रम</th>
+                  <th className="py-3 px-4">मेनु नाम (नेपाली)</th>
+                  <th className="py-3 px-4">Menu Name (English)</th>
+                  <th className="py-3 px-4">लिङ्क / सेक्सन (URL)</th>
+                  <th className="py-3 px-4 w-28 text-center">प्रकार</th>
+                  <th className="py-3 px-4 w-24 text-center">स्थिति</th>
+                  <th className="py-3 px-4 w-24 text-right">कार्य</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {navItems.length > 0 ? (
+                  navItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-500">{item.sortOrder}</td>
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">{item.titleNp}</td>
+                      <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-medium">{item.titleEn}</td>
+                      <td className="py-3 px-4 font-mono text-indigo-600 dark:text-indigo-400">{item.url}</td>
+                      <td className="py-3 px-4 text-center">
+                        {item.isExternal ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            External
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            Section Anchor
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => handleToggleNavVisibility(item)}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 mx-auto ${
+                            item.isVisible
+                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}
+                        >
+                          {item.isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                          <span>{item.isVisible ? (isNp ? 'सक्रिय' : 'Visible') : (isNp ? 'लुकाइएको' : 'Hidden')}</span>
+                        </button>
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-2">
+                        <button
+                          onClick={() => openEditNavItem(item)}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md"
+                          title="सम्पादन गर्नुहोस्"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNavItem(item.id)}
+                          className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md"
+                          title="हटाउनुहोस्"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-500">
+                      {isNp ? 'कुनै मेनु प्रविष्टि गरिएको छैन।' : 'No navigation menu items found.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: ACADEMIC PROGRAMS MANAGEMENT */}
+      {activeTab === 'academics' && (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <GraduationCap className="w-5 h-5 text-indigo-600" />
+                {isNp ? 'शैक्षिक कार्यक्रम तथा संकाय (Academic Programs)' : 'Academic Offerings & Programs'}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isNp ? 'वेबसाइटमा प्रदर्शन गरिने आधारभूत, माध्यमिक, तथा उच्च माध्यमिक संकायहरू' : 'Manage academic streams, basic to higher secondary levels'}
+              </p>
+            </div>
+            <button
+              onClick={openAddProgram}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              {isNp ? '+ नयाँ शैक्षिक कार्यक्रम थप्नुहोस्' : '+ Add Academic Program'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {academicPrograms.map((prog) => (
+              <div
+                key={prog.id}
+                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="p-2.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                      {prog.icon === 'Award' ? <Award className="w-5 h-5" /> : prog.icon === 'GraduationCap' ? <GraduationCap className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
+                    </span>
+                    <button
+                      onClick={() => handleToggleProgramActive(prog)}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        prog.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {prog.isActive ? (isNp ? 'सक्रिय' : 'Active') : (isNp ? 'निष्क्रिय' : 'Inactive')}
+                    </button>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{prog.titleNp}</h3>
+                    <div className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{prog.titleEn}</div>
+                    {prog.badgeNp && (
+                      <span className="inline-block mt-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold">
+                        {prog.badgeNp}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
+                    {prog.descriptionNp}
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                  <span className="text-[11px] text-slate-400">क्रम: {prog.sortOrder}</span>
+                  <div className="space-x-1">
+                    <button
+                      onClick={() => openEditProgram(prog)}
+                      className="p-1.5 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProgram(prog.id)}
+                      className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* TAB 2: HERO SLIDES */}
@@ -1358,6 +2160,293 @@ export const WebsiteManagement: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: NAVIGATION MENU ITEM */}
+      {/* ========================================================= */}
+      {isNavModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {editingNavItem ? (isNp ? 'मेनु सम्पादन गर्नुहोस्' : 'Edit Menu Item') : isNp ? 'नयाँ मेनु थप्नुहोस्' : 'Add Menu Item'}
+              </h3>
+              <button onClick={() => setIsNavModalOpen(false)}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNavItem} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मेनु शीर्षक (नेपाली) *' : 'Menu Title (Nepali) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={navForm.titleNp}
+                  onChange={(e) => setNavForm({ ...navForm, titleNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="उदा: हाम्रो बारेमा"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'Menu Title (English) *' : 'Menu Title (English) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={navForm.titleEn}
+                  onChange={(e) => setNavForm({ ...navForm, titleEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="e.g. About Us"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'लिङ्क / सेक्सन यूआरएल (URL) *' : 'Target Link / Section URL *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={navForm.url}
+                  onChange={(e) => setNavForm({ ...navForm, url: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 font-mono text-xs"
+                  placeholder="#home, #about वा https://..."
+                />
+                {/* Preset shortcuts */}
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <span className="text-[10px] text-slate-400 self-center mr-1">{isNp ? 'छिटो छनोट:' : 'Quick:'}</span>
+                  {['#home', '#about', '#academics', '#notices', '#events', '#gallery', '#downloads', '#contact'].map((sec) => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setNavForm({ ...navForm, url: sec })}
+                      className="px-1.5 py-0.5 text-[10px] bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded font-mono"
+                    >
+                      {sec}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'क्रम (Sort Order)' : 'Sort Order'}
+                  </label>
+                  <input
+                    type="number"
+                    value={navForm.sortOrder}
+                    onChange={(e) => setNavForm({ ...navForm, sortOrder: Number(e.target.value) })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+
+                <div className="flex flex-col justify-end space-y-2 pb-1">
+                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={navForm.isExternal}
+                      onChange={(e) => setNavForm({ ...navForm, isExternal: e.target.checked })}
+                      className="w-4 h-4 text-indigo-600 rounded"
+                    />
+                    <span>{isNp ? 'बाह्य लिङ्क (External URL)' : 'External Link'}</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={navForm.isVisible}
+                      onChange={(e) => setNavForm({ ...navForm, isVisible: e.target.checked })}
+                      className="w-4 h-4 text-indigo-600 rounded"
+                    />
+                    <span>{isNp ? 'सक्रिय / देखाउनुहोस्' : 'Visible'}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsNavModalOpen(false)}
+                  className="px-4 py-2 text-xs text-slate-600 hover:text-slate-800"
+                >
+                  {isNp ? 'रद्द' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold"
+                >
+                  {isNp ? 'मेनु सुरक्षित गर्नुहोस्' : 'Save Menu'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MODAL: ACADEMIC PROGRAM */}
+      {/* ========================================================= */}
+      {isProgramModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl max-w-lg w-full p-6 shadow-xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {editingProgram ? (isNp ? 'कार्यक्रम सम्पादन गर्नुहोस्' : 'Edit Program') : isNp ? 'नयाँ शैक्षिक कार्यक्रम' : 'Add Academic Program'}
+              </h3>
+              <button onClick={() => setIsProgramModalOpen(false)}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProgram} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'शीर्षक (नेपाली) *' : 'Title (Nepali) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={programForm.titleNp}
+                    onChange={(e) => setProgramForm({ ...programForm, titleNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="आधारभूत तह (कक्षा १–८)"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'Title (English) *' : 'Title (English) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={programForm.titleEn}
+                    onChange={(e) => setProgramForm({ ...programForm, titleEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Basic Level (Grades 1-8)"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'ब्याड्ज (नेपाली)' : 'Badge (Nepali)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={programForm.badgeNp}
+                    onChange={(e) => setProgramForm({ ...programForm, badgeNp: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="कक्षा १-८"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'Badge (English)' : 'Badge (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={programForm.badgeEn}
+                    onChange={(e) => setProgramForm({ ...programForm, badgeEn: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                    placeholder="Grades 1-8"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'आइकन (Icon)' : 'Icon'}
+                  </label>
+                  <select
+                    value={programForm.icon}
+                    onChange={(e) => setProgramForm({ ...programForm, icon: e.target.value })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  >
+                    <option value="BookOpen">BookOpen (पुस्तक)</option>
+                    <option value="GraduationCap">GraduationCap (टोपी)</option>
+                    <option value="Award">Award (पुरस्कार)</option>
+                    <option value="Sparkles">Sparkles (तारा)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'विवरण (नेपाली) *' : 'Description (Nepali) *'}
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={programForm.descriptionNp}
+                  onChange={(e) => setProgramForm({ ...programForm, descriptionNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="पाठ्यक्रम, शिक्षण विधि तथा विशेषताहरू..."
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'Description (English) *' : 'Description (English) *'}
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={programForm.descriptionEn}
+                  onChange={(e) => setProgramForm({ ...programForm, descriptionEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Program overview and learning objectives..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {isNp ? 'क्रम (Sort Order)' : 'Sort Order'}
+                  </label>
+                  <input
+                    type="number"
+                    value={programForm.sortOrder}
+                    onChange={(e) => setProgramForm({ ...programForm, sortOrder: Number(e.target.value) })}
+                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  />
+                </div>
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={programForm.isActive}
+                      onChange={(e) => setProgramForm({ ...programForm, isActive: e.target.checked })}
+                      className="w-4 h-4 text-indigo-600 rounded"
+                    />
+                    <span>{isNp ? 'सक्रिय स्थिति (Active)' : 'Active Program'}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsProgramModalOpen(false)}
+                  className="px-4 py-2 text-xs text-slate-600 hover:text-slate-800"
+                >
+                  {isNp ? 'रद्द' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold"
+                >
+                  {isNp ? 'कार्यक्रम सुरक्षित गर्नुहोस्' : 'Save Program'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

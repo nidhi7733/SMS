@@ -1219,33 +1219,78 @@ export const transportMaintenanceLogs = pgTable('transport_maintenance_logs', {
 export const websiteSettings = pgTable('website_settings', {
   id: text('id').primaryKey(),
   schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  // Header & School Identity
+  logoUrl: text('logo_url'),
+  schoolNameNp: text('school_name_np'),
+  schoolNameEn: text('school_name_en'),
+  mottoNp: text('motto_np'),
+  mottoEn: text('motto_en'),
+  iemisCode: text('iemis_code'),
+  establishedYearBs: integer('established_year_bs'),
+  affiliationTextNp: text('affiliation_text_np'),
+  affiliationTextEn: text('affiliation_text_en'),
+
+  // Hero Section
   heroTitleNp: text('hero_title_np'),
   heroTitleEn: text('hero_title_en'),
   heroSubtitleNp: text('hero_subtitle_np'),
   heroSubtitleEn: text('hero_subtitle_en'),
+
+  // About Section
   aboutTitleNp: text('about_title_np'),
   aboutTitleEn: text('about_title_en'),
   aboutContentNp: text('about_content_np'),
   aboutContentEn: text('about_content_en'),
+  aboutImageUrl: text('about_image_url'),
+  aboutImageCaptionNp: text('about_image_caption_np'),
+  aboutImageCaptionEn: text('about_image_caption_en'),
+
+  // Leadership Messages
   principalNameNp: text('principal_name_np'),
   principalNameEn: text('principal_name_en'),
+  principalDesignationNp: text('principal_designation_np'),
+  principalDesignationEn: text('principal_designation_en'),
   principalMessageNp: text('principal_message_np'),
   principalMessageEn: text('principal_message_en'),
   principalPhotoUrl: text('principal_photo_url'),
+  principalVisible: boolean('principal_visible').notNull().default(true),
+
   smcChairNameNp: text('smc_chair_name_np'),
   smcChairNameEn: text('smc_chair_name_en'),
+  smcChairDesignationNp: text('smc_chair_designation_np'),
+  smcChairDesignationEn: text('smc_chair_designation_en'),
   smcChairMessageNp: text('smc_chair_message_np'),
   smcChairMessageEn: text('smc_chair_message_en'),
   smcChairPhotoUrl: text('smc_chair_photo_url'),
+  smcChairVisible: boolean('smc_chair_visible').notNull().default(true),
+
+  // Contact, Address & Office Hours
   contactAddressNp: text('contact_address_np'),
   contactAddressEn: text('contact_address_en'),
   contactPhone: text('contact_phone'),
   contactEmail: text('contact_email'),
+  officeHoursNp: text('office_hours_np'),
+  officeHoursEn: text('office_hours_en'),
   facebookUrl: text('facebook_url'),
   youtubeUrl: text('youtube_url'),
+
+  // Admissions & Portal Links
   admissionOpen: boolean('admission_open').notNull().default(true),
   admissionBannerTextNp: text('admission_banner_text_np'),
   admissionBannerTextEn: text('admission_banner_text_en'),
+  portalButtonTextNp: text('portal_button_text_np'),
+  portalButtonTextEn: text('portal_button_text_en'),
+  portalUrl: text('portal_url'),
+
+  // Custom Stats Overrides
+  customTotalStudents: integer('custom_total_students'),
+  customTotalTeachers: integer('custom_total_teachers'),
+  customTotalClassrooms: integer('custom_total_classrooms'),
+
+  // Footer
+  footerCopyrightTextNp: text('footer_copyright_text_np'),
+  footerCopyrightTextEn: text('footer_copyright_text_en'),
+
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1352,3 +1397,33 @@ export const websiteInquiries = pgTable('website_inquiries', {
   responseNotes: text('response_notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// 78. Website Navigation Items (वेबसाइट नेभिगेसन मेनु)
+export const websiteNavItems = pgTable('website_nav_items', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  url: text('url').notNull(),
+  isExternal: boolean('is_external').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isVisible: boolean('is_visible').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 79. Website Academic Programs (शैक्षिक कार्यक्रम तथा संकाय)
+export const websiteAcademicPrograms = pgTable('website_academic_programs', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  descriptionNp: text('description_np').notNull(),
+  descriptionEn: text('description_en').notNull(),
+  icon: text('icon').notNull().default('BookOpen'),
+  badgeNp: text('badge_np'),
+  badgeEn: text('badge_en'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+

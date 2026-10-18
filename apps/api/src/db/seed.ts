@@ -1462,6 +1462,76 @@ export async function runMigrationsAndSeed() {
     )
   `);
 
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_nav_items (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      url TEXT NOT NULL,
+      is_external BOOLEAN NOT NULL DEFAULT false,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_visible BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_academic_programs (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      description_np TEXT NOT NULL,
+      description_en TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'BookOpen',
+      badge_np TEXT,
+      badge_en TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Ensure new columns on website_settings exist
+  const newWebsiteSettingsColumns = [
+    'logo_url TEXT',
+    'school_name_np TEXT',
+    'school_name_en TEXT',
+    'motto_np TEXT',
+    'motto_en TEXT',
+    'iemis_code TEXT',
+    'established_year_bs INTEGER',
+    'affiliation_text_np TEXT',
+    'affiliation_text_en TEXT',
+    'about_image_url TEXT',
+    'about_image_caption_np TEXT',
+    'about_image_caption_en TEXT',
+    'principal_designation_np TEXT',
+    'principal_designation_en TEXT',
+    'principal_visible BOOLEAN DEFAULT true',
+    'smc_chair_designation_np TEXT',
+    'smc_chair_designation_en TEXT',
+    'smc_chair_visible BOOLEAN DEFAULT true',
+    'office_hours_np TEXT',
+    'office_hours_en TEXT',
+    'portal_button_text_np TEXT',
+    'portal_button_text_en TEXT',
+    'portal_url TEXT',
+    'custom_total_students INTEGER',
+    'custom_total_teachers INTEGER',
+    'custom_total_classrooms INTEGER',
+    'footer_copyright_text_np TEXT',
+    'footer_copyright_text_en TEXT',
+  ];
+  for (const col of newWebsiteSettingsColumns) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE website_settings ADD COLUMN IF NOT EXISTS ${col}`));
+    } catch {
+      // Ignore if column already exists
+    }
+  }
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -4198,6 +4268,98 @@ export async function runMigrationsAndSeed() {
         },
       ]);
     }
+
+    const existingNav = await db.query.websiteNavItems.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingNav) {
+      await db.insert(schema.websiteNavItems).values([
+        { id: crypto.randomUUID(), schoolId, titleNp: 'गृहपृष्ठ', titleEn: 'Home', url: '#home', isExternal: false, sortOrder: 1, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'हाम्रो बारेमा', titleEn: 'About', url: '#about', isExternal: false, sortOrder: 2, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'शैक्षिक कार्यक्रम', titleEn: 'Academics', url: '#academics', isExternal: false, sortOrder: 3, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'सूचनाहरू', titleEn: 'Notices', url: '#notices', isExternal: false, sortOrder: 4, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 5, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 6, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 7, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 8, isVisible: true },
+      ]);
+    }
+
+    const existingPrograms = await db.query.websiteAcademicPrograms.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingPrograms) {
+      await db.insert(schema.websiteAcademicPrograms).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'आधारभूत तह (कक्षा १–८)',
+          titleEn: 'Basic Level (Grades 1-8)',
+          descriptionNp: 'बालमैत्री शिक्षण, प्रयोगात्मक परियोजना कार्य, अंग्रेजी तथा नेपाली माध्यम, र आधारभूत कम्प्युटर शिक्षा।',
+          descriptionEn: 'Holistic child-friendly teaching, experiential learning, and introductory IT literacy.',
+          icon: 'BookOpen',
+          badgeNp: 'कक्षा १-८',
+          badgeEn: 'Grades 1-8',
+          sortOrder: 1,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'माध्यमिक तह (कक्षा ९–१०, SEE)',
+          titleEn: 'Secondary Level (Grades 9-10)',
+          descriptionNp: 'एसईई परीक्षाको गहन तयारी, विज्ञान र कम्प्युटर प्रयोगात्मक कक्षा, नियमित मूल्याङ्कन तथा परामर्श।',
+          descriptionEn: 'Rigorous SEE board preparation, science lab experiments, and continuous assessment.',
+          icon: 'GraduationCap',
+          badgeNp: 'एसईई तयारी',
+          badgeEn: 'SEE Board',
+          sortOrder: 2,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'उच्च माध्यमिक (कक्षा ११–१२)',
+          titleEn: 'Higher Secondary (Grades 11-12)',
+          descriptionNp: 'विज्ञान (Science), व्यवस्थापन (Management), तथा शिक्षा (Education) संकायमा छात्रवृत्ति सहित उत्कृष्ट अध्यापन।',
+          descriptionEn: 'Science, Management, and Education streams with scholarships for deserving students.',
+          icon: 'Award',
+          badgeNp: 'विज्ञान, व्यवस्थापन, शिक्षा',
+          badgeEn: 'Sci, Mgmt, Edu',
+          sortOrder: 3,
+          isActive: true,
+        },
+      ]);
+    }
+
+    // Update settings with defaults if columns were recently added
+    await db.execute(sql`
+      UPDATE website_settings SET
+        logo_url = COALESCE(logo_url, 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=120&auto=format&fit=crop&q=80'),
+        school_name_np = COALESCE(school_name_np, 'श्री शान्ति माध्यमिक विद्यालय'),
+        school_name_en = COALESCE(school_name_en, 'Shree Shanti Secondary School'),
+        motto_np = COALESCE(motto_np, 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.'),
+        motto_en = COALESCE(motto_en, 'Education for Truth and Enlightenment | Estd. 2028 BS'),
+        iemis_code = COALESCE(iemis_code, '270010001'),
+        established_year_bs = COALESCE(established_year_bs, 2028),
+        affiliation_text_np = COALESCE(affiliation_text_np, 'नेपाल सरकार | CEHRD मान्यता प्राप्त'),
+        affiliation_text_en = COALESCE(affiliation_text_en, 'Govt. of Nepal | CEHRD Aligned'),
+        office_hours_np = COALESCE(office_hours_np, 'आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:०० बजेसम्म'),
+        office_hours_en = COALESCE(office_hours_en, 'Sun – Fri: 10:00 AM – 4:00 PM'),
+        about_image_url = COALESCE(about_image_url, 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800&auto=format&fit=crop&q=80'),
+        about_image_caption_np = COALESCE(about_image_caption_np, 'शान्त तथा बालमैत्री परिसर'),
+        about_image_caption_en = COALESCE(about_image_caption_en, 'Lush Green Child-friendly Campus'),
+        principal_designation_np = COALESCE(principal_designation_np, 'प्रधानाध्यापक (Principal)'),
+        principal_designation_en = COALESCE(principal_designation_en, 'Principal'),
+        smc_chair_designation_np = COALESCE(smc_chair_designation_np, 'अध्यक्ष, विद्यालय व्यवस्थापन समिति'),
+        smc_chair_designation_en = COALESCE(smc_chair_designation_en, 'SMC Chairperson'),
+        portal_button_text_np = COALESCE(portal_button_text_np, 'पोर्टल लगइन (SMS Login)'),
+        portal_button_text_en = COALESCE(portal_button_text_en, 'Portal Login (SMS)'),
+        portal_url = COALESCE(portal_url, 'http://localhost:5173/login')
+      WHERE school_id = ${schoolId}
+    `);
 
   console.log('[Seed] Seeding completed successfully!');
 }

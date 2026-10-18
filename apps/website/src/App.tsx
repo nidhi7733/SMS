@@ -33,7 +33,34 @@ import {
   WebsiteEvent,
   WebsiteGalleryAlbum,
   WebsiteDownload,
+  WebsiteNavItem,
+  WebsiteAcademicProgram,
 } from '@sms/shared';
+
+const academicThemes = [
+  'bg-emerald-100 text-emerald-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-amber-100 text-amber-700',
+  'bg-sky-100 text-sky-700',
+  'bg-purple-100 text-purple-700',
+  'bg-rose-100 text-rose-700',
+];
+
+const renderAcademicIcon = (iconName?: string | null) => {
+  switch (iconName) {
+    case 'GraduationCap':
+      return <GraduationCap className="w-6 h-6" />;
+    case 'Award':
+      return <Award className="w-6 h-6" />;
+    case 'Users':
+      return <Users className="w-6 h-6" />;
+    case 'Building':
+      return <Building className="w-6 h-6" />;
+    case 'BookOpen':
+    default:
+      return <BookOpen className="w-6 h-6" />;
+  }
+};
 
 export const App: React.FC = () => {
   const [lang, setLang] = useState<'np' | 'en'>('np');
@@ -125,8 +152,32 @@ export const App: React.FC = () => {
   const downloads = overview?.downloads || [];
   const stats = overview?.stats;
 
+  const defaultNavItems: WebsiteNavItem[] = [
+    { id: '1', schoolId: '', titleNp: 'गृहपृष्ठ', titleEn: 'Home', url: '#home', isExternal: false, sortOrder: 1, isVisible: true },
+    { id: '2', schoolId: '', titleNp: 'हाम्रो बारेमा', titleEn: 'About', url: '#about', isExternal: false, sortOrder: 2, isVisible: true },
+    { id: '3', schoolId: '', titleNp: 'शैक्षिक कार्यक्रम', titleEn: 'Academics', url: '#academics', isExternal: false, sortOrder: 3, isVisible: true },
+    { id: '4', schoolId: '', titleNp: 'सूचनाहरू', titleEn: 'Notices', url: '#notices', isExternal: false, sortOrder: 4, isVisible: true },
+    { id: '5', schoolId: '', titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 5, isVisible: true },
+    { id: '6', schoolId: '', titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 6, isVisible: true },
+    { id: '7', schoolId: '', titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 7, isVisible: true },
+    { id: '8', schoolId: '', titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 8, isVisible: true },
+  ];
+  const navItems = overview?.navItems && overview.navItems.length > 0 ? overview.navItems : defaultNavItems;
+
+  const defaultPrograms: WebsiteAcademicProgram[] = [
+    { id: '1', schoolId: '', titleNp: 'आधारभूत तह (कक्षा १–८)', titleEn: 'Basic Level (Grades 1-8)', descriptionNp: 'बालमैत्री शिक्षण, प्रयोगात्मक परियोजना कार्य, अंग्रेजी तथा नेपाली माध्यम, र आधारभूत कम्प्युटर शिक्षा।', descriptionEn: 'Holistic child-friendly teaching, experiential learning, and introductory IT literacy.', icon: 'BookOpen', badgeNp: 'कक्षा १-८', badgeEn: 'Grades 1-8', sortOrder: 1, isActive: true },
+    { id: '2', schoolId: '', titleNp: 'माध्यमिक तह (कक्षा ९–१०, SEE)', titleEn: 'Secondary Level (Grades 9-10)', descriptionNp: 'एसईई परीक्षाको गहन तयारी, विज्ञान र कम्प्युटर प्रयोगात्मक कक्षा, नियमित मूल्याङ्कन तथा परामर्श।', descriptionEn: 'Rigorous SEE board preparation, science lab experiments, and continuous assessment.', icon: 'GraduationCap', badgeNp: 'एसईई तयारी', badgeEn: 'SEE Prep', sortOrder: 2, isActive: true },
+    { id: '3', schoolId: '', titleNp: 'उच्च माध्यमिक (कक्षा ११–१२)', titleEn: 'Higher Secondary (Grades 11-12)', descriptionNp: 'विज्ञान (Science), व्यवस्थापन (Management), तथा शिक्षा (Education) संकायमा छात्रवृत्ति सहित उत्कृष्ट अध्यापन।', descriptionEn: 'Science, Management, and Education streams with scholarships for deserving students.', icon: 'Award', badgeNp: 'विज्ञान, व्यवस्थापन, शिक्षा', badgeEn: 'Science, Mgmt, Edu', sortOrder: 3, isActive: true },
+  ];
+  const academicPrograms = overview?.academicPrograms && overview.academicPrograms.length > 0 ? overview.academicPrograms : defaultPrograms;
+
   const filteredNotices =
     noticeCategory === 'ALL' ? notices : notices.filter((n) => n.category === noticeCategory);
+
+  const schoolName = isNp ? (settings?.schoolNameNp || school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (settings?.schoolNameEn || school?.nameEn || 'Shree Shanti Secondary School');
+  const schoolMotto = isNp ? (settings?.mottoNp || school?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.') : (settings?.mottoEn || school?.mottoEn || 'Education for Truth and Enlightenment | Estd. 2028 BS');
+  const portalUrl = settings?.portalUrl || 'http://localhost:5173/login';
+  const portalBtnLabel = isNp ? (settings?.portalButtonTextNp || 'पोर्टल लगइन (SMS Login)') : (settings?.portalButtonTextEn || 'Portal Login (SMS)');
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
@@ -164,13 +215,13 @@ export const App: React.FC = () => {
 
             {/* PROMINENT SMS PORTAL LOGIN BUTTON */}
             <a
-              href="http://localhost:5173/login"
+              href={portalUrl}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 px-3.5 py-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-md font-bold shadow-sm transition transform hover:scale-[1.02]"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>{isNp ? 'पोर्टल लगइन (SMS Login)' : 'Portal Login (SMS)'}</span>
+              <span>{portalBtnLabel}</span>
             </a>
           </div>
         </div>
@@ -183,35 +234,46 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
           {/* Logo & School Name */}
           <a href="#" className="flex items-center gap-3.5 group">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex items-center justify-center shadow-md font-bold text-xl group-hover:scale-105 transition">
-              🏛️
-            </div>
+            {settings?.logoUrl ? (
+              <img
+                src={settings.logoUrl}
+                alt={schoolName}
+                className="w-12 h-12 rounded-xl object-contain shadow-md bg-white p-1 border border-slate-100 group-hover:scale-105 transition"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex items-center justify-center shadow-md font-bold text-xl group-hover:scale-105 transition">
+                🏛️
+              </div>
+            )}
             <div>
               <div className="text-lg sm:text-xl font-extrabold text-slate-900 leading-tight">
-                {isNp ? (school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (school?.nameEn || 'Shree Shanti Secondary School')}
+                {schoolName}
               </div>
               <div className="text-xs text-slate-500 font-medium">
-                {isNp
-                  ? (school?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.')
-                  : (school?.mottoEn || 'Education for Truth and Enlightenment | Estd. 2028 BS')}
+                {schoolMotto}
               </div>
             </div>
           </a>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-6 text-sm font-bold text-slate-700">
-            <a href="#home" className="hover:text-indigo-600 transition">{isNp ? 'गृहपृष्ठ' : 'Home'}</a>
-            <a href="#about" className="hover:text-indigo-600 transition">{isNp ? 'हाम्रो बारेमा' : 'About'}</a>
-            <a href="#academics" className="hover:text-indigo-600 transition">{isNp ? 'शैक्षिक कार्यक्रम' : 'Academics'}</a>
-            <a href="#notices" className="hover:text-indigo-600 transition">{isNp ? 'सूचनाहरू' : 'Notices'}</a>
-            <a href="#events" className="hover:text-indigo-600 transition">{isNp ? 'कार्यक्रम' : 'Events'}</a>
-            <a href="#gallery" className="hover:text-indigo-600 transition">{isNp ? 'ग्यालरी' : 'Gallery'}</a>
-            <a href="#downloads" className="hover:text-indigo-600 transition">{isNp ? 'डाउनलोड' : 'Downloads'}</a>
-            <a href="#contact" className="hover:text-indigo-600 transition">{isNp ? 'सम्पर्क' : 'Contact'}</a>
+            {navItems
+              .filter((item) => item.isVisible !== false)
+              .map((item) => (
+                <a
+                  key={item.id}
+                  href={item.url}
+                  target={item.isExternal ? '_blank' : undefined}
+                  rel={item.isExternal ? 'noreferrer' : undefined}
+                  className="hover:text-indigo-600 transition"
+                >
+                  {isNp ? item.titleNp : item.titleEn}
+                </a>
+              ))}
 
             {/* In-Nav Portal Pill */}
             <a
-              href="http://localhost:5173/login"
+              href={portalUrl}
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200 transition"
@@ -233,34 +295,29 @@ export const App: React.FC = () => {
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-5 space-y-3">
-            {[
-              { href: '#home', label: isNp ? 'गृहपृष्ठ' : 'Home' },
-              { href: '#about', label: isNp ? 'हाम्रो बारेमा' : 'About' },
-              { href: '#academics', label: isNp ? 'शैक्षिक कार्यक्रम' : 'Academics' },
-              { href: '#notices', label: isNp ? 'सूचनाहरू' : 'Notices' },
-              { href: '#events', label: isNp ? 'कार्यक्रम' : 'Events' },
-              { href: '#gallery', label: isNp ? 'ग्यालरी' : 'Gallery' },
-              { href: '#downloads', label: isNp ? 'डाउनलोड' : 'Downloads' },
-              { href: '#contact', label: isNp ? 'सम्पर्क' : 'Contact' },
-            ].map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-sm font-semibold text-slate-700 hover:text-indigo-600 py-1"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navItems
+              .filter((item) => item.isVisible !== false)
+              .map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target={link.isExternal ? '_blank' : undefined}
+                  rel={link.isExternal ? 'noreferrer' : undefined}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block text-sm font-semibold text-slate-700 hover:text-indigo-600 py-1"
+                >
+                  {isNp ? link.titleNp : link.titleEn}
+                </a>
+              ))}
             <div className="pt-2 border-t border-slate-100">
               <a
-                href="http://localhost:5173/login"
+                href={portalUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 text-white font-bold rounded-lg text-sm"
               >
                 <LogIn className="w-4 h-4" />
-                <span>{isNp ? 'विद्यालय SMS पोर्टल लगइन' : 'SMS Portal Login'}</span>
+                <span>{portalBtnLabel}</span>
               </a>
             </div>
           </div>
@@ -404,19 +461,27 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-indigo-600">{stats?.totalStudents || 450}+</div>
+              <div className="text-3xl sm:text-4xl font-black text-indigo-600">
+                {settings?.customTotalStudents || stats?.totalStudents || 450}+
+              </div>
               <div className="text-xs font-bold text-slate-600 mt-1">{isNp ? 'अध्ययनरत विद्यार्थीहरू' : 'Total Students'}</div>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-emerald-600">{stats?.totalTeachers || 28}+</div>
+              <div className="text-3xl sm:text-4xl font-black text-emerald-600">
+                {settings?.customTotalTeachers || stats?.totalTeachers || 28}+
+              </div>
               <div className="text-xs font-bold text-slate-600 mt-1">{isNp ? 'दक्ष शिक्षक तथा कर्मचारी' : 'Qualified Educators'}</div>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-amber-600">{stats?.totalClassrooms || 16}+</div>
+              <div className="text-3xl sm:text-4xl font-black text-amber-600">
+                {settings?.customTotalClassrooms || stats?.totalClassrooms || 16}+
+              </div>
               <div className="text-xs font-bold text-slate-600 mt-1">{isNp ? 'प्रविधिमैत्री कक्षाकोठा' : 'Smart Classrooms'}</div>
             </div>
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="text-3xl sm:text-4xl font-black text-rose-600">{stats?.establishedYearBs || 2028}</div>
+              <div className="text-3xl sm:text-4xl font-black text-rose-600">
+                {settings?.establishedYearBs || stats?.establishedYearBs || 2028}
+              </div>
               <div className="text-xs font-bold text-slate-600 mt-1">{isNp ? 'स्थापना वर्ष (वि.सं.)' : 'Established Year (BS)'}</div>
             </div>
           </div>
@@ -476,14 +541,23 @@ export const App: React.FC = () => {
             <div className="lg:col-span-5">
               <div className="rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-slate-950 relative h-80 sm:h-96">
                 <img
-                  src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800&auto=format&fit=crop&q=80"
+                  src={
+                    settings?.aboutImageUrl ||
+                    'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800&auto=format&fit=crop&q=80'
+                  }
                   alt="School Campus"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-6">
                   <div className="text-white">
-                    <div className="text-lg font-bold">{isNp ? 'शान्त तथा बालमैत्री परिसर' : 'Lush Green Campus'}</div>
-                    <div className="text-xs text-slate-300">{isNp ? 'सिकाइका लागि उपयुक्त वातावरण' : 'Optimal child-centered atmosphere'}</div>
+                    <div className="text-lg font-bold">
+                      {isNp
+                        ? (settings?.aboutImageCaptionNp || 'शान्त तथा बालमैत्री परिसर')
+                        : (settings?.aboutImageCaptionEn || 'Lush Green Campus')}
+                    </div>
+                    <div className="text-xs text-slate-300">
+                      {isNp ? 'सिकाइका लागि उपयुक्त वातावरण' : 'Optimal child-centered atmosphere'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -491,55 +565,63 @@ export const App: React.FC = () => {
           </div>
 
           {/* Leadership Messages: Principal & SMC Chair */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-            {/* Principal Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={
-                    settings?.principalPhotoUrl ||
-                    'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80'
-                  }
-                  alt={settings?.principalNameNp || 'Principal'}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-indigo-500 shadow-sm"
-                />
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">
-                    {isNp ? (settings?.principalNameNp || 'श्री रामेश्वर शर्मा') : (settings?.principalNameEn || 'Mr. Rameshwar Sharma')}
-                  </h3>
-                  <div className="text-xs font-semibold text-indigo-600">{isNp ? 'प्रधानाध्यापक (Principal)' : 'Principal'}</div>
-                </div>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-indigo-500 pl-3">
-                "{isNp ? settings?.principalMessageNp : settings?.principalMessageEn}"
-              </p>
-            </div>
-
-            {/* SMC Chair Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-              <div className="flex items-center gap-4">
-                <img
-                  src={
-                    settings?.smcChairPhotoUrl ||
-                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'
-                  }
-                  alt={settings?.smcChairNameNp || 'SMC Chair'}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-amber-500 shadow-sm"
-                />
-                <div>
-                  <h3 className="text-base font-extrabold text-slate-900">
-                    {isNp ? (settings?.smcChairNameNp || 'श्री कृष्णप्रसाद दाहाल') : (settings?.smcChairNameEn || 'Mr. Krishna Prasad Dahal')}
-                  </h3>
-                  <div className="text-xs font-semibold text-amber-600">
-                    {isNp ? 'अध्यक्ष, विद्यालय व्यवस्थापन समिति' : 'SMC Chairperson'}
+          {(settings?.principalVisible !== false || settings?.smcChairVisible !== false) && (
+            <div className={`grid grid-cols-1 ${settings?.principalVisible !== false && settings?.smcChairVisible !== false ? 'md:grid-cols-2' : 'max-w-2xl mx-auto'} gap-8 pt-4`}>
+              {/* Principal Card */}
+              {settings?.principalVisible !== false && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={
+                        settings?.principalPhotoUrl ||
+                        'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80'
+                      }
+                      alt={isNp ? (settings?.principalNameNp || 'Principal') : (settings?.principalNameEn || 'Principal')}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-indigo-500 shadow-sm"
+                    />
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        {isNp ? (settings?.principalNameNp || 'श्री रामेश्वर शर्मा') : (settings?.principalNameEn || 'Mr. Rameshwar Sharma')}
+                      </h3>
+                      <div className="text-xs font-semibold text-indigo-600">
+                        {isNp ? (settings?.principalDesignationNp || 'प्रधानाध्यापक (Principal)') : (settings?.principalDesignationEn || 'Principal')}
+                      </div>
+                    </div>
                   </div>
+                  <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-indigo-500 pl-3">
+                    "{isNp ? (settings?.principalMessageNp || '...') : (settings?.principalMessageEn || '...')}"
+                  </p>
                 </div>
-              </div>
-              <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-amber-500 pl-3">
-                "{isNp ? settings?.smcChairMessageNp : settings?.smcChairMessageEn}"
-              </p>
+              )}
+
+              {/* SMC Chair Card */}
+              {settings?.smcChairVisible !== false && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={
+                        settings?.smcChairPhotoUrl ||
+                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80'
+                      }
+                      alt={isNp ? (settings?.smcChairNameNp || 'SMC Chair') : (settings?.smcChairNameEn || 'SMC Chair')}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-amber-500 shadow-sm"
+                    />
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        {isNp ? (settings?.smcChairNameNp || 'श्री कृष्णप्रसाद दाहाल') : (settings?.smcChairNameEn || 'Mr. Krishna Prasad Dahal')}
+                      </h3>
+                      <div className="text-xs font-semibold text-amber-600">
+                        {isNp ? (settings?.smcChairDesignationNp || 'अध्यक्ष, विद्यालय व्यवस्थापन समिति') : (settings?.smcChairDesignationEn || 'SMC Chairperson')}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-amber-500 pl-3">
+                    "{isNp ? (settings?.smcChairMessageNp || '...') : (settings?.smcChairMessageEn || '...')}"
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -556,46 +638,44 @@ export const App: React.FC = () => {
               {isNp ? 'प्रारम्भिक बाल विकास देखि कक्षा १२ सम्म' : 'Comprehensive Schooling from ECD to Grade 12'}
             </h2>
             <p className="text-xs text-slate-500">
-              {isNp ? 'नेपाल सरकार पाठ्यक्रम विकास केन्द्र (CDC) द्वारा निर्धारित नवीनतम राष्ट्रिय पाठ्यक्रम अनुरूप' : 'Aligned with Nepal CDC & National Education Board (NEB)'}
+              {isNp
+                ? (settings?.affiliationTextNp || 'नेपाल सरकार पाठ्यक्रम विकास केन्द्र (CDC) द्वारा निर्धारित नवीनतम राष्ट्रिय पाठ्यक्रम अनुरूप')
+                : (settings?.affiliationTextEn || 'Aligned with Nepal CDC & National Education Board (NEB)')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition space-y-3 bg-slate-50">
-              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl w-fit">
-                <BookOpen className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">{isNp ? 'आधारभूत तह (कक्षा १–८)' : 'Basic Level (Grades 1-8)'}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {isNp
-                  ? 'बालमैत्री शिक्षण, प्रयोगात्मक परियोजना कार्य, अंग्रेजी तथा नेपाली माध्यम, र आधारभूत कम्प्युटर शिक्षा।'
-                  : 'Holistic child-friendly teaching, experiential learning, and introductory IT literacy.'}
-              </p>
-            </div>
-
-            <div className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition space-y-3 bg-slate-50">
-              <div className="p-3 bg-indigo-100 text-indigo-700 rounded-xl w-fit">
-                <GraduationCap className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">{isNp ? 'माध्यमिक तह (कक्षा ९–१०, SEE)' : 'Secondary Level (Grades 9-10)'}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {isNp
-                  ? 'एसईई परीक्षाको गहन तयारी, विज्ञान र कम्प्युटर प्रयोगात्मक कक्षा, नियमित मूल्याङ्कन तथा परामर्श।'
-                  : 'Rigorous SEE board preparation, science lab experiments, and continuous assessment.'}
-              </p>
-            </div>
-
-            <div className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition space-y-3 bg-slate-50">
-              <div className="p-3 bg-amber-100 text-amber-700 rounded-xl w-fit">
-                <Award className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">{isNp ? 'उच्च माध्यमिक (कक्षा ११–१२)' : 'Higher Secondary (Grades 11-12)'}</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                {isNp
-                  ? 'विज्ञान (Science), व्यवस्थापन (Management), तथा शिक्षा (Education) संकायमा छात्रवृत्ति सहित उत्कृष्ट अध्यापन।'
-                  : 'Science, Management, and Education streams with scholarships for deserving students.'}
-              </p>
-            </div>
+            {academicPrograms
+              .filter((p) => p.isActive !== false)
+              .map((p, idx) => {
+                const theme = academicThemes[idx % academicThemes.length];
+                const badge = isNp ? p.badgeNp : (p.badgeEn || p.badgeNp);
+                return (
+                  <div
+                    key={p.id || idx}
+                    className="border border-slate-200 rounded-2xl p-6 hover:shadow-lg transition space-y-3 bg-slate-50 flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className={`p-3 rounded-xl w-fit ${theme}`}>
+                          {renderAcademicIcon(p.icon)}
+                        </div>
+                        {badge && (
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shadow-2xs">
+                            {badge}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-bold text-slate-900">
+                        {isNp ? p.titleNp : (p.titleEn || p.titleNp)}
+                      </h3>
+                      <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+                        {isNp ? p.descriptionNp : (p.descriptionEn || p.descriptionNp)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </section>
@@ -860,7 +940,11 @@ export const App: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">{isNp ? 'कार्यालय समय' : 'Office Hours'}</div>
-                    <div>{isNp ? 'आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:०० बजेसम्म' : 'Sun – Fri: 10:00 AM – 4:00 PM'}</div>
+                    <div>
+                      {isNp
+                        ? (settings?.officeHoursNp || 'आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:०० बजेसम्म')
+                        : (settings?.officeHoursEn || 'Sun – Fri: 10:00 AM – 4:00 PM')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -990,28 +1074,44 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center gap-3 text-white">
-              <span className="text-2xl">🏛️</span>
+              {settings?.logoUrl ? (
+                <img
+                  src={settings.logoUrl}
+                  alt={schoolName}
+                  className="w-10 h-10 rounded-xl object-contain bg-white p-1 border border-slate-700 shadow-xs"
+                />
+              ) : (
+                <span className="text-2xl">🏛️</span>
+              )}
               <div>
                 <div className="font-black text-base">
-                  {isNp ? (school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (school?.nameEn || 'Shree Shanti Secondary School')}
+                  {schoolName}
                 </div>
-                <div className="text-[11px] text-slate-400">CEHRD IEMIS Code: {school?.iemisCode || '270010001'}</div>
+                <div className="text-[11px] text-slate-400">CEHRD IEMIS Code: {settings?.iemisCode || school?.iemisCode || '270010001'}</div>
               </div>
             </div>
             <p className="text-slate-400 text-xs leading-relaxed max-w-md">
               {isNp
-                ? 'नेपाल सरकारको कार्यालय कार्यविधि तथा शिक्षा तथा मानव स्रोत विकास केन्द्र (CEHRD) को मापदण्ड अनुरूप सञ्चालित आदर्श सामुदायिक शैक्षिक संस्था।'
-                : 'A model public school operating under CEHRD regulations and Nepal Ministry of Education standards.'}
+                ? (settings?.affiliationTextNp || 'नेपाल सरकारको कार्यालय कार्यविधि तथा शिक्षा तथा मानव स्रोत विकास केन्द्र (CEHRD) को मापदण्ड अनुरूप सञ्चालित आदर्श सामुदायिक शैक्षिक संस्था।')
+                : (settings?.affiliationTextEn || 'A model public school operating under CEHRD regulations and Nepal Ministry of Education standards.')}
             </p>
           </div>
 
           <div className="space-y-2">
             <h4 className="text-xs font-bold uppercase text-white tracking-wider">{isNp ? 'छिटो लिङ्कहरू' : 'Quick Links'}</h4>
             <ul className="space-y-1.5">
-              <li><a href="#about" className="hover:text-white transition">{isNp ? 'हाम्रो बारेमा' : 'About Us'}</a></li>
-              <li><a href="#notices" className="hover:text-white transition">{isNp ? 'सूचनाहरू' : 'Notices'}</a></li>
-              <li><a href="#downloads" className="hover:text-white transition">{isNp ? 'फाराम डाउनलोड' : 'Downloads'}</a></li>
-              <li><a href="#contact" className="hover:text-white transition">{isNp ? 'सम्पर्क' : 'Contact'}</a></li>
+              {navItems.filter(item => item.isVisible !== false).slice(0, 5).map(item => (
+                <li key={item.id}>
+                  <a
+                    href={item.url}
+                    target={item.isExternal ? '_blank' : undefined}
+                    rel={item.isExternal ? 'noreferrer' : undefined}
+                    className="hover:text-white transition"
+                  >
+                    {isNp ? item.titleNp : item.titleEn}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -1021,20 +1121,20 @@ export const App: React.FC = () => {
               {isNp ? 'शिक्षक, कर्मचारी, विद्यार्थी र अभिभावकका लागि आधिकारिक SMS व्यवस्थापन पोर्टल:' : 'Access the internal SMS management portal:'}
             </p>
             <a
-              href="http://localhost:5173/login"
+              href={portalUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs shadow-sm transition"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>{isNp ? 'SMS पोर्टलमा प्रवेश' : 'Sign in to SMS'}</span>
+              <span>{portalBtnLabel}</span>
             </a>
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-slate-800 text-center text-[11px] text-slate-400 flex flex-col sm:flex-row justify-between items-center gap-2">
           <div>
-            © {new Date().getFullYear()} {isNp ? (school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (school?.nameEn || 'Shree Shanti Secondary School')}. All rights reserved.
+            © {new Date().getFullYear()} {schoolName}. All rights reserved.
           </div>
           <div>Bilingual Nepal Government School Management System (Local-First PWA)</div>
         </div>
