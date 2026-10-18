@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getDb, schema } from '../db/index.js';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { savePersistentCmsSettings, savePersistentSchoolProfile } from '../db/persistentStorage.js';
 
 export default async function websiteRoutes(fastify: FastifyInstance) {
   const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -451,6 +452,17 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const updated = await db.query.websiteSettings.findFirst({
       where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
     });
+
+    if (updated) {
+      savePersistentCmsSettings(updated);
+    }
+
+    const currentSchool = await db.query.schools.findFirst({
+      where: (table: any, { eq }: any) => eq(table.id, schoolId),
+    });
+    if (currentSchool) {
+      savePersistentSchoolProfile(currentSchool);
+    }
 
     return reply.send({ message: 'Website settings updated successfully', settings: updated });
   });

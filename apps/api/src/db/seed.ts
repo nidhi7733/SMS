@@ -3,6 +3,7 @@ import { SYSTEM_PERMISSIONS, UserRoleType } from '@sms/shared';
 import bcrypt from 'bcryptjs';
 import { sql, eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import { loadPersistentSchoolProfile, loadPersistentCmsSettings } from './persistentStorage.js';
 
 export async function runMigrationsAndSeed() {
   const db = await getDb();
@@ -1549,43 +1550,60 @@ export async function runMigrationsAndSeed() {
     }
   }
 
-  // 2. Default School
-  const schoolCode = 'SHREE-SHANTI-01';
-  let school = await db.query.schools.findFirst({
-    where: (table: any, { eq }: any) => eq(table.code, schoolCode)
-  });
+  // 2. School Profile (Loaded from persistent storage or Rajeshwar Nidhi Secondary School defaults)
+  const persistedProfile = loadPersistentSchoolProfile();
+  let school = await db.query.schools.findFirst();
 
   if (!school) {
-    console.log('[Seed] Creating baseline school: Shree Shanti Secondary School...');
+    console.log('[Seed] Creating baseline school: Shree Rajeshwar Nidhi Secondary School...');
     const schoolId = crypto.randomUUID();
     await db.insert(schema.schools).values({
       id: schoolId,
-      code: schoolCode,
-      nameEn: 'Shree Shanti Secondary School',
-      nameNp: 'श्री शान्ति माध्यमिक विद्यालय',
-      mottoEn: 'Education for Truth and Enlightenment',
-      mottoNp: 'सत्य र ज्ञानका लागि शिक्षा',
-      iemisCode: '270010001',
-      establishedBsYear: 2028,
-      phone: '01-4351234',
-      email: 'info@shreeshantischool.edu.np',
-      website: 'https://shreeshantischool.edu.np',
-      addressEn: 'Tokha-04, Kathmandu, Nepal',
-      addressNp: 'टोखा-०४, काठमाडौं, नेपाल',
-      province: 'Bagmati Province',
-      district: 'Kathmandu',
-      localLevel: 'Tokha Municipality',
-      wardNumber: 4,
-      shifts: ['MORNING', 'DAY'],
-      minClass: 'ECD',
-      maxClass: '12',
-      activeAcademicYearBs: 2083,
-      fiscalYearBs: '2082/083',
+      code: persistedProfile?.code || 'RAJESHWAR-NIDHI-01',
+      nameEn: persistedProfile?.nameEn || 'Shree Rajeshwar Nidhi Secondary School',
+      nameNp: persistedProfile?.nameNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालय',
+      logoUrl: persistedProfile?.logoUrl || '/uploads/school/School_Logo-1792343367627-7ab94d76.png',
+      mottoEn: persistedProfile?.mottoEn || 'Center of Excellence in Modern & Value-Based Education',
+      mottoNp: persistedProfile?.mottoNp || 'सत्य, संस्कार र प्रविधिको त्रिवेणी',
+      iemisCode: persistedProfile?.iemisCode || '170720001',
+      establishedBsYear: persistedProfile?.establishedBsYear || 2016,
+      phone: persistedProfile?.phone || '+977-9815660918, +977-9827810816',
+      email: persistedProfile?.email || 'info@rajeshwarnidhi.edu.np',
+      website: persistedProfile?.website || 'https://rajeshwarnidhi.edu.np',
+      addressEn: persistedProfile?.addressEn || 'Nagarain-02, Dhanusha, Madhesh Province, Nepal',
+      addressNp: persistedProfile?.addressNp || 'नगराइन-०२, धनुषा, मधेश प्रदेश, नेपाल',
+      province: persistedProfile?.province || 'Madhesh Province',
+      district: persistedProfile?.district || 'Dhanusha',
+      localLevel: persistedProfile?.localLevel || 'Nagarain Municipality',
+      wardNumber: persistedProfile?.wardNumber || 2,
+      shifts: persistedProfile?.shifts || ['MORNING', 'DAY'],
+      minClass: persistedProfile?.minClass || 'ECD',
+      maxClass: persistedProfile?.maxClass || '12',
+      activeAcademicYearBs: persistedProfile?.activeAcademicYearBs || 2083,
+      fiscalYearBs: persistedProfile?.fiscalYearBs || '2082/083',
       isOfflineCapable: true,
     });
-    school = await db.query.schools.findFirst({
-      where: (table: any, { eq }: any) => eq(table.code, schoolCode)
-    });
+    school = await db.query.schools.findFirst();
+  } else if (school.nameEn === 'Shree Shanti Secondary School' || !school.logoUrl) {
+    console.log('[Seed] Upgrading legacy school record to Shree Rajeshwar Nidhi Secondary School...');
+    await db.update(schema.schools).set({
+      nameEn: persistedProfile?.nameEn || 'Shree Rajeshwar Nidhi Secondary School',
+      nameNp: persistedProfile?.nameNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालय',
+      logoUrl: persistedProfile?.logoUrl || '/uploads/school/School_Logo-1792343367627-7ab94d76.png',
+      mottoEn: persistedProfile?.mottoEn || 'Center of Excellence in Modern & Value-Based Education',
+      mottoNp: persistedProfile?.mottoNp || 'सत्य, संस्कार र प्रविधिको त्रिवेणी',
+      iemisCode: persistedProfile?.iemisCode || '170720001',
+      addressEn: persistedProfile?.addressEn || 'Nagarain-02, Dhanusha, Madhesh Province, Nepal',
+      addressNp: persistedProfile?.addressNp || 'नगराइन-०२, धनुषा, मधेश प्रदेश, नेपाल',
+      province: persistedProfile?.province || 'Madhesh Province',
+      district: persistedProfile?.district || 'Dhanusha',
+      localLevel: persistedProfile?.localLevel || 'Nagarain Municipality',
+      wardNumber: persistedProfile?.wardNumber || 2,
+      phone: persistedProfile?.phone || '+977-9815660918, +977-9827810816',
+      email: persistedProfile?.email || 'info@rajeshwarnidhi.edu.np',
+      updatedAt: new Date(),
+    }).where(eq(schema.schools.id, school.id));
+    school = await db.query.schools.findFirst();
   }
 
   const schoolId = school.id;
@@ -3952,38 +3970,78 @@ export async function runMigrationsAndSeed() {
       where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
     });
 
+    const persistedCms = loadPersistentCmsSettings();
+    const defaultCmsValues = {
+      heroTitleNp: persistedCms?.heroTitleNp || 'ज्ञान, संस्कार र प्रविधिको त्रिवेणी',
+      heroTitleEn: persistedCms?.heroTitleEn || 'Center of Excellence in Modern & Value-Based Education',
+      heroSubtitleNp: persistedCms?.heroSubtitleNp || 'गुणस्तरीय, संस्कारयुक्त तथा प्रविधिमैत्री शिक्षाका माध्यमबाट समृद्ध र स्वावलम्बी नागरिक निर्माणमा समर्पित अग्रणी माध्यमिक विद्यालय।',
+      heroSubtitleEn: persistedCms?.heroSubtitleEn || 'Empowering young minds with modern scientific temper, ethical leadership, and future-ready skills.',
+      aboutTitleNp: persistedCms?.aboutTitleNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालयको संक्षिप्त परिचय',
+      aboutTitleEn: persistedCms?.aboutTitleEn || 'About Shree Rajeshwar Nidhi Secondary School',
+      aboutContentNp: persistedCms?.aboutContentNp || 'धनुषा जिल्लाको ऐतिहासिक तथा सांस्कृतिक परिवेशमा अवस्थित श्री राजेश्वर निधि माध्यमिक विद्यालय गुणस्तरीय, जीवनोपयोगी तथा प्रविधिमैत्री शिक्षा प्रदान गर्न समर्पित अग्रणी सामुदायिक विद्यालय हो। प्रारम्भिक बाल विकास (ECD) देखि कक्षा १२ सम्म आधुनिक विज्ञान (Science), व्यवस्थापन (Management) र शिक्षा (Education) संकायहरू सञ्चालनमा रहेको यस विद्यालयमा सुविधासम्पन्न कम्प्युटर ल्याब, विज्ञान प्रयोगशाला, समृद्ध ई-लाइब्रेरी तथा सुरक्षित यातायात सेवा उपलब्ध छन्। अनुभवी शिक्षकहरूको मार्गदर्शनमा विद्यार्थीहरूको चौतर्फी प्रतिभा प्रस्फुटन गराउन हामी निरन्तर क्रियाशील छौँ।',
+      aboutContentEn: persistedCms?.aboutContentEn || 'Located in Nagarain, Dhanusha, Shree Rajeshwar Nidhi Secondary School is a premier model secondary school dedicated to holistic, life-centric, and tech-enabled education. Offering comprehensive schooling from ECD to Grade 12 in Science, Management, and Education streams, our institution boasts cutting-edge computer and science laboratories, an e-library, and dedicated sports and transport facilities.',
+      aboutImageUrl: persistedCms?.aboutImageUrl || '/uploads/campus/IMG_20250803_153357-1792345458573-cd7da07a.jpg',
+      aboutImageCaptionNp: persistedCms?.aboutImageCaptionNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालयको शान्त तथा बालमैत्री परिसर',
+      aboutImageCaptionEn: persistedCms?.aboutImageCaptionEn || 'Peaceful and Child-friendly Campus of Shree Rajeshwar Nidhi Secondary School',
+      aboutFeaturesList: persistedCms?.aboutFeaturesList || [
+        { textNp: 'आधुनिक कम्प्युटर तथा विज्ञान ल्याब', textEn: 'Advanced ICT & Science Labs' },
+        { textNp: 'सुरक्षित विद्यालय बस यातायात सेवा', textEn: 'Safe School Transport Fleet' },
+        { textNp: 'ई-पुस्तकालय तथा अतिरिक्त क्रियाकलाप', textEn: 'Digital Library & Sports ECA' },
+        { textNp: 'अनुभवी तथा तालिमप्राप्त शिक्षक वर्ग', textEn: 'Certified & Passionate Educators' }
+      ],
+      logoUrl: persistedCms?.logoUrl || '/uploads/school/School_Logo-1792343367627-7ab94d76.png',
+      schoolNameNp: persistedCms?.schoolNameNp || 'श्री राजेश्वर निधि माध्यमिक विद्यालय',
+      schoolNameEn: persistedCms?.schoolNameEn || 'Shree Rajeshwar Nidhi Secondary School',
+      mottoNp: persistedCms?.mottoNp || 'सत्य, संस्कार र प्रविधिको त्रिवेणी',
+      mottoEn: persistedCms?.mottoEn || 'Center of Excellence in Modern & Value-Based Education',
+      iemisCode: persistedCms?.iemisCode || '170720001',
+      establishedYearBs: persistedCms?.establishedYearBs || 2016,
+      affiliationTextNp: persistedCms?.affiliationTextNp || 'नेपाल सरकार | CEHRD मान्यता प्राप्त',
+      affiliationTextEn: persistedCms?.affiliationTextEn || 'Govt. of Nepal | CEHRD Aligned',
+      principalNameNp: persistedCms?.principalNameNp || 'श्री बेचन निधि',
+      principalNameEn: persistedCms?.principalNameEn || 'Mr. Bechan Nidhi',
+      principalDesignationNp: persistedCms?.principalDesignationNp || 'प्रधानाध्यापक (Principal)',
+      principalDesignationEn: persistedCms?.principalDesignationEn || 'Principal',
+      principalMessageNp: persistedCms?.principalMessageNp || 'आदरणीय अभिभावक, प्यारा विद्यार्थी भाइबहिनीहरू तथा सम्पूर्ण शुभचिन्तकहरूमा हार्दिक नमस्कार। हाम्रो विद्यालय केवल पाठ्यपुस्तकको ज्ञानमा मात्र सीमित नभई विद्यार्थीहरूको चौतर्फी प्रतिभा प्रस्फुटन गराउन, असल संस्कार सिकाउन र २१ औँ शताब्दीका चुनौतीहरूको सामना गर्न सक्ने स्वावलम्बी नागरिक बनाउन सदैव कटिबद्ध छ। यहाँहरूको विश्वास र सहयोग नै हाम्रो प्रेरणा हो।',
+      principalMessageEn: persistedCms?.principalMessageEn || 'Warmest greetings to our esteemed parents, learners, and community members. Our institution is committed to holistic student development, blending academic rigor with moral values and technological adaptability.',
+      principalPhotoUrl: persistedCms?.principalPhotoUrl || '/uploads/leadership/BechanJi-1792345539606-2bdbbcd3.jpg',
+      principalVisible: persistedCms?.principalVisible !== undefined ? persistedCms.principalVisible : true,
+      smcChairNameNp: persistedCms?.smcChairNameNp || 'श्री रामेश्वर निधि',
+      smcChairNameEn: persistedCms?.smcChairNameEn || 'Mr. Rameshwar Nidhi',
+      smcChairDesignationNp: persistedCms?.smcChairDesignationNp || 'अध्यक्ष, विद्यालय व्यवस्थापन समिति',
+      smcChairDesignationEn: persistedCms?.smcChairDesignationEn || 'SMC Chairperson',
+      smcChairMessageNp: persistedCms?.smcChairMessageNp || 'सामुदायिक विद्यालयको स्तरोन्नति, भौतिक पूर्वाधारको विकास र पूर्ण पारदर्शिता नै विद्यालय व्यवस्थापन समितिको मुख्य प्राथमिकता हो। हामी सम्पूर्ण सरोकारवालाहरूको सहकार्यमा यस विद्यालयलाई देशकै नमुना शैक्षिक संस्थाका रूपमा विकास गर्न दत्तचित्त छौँ।',
+      smcChairMessageEn: persistedCms?.smcChairMessageEn || 'The School Management Committee remains steadfast in upgrading educational infrastructure, fostering accountability, and ensuring an equitable learning environment for every child.',
+      smcChairPhotoUrl: persistedCms?.smcChairPhotoUrl || '/uploads/leadership/My_Photo-1792345503886-39bd026c.jpg',
+      smcChairVisible: persistedCms?.smcChairVisible !== undefined ? persistedCms.smcChairVisible : true,
+      contactAddressNp: persistedCms?.contactAddressNp || 'नगराइन-०२, धनुषा, मधेश प्रदेश, नेपाल',
+      contactAddressEn: persistedCms?.contactAddressEn || 'Nagarain-02, Dhanusha, Madhesh Province, Nepal',
+      contactPhone: persistedCms?.contactPhone || '+977-9815660918, +977-9827810816',
+      contactEmail: persistedCms?.contactEmail || 'info@rajeshwarnidhi.edu.np',
+      officeHoursNp: persistedCms?.officeHoursNp || 'आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:०० बजेसम्म',
+      officeHoursEn: persistedCms?.officeHoursEn || 'Sun – Fri: 10:00 AM – 4:00 PM',
+      facebookUrl: persistedCms?.facebookUrl || 'https://facebook.com/rajeshwarnidhischool',
+      youtubeUrl: persistedCms?.youtubeUrl || 'https://youtube.com/@rajeshwarnidhischool',
+      admissionOpen: persistedCms?.admissionOpen !== undefined ? persistedCms.admissionOpen : true,
+      admissionBannerTextNp: persistedCms?.admissionBannerTextNp || 'शैक्षिक सत्र २०८३ का लागि कक्षा १ देखि ९ तथा ११ मा नयाँ विद्यार्थी भर्ना खुल्यो!',
+      admissionBannerTextEn: persistedCms?.admissionBannerTextEn || 'Admissions Open for Academic Session 2083 BS (Grades 1-9 & 11) — Apply Today!',
+      portalButtonTextNp: persistedCms?.portalButtonTextNp || 'पोर्टल लगइन (SMS Login)',
+      portalButtonTextEn: persistedCms?.portalButtonTextEn || 'Portal Login (SMS)',
+      portalUrl: persistedCms?.portalUrl || 'http://localhost:5173/login',
+    };
+
     if (!existingWebSettings) {
       await db.insert(schema.websiteSettings).values({
         id: crypto.randomUUID(),
         schoolId,
-        heroTitleNp: 'ज्ञान, संस्कार र प्रविधिको त्रिवेणी',
-        heroTitleEn: 'Center of Excellence in Modern & Value-Based Education',
-        heroSubtitleNp: 'वि.सं. २०२८ सालदेखि निरन्तर राष्ट्र निर्माणका लागि दक्ष, योग्य र नैतिकवान् नागरिक उत्पादनमा समर्पित अग्रणी सामुदायिक विद्यालय।',
-        heroSubtitleEn: 'Empowering young minds with scientific temper, cultural ethics, and future-ready skills since 2028 BS.',
-        aboutTitleNp: 'श्री शान्ति माध्यमिक विद्यालयको संक्षिप्त परिचय',
-        aboutTitleEn: 'About Shree Shanti Secondary School',
-        aboutContentNp: 'ललितपुर जिल्लाको रमणीय तथा शान्त वातावरणमा अवस्थित श्री शान्ति माध्यमिक विद्यालय वि.सं. २०२८ सालमा स्थापित भई विगत पाँच दशकदेखि गुणस्तरीय, जीवनोपयोगी तथा प्रविधिमैत्री शिक्षा प्रदान गर्दै आएको छ। प्रारम्भिक बाल विकास (ECD) देखि कक्षा १२ सम्म आधुनिक विज्ञान (Science), व्यवस्थापन (Management) र शिक्षा (Education) संकायहरू सञ्चालनमा रहेको यस विद्यालयमा सुविधासम्पन्न कम्प्युटर ल्याब, विज्ञान प्रयोगशाला, समृद्ध ई-लाइब्रेरी तथा खेलमैदान उपलब्ध छन्।',
-        aboutContentEn: 'Established in 2028 BS, Shree Shanti Secondary School is a premier model public school located in Lalitpur. Offering comprehensive schooling from ECD to Grade 12 in Science, Management, and Education streams, our institution boasts cutting-edge computer and science laboratories, a rich digital library, and dedicated sporting facilities.',
-        principalNameNp: 'श्री रामेश्वर शर्मा',
-        principalNameEn: 'Mr. Rameshwar Sharma',
-        principalMessageNp: 'आदरणीय अभिभावक, प्यारा विद्यार्थी भाइबहिनीहरू तथा सम्पूर्ण शुभचिन्तकहरूमा हार्दिक नमस्कार। हाम्रो विद्यालय केवल पाठ्यपुस्तकको ज्ञानमा मात्र सीमित नभई विद्यार्थीहरूको चौतर्फी प्रतिभा प्रस्फुटन गराउन, असल संस्कार सिकाउन र २१ औँ शताब्दीका चुनौतीहरूको सामना गर्न सक्ने स्वावलम्बी नागरिक बनाउन सदैव कटिबद्ध छ। यहाँहरूको विश्वास र सहयोग नै हाम्रो प्रेरणा हो।',
-        principalMessageEn: 'Warmest greetings to our esteemed parents, learners, and community members. Our institution is committed to holistic student development, blending academic rigor with moral values and technological adaptability.',
-        principalPhotoUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80',
-        smcChairNameNp: 'श्री कृष्णप्रसाद दाहाल',
-        smcChairNameEn: 'Mr. Krishna Prasad Dahal',
-        smcChairMessageNp: 'सामुदायिक विद्यालयको स्तरोन्नति, भौतिक पूर्वाधारको विकास र पूर्ण पारदर्शिता नै विद्यालय व्यवस्थापन समितिको मुख्य प्राथमिकता हो। हामी सम्पूर्ण सरोकारवालाहरूको सहकार्यमा यस विद्यालयलाई देशकै नमुना शैक्षिक संस्थाका रूपमा विकास गर्न दत्तचित्त छौँ।',
-        smcChairMessageEn: 'The School Management Committee remains steadfast in upgrading educational infrastructure, fostering accountability, and ensuring an equitable learning environment for every child.',
-        smcChairPhotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-        contactAddressNp: 'गोदावरी-१४, ठैव, ललितपुर, बागमती प्रदेश',
-        contactAddressEn: 'Godawari-14, Thaiba, Lalitpur, Bagmati Province',
-        contactPhone: '+977-01-5250000, +977-9851000000',
-        contactEmail: 'info@shreeshanti.edu.np',
-        facebookUrl: 'https://facebook.com/shreeshantischool',
-        youtubeUrl: 'https://youtube.com/@shreeshantischool',
-        admissionOpen: true,
-        admissionBannerTextNp: 'शैक्षिक सत्र २०८३ का लागि कक्षा १ देखि ९ तथा ११ मा नयाँ विद्यार्थी भर्ना खुल्यो!',
-        admissionBannerTextEn: 'Admissions Open for Academic Session 2083 BS (Grades 1-9 & 11) — Apply Today!',
+        ...defaultCmsValues,
       });
+    } else if (existingWebSettings.schoolNameEn === 'Shree Shanti Secondary School' || !existingWebSettings.aboutFeaturesList) {
+      console.log('[Seed] Upgrading legacy website settings to Shree Rajeshwar Nidhi Secondary School...');
+      await db.update(schema.websiteSettings).set({
+        ...defaultCmsValues,
+        updatedAt: new Date(),
+      }).where(eq(schema.websiteSettings.id, existingWebSettings.id));
     }
 
     const existingSlides = await db.query.websiteHeroSlides.findFirst({
@@ -3999,7 +4057,7 @@ export async function runMigrationsAndSeed() {
           titleEn: 'Modern Technology & Child-Friendly Learning Environment',
           subtitleNp: 'स्मार्ट क्लासरुम, ई-हाजिरी तथा अन्तरक्रियात्मक मल्टिमिडिया शिक्षण विधि',
           subtitleEn: 'Smart classrooms, digital attendance, and interactive multimedia pedagogy',
-          imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&auto=format&fit=crop&q=80',
+          imageUrl: '/uploads/campus/IMG_20250803_153357-1792345458573-cd7da07a.jpg',
           buttonTextNp: 'हाम्रो बारेमा थप जान्नुहोस्',
           buttonTextEn: 'Discover Our School',
           buttonLink: '#about',
@@ -4048,7 +4106,7 @@ export async function runMigrationsAndSeed() {
           schoolId,
           titleNp: 'शैक्षिक सत्र २०८३ को प्रथम त्रैमासिक परीक्षा तालिका प्रकाशन सम्बन्धी जरूरी सूचना',
           titleEn: 'Notice regarding Publication of First Terminal Examination Routine 2083',
-          contentNp: 'यस श्री शान्ति माध्यमिक विद्यालयका कक्षा १ देखि १० सम्मका सम्पूर्ण विद्यार्थी तथा अभिभावकज्यूहरूमा शैक्षिक सत्र २०८३ को प्रथम त्रैमासिक परीक्षा आगामी २०८३ भदौ १५ गतेदेखि सञ्चालन हुने भएकाले विस्तृत कार्यतालिका यसै सूचना साथ संलग्न गरिएको व्यहोरा जानकारी गराइन्छ।',
+          contentNp: 'यस श्री राजेश्वर निधि माध्यमिक विद्यालयका कक्षा १ देखि १० सम्मका सम्पूर्ण विद्यार्थी तथा अभिभावकज्यूहरूमा शैक्षिक सत्र २०८३ को प्रथम त्रैमासिक परीक्षा आगामी २०८३ भदौ १५ गतेदेखि सञ्चालन हुने भएकाले विस्तृत कार्यतालिका यसै सूचना साथ संलग्न गरिएको व्यहोरा जानकारी गराइन्छ।',
           contentEn: 'This is to inform all students and guardians of Grades 1 through 10 that the First Terminal Examination of Academic Session 2083 BS will commence from 2083-05-15.',
           category: 'EXAM',
           publishDateBs: '2083-04-20',
@@ -4075,7 +4133,7 @@ export async function runMigrationsAndSeed() {
           titleNp: 'शुभ विजया दशमी तथा दिपावली २०८३ को पावन अवसरमा बिदा तथा शुभकामना सन्देश',
           titleEn: 'Notice on Festival Vacation & Warm Wishes for Dashain & Tihar 2083',
           contentNp: 'नेपालीहरूको महान् चाड विजया दशमी, शुभ दिपावली तथा छठ पर्व २०८३ को पावन अवसरमा विद्यालय परिवार सम्पूर्ण विद्यार्थी, शिक्षक, कर्मचारी तथा अभिभावकहरूमा सुख, शान्ति र प्रगतिको हार्दिक मंगलमय शुभकामना व्यक्त गर्दछ।',
-          contentEn: 'Shree Shanti School extends heartfelt festive greetings to all students, parents, and staff on the auspicious occasions of Dashain and Tihar.',
+          contentEn: 'Shree Rajeshwar Nidhi Secondary School extends heartfelt festive greetings to all students, parents, and staff on the auspicious occasions of Dashain and Tihar.',
           category: 'HOLIDAY',
           publishDateBs: '2083-06-15',
           expireDateBs: '2083-07-20',

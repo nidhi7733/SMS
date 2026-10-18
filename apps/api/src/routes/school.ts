@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { getDb, schema } from '../db/index.js';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
+import { savePersistentSchoolProfile, savePersistentCmsSettings } from '../db/persistentStorage.js';
 
 export async function schoolRoutes(fastify: FastifyInstance) {
   // Public school basic profile (no auth required for header/login branding)
@@ -132,6 +133,17 @@ export async function schoolRoutes(fastify: FastifyInstance) {
         establishedYearBs: updated[0].establishedBsYear,
         updatedAt: new Date(),
       }).where(eq(schema.websiteSettings.id, webSetting.id));
+
+      const updatedWebSetting = await db.query.websiteSettings.findFirst({
+        where: (table: any, { eq }: any) => eq(table.schoolId, school.id),
+      });
+      if (updatedWebSetting) {
+        savePersistentCmsSettings(updatedWebSetting);
+      }
+    }
+
+    if (updated[0]) {
+      savePersistentSchoolProfile(updated[0]);
     }
 
     // Record audit log
