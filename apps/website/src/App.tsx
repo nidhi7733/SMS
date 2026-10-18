@@ -174,11 +174,32 @@ export const App: React.FC = () => {
   const filteredNotices =
     noticeCategory === 'ALL' ? notices : notices.filter((n) => n.category === noticeCategory);
 
-  const schoolName = isNp ? (settings?.schoolNameNp || school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (settings?.schoolNameEn || school?.nameEn || 'Shree Shanti Secondary School');
-  const schoolMotto = isNp ? (settings?.mottoNp || school?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.') : (settings?.mottoEn || school?.mottoEn || 'Education for Truth and Enlightenment | Estd. 2028 BS');
+  const schoolName = isNp ? (school?.nameNp || settings?.schoolNameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (school?.nameEn || settings?.schoolNameEn || 'Shree Shanti Secondary School');
+  const schoolMotto = isNp ? (school?.mottoNp || settings?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.') : (school?.mottoEn || settings?.mottoEn || 'Education for Truth and Enlightenment | Estd. 2028 BS');
   const schoolLogo = school?.logoUrl || settings?.logoUrl;
+  const schoolAddress = isNp ? (school?.addressNp || settings?.contactAddressNp || 'गोदावरी-१४, ललितपुर') : (school?.addressEn || settings?.contactAddressEn || 'Godawari-14, Lalitpur');
+  const schoolPhone = school?.phone || settings?.contactPhone || '+977-01-5250000';
+  const schoolEmail = school?.email || settings?.contactEmail || 'info@shreeshanti.edu.np';
+  const schoolIemis = school?.iemisCode || settings?.iemisCode || '270010001';
+  const schoolEstd = school?.establishedBsYear || settings?.establishedYearBs || 2028;
   const portalUrl = settings?.portalUrl || 'http://localhost:5173/login';
   const portalBtnLabel = isNp ? (settings?.portalButtonTextNp || 'पोर्टल लगइन (SMS Login)') : (settings?.portalButtonTextEn || 'Portal Login (SMS)');
+
+  // Dynamically update browser tab title and favicon to school branding
+  useEffect(() => {
+    if (schoolName) {
+      document.title = `${schoolName} | ${isNp ? 'आधिकारिक वेबसाइट' : 'Official Website'}`;
+    }
+    if (schoolLogo) {
+      let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement | null;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = schoolLogo;
+    }
+  }, [schoolName, schoolLogo, isNp]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
@@ -191,15 +212,15 @@ export const App: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
             <div className="flex items-center gap-1.5 text-slate-300">
               <MapPin className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span>{isNp ? (settings?.contactAddressNp || 'गोदावरी-१४, ललितपुर') : (settings?.contactAddressEn || 'Godawari-14, Lalitpur')}</span>
+              <span>{schoolAddress}</span>
             </div>
             <div className="flex items-center gap-1.5 text-slate-300">
               <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span>{settings?.contactPhone || '+977-01-5250000'}</span>
+              <span>{schoolPhone}</span>
             </div>
             <div className="hidden md:flex items-center gap-1.5 text-slate-300">
               <Mail className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>{settings?.contactEmail || 'info@shreeshanti.edu.np'}</span>
+              <span>{schoolEmail}</span>
             </div>
           </div>
 
@@ -911,7 +932,7 @@ export const App: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">{isNp ? 'कार्यालय ठेगाना' : 'Campus Location'}</div>
-                    <div>{isNp ? (settings?.contactAddressNp || 'गोदावरी-१४, ठैव, ललितपुर') : (settings?.contactAddressEn || 'Godawari-14, Lalitpur')}</div>
+                    <div>{schoolAddress}</div>
                   </div>
                 </div>
 
@@ -921,7 +942,7 @@ export const App: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">{isNp ? 'सम्पर्क फोन' : 'Telephone / Mobile'}</div>
-                    <div>{settings?.contactPhone || '+977-01-5250000, 9851000000'}</div>
+                    <div>{schoolPhone}</div>
                   </div>
                 </div>
 
@@ -931,7 +952,7 @@ export const App: React.FC = () => {
                   </div>
                   <div>
                     <div className="font-bold text-slate-900">{isNp ? 'आधिकारिक इमेल' : 'Email Address'}</div>
-                    <div>{settings?.contactEmail || 'info@shreeshanti.edu.np'}</div>
+                    <div>{schoolEmail}</div>
                   </div>
                 </div>
 

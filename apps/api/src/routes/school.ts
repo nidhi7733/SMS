@@ -113,6 +113,27 @@ export async function schoolRoutes(fastify: FastifyInstance) {
       }
     }
 
+    // Synchronize website_settings as well so public website stays 100% in sync
+    const webSetting = await db.query.websiteSettings.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, school.id),
+    });
+    if (webSetting) {
+      await db.update(schema.websiteSettings).set({
+        schoolNameNp: updated[0].nameNp,
+        schoolNameEn: updated[0].nameEn,
+        logoUrl: updated[0].logoUrl,
+        mottoNp: updated[0].mottoNp,
+        mottoEn: updated[0].mottoEn,
+        iemisCode: updated[0].iemisCode,
+        contactPhone: updated[0].phone,
+        contactEmail: updated[0].email,
+        contactAddressNp: updated[0].addressNp,
+        contactAddressEn: updated[0].addressEn,
+        establishedYearBs: updated[0].establishedBsYear,
+        updatedAt: new Date(),
+      }).where(eq(schema.websiteSettings.id, webSetting.id));
+    }
+
     // Record audit log
     const user = (request as any).user;
     await db.insert(schema.auditLogs).values({

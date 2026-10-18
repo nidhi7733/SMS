@@ -129,6 +129,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
         email: school.email,
         addressNp: school.addressNp,
         addressEn: school.addressEn,
+        establishedBsYear: school.establishedBsYear,
       },
       settings,
       navItems,

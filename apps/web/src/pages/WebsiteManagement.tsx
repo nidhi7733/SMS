@@ -232,6 +232,9 @@ export const WebsiteManagement: React.FC = () => {
       if (!res.ok) throw new Error('Failed to update settings');
       showNotification(isNp ? 'वेबसाइट सेटिङ सफलतापूर्वक सुरक्षित भयो!' : 'Website settings updated successfully!');
       fetchCmsData();
+      if (refreshSchool) {
+        await refreshSchool();
+      }
     } catch (err: any) {
       showNotification(err.message || 'Error updating settings', true);
     }
@@ -958,6 +961,60 @@ export const WebsiteManagement: React.FC = () => {
                 folder="school"
                 helpText={isNp ? 'यहाँ नयाँ लोगो अपलोड गर्दा SMS र वेबसाइट दुवैमा एकैसाथ तुरुन्त अपडेट हुन्छ।' : 'Uploading logo here immediately updates both SMS and Website.'}
               />
+            </div>
+
+            {/* Core School Name & Motto Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'विद्यालयको आधिकारिक नाम (नेपाली) *' : 'School Official Name (Nepali) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.schoolNameNp || school?.nameNp || ''}
+                  onChange={(e) => setSettings({ ...settings, schoolNameNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 font-bold"
+                  placeholder="उदा: श्री राजेश्वर निधि माध्यमिक विद्यालय"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'विद्यालयको आधिकारिक नाम (English) *' : 'School Official Name (English) *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settings.schoolNameEn || school?.nameEn || ''}
+                  onChange={(e) => setSettings({ ...settings, schoolNameEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 font-bold"
+                  placeholder="e.g. Shree Rajeshwar Nidhi Secondary School"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मूल नारा (नेपाली)' : 'School Motto (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.mottoNp || school?.mottoNp || ''}
+                  onChange={(e) => setSettings({ ...settings, mottoNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="उदा: सत्य र ज्ञानका लागि शिक्षा"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'मूल नारा (English)' : 'School Motto (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.mottoEn || school?.mottoEn || ''}
+                  onChange={(e) => setSettings({ ...settings, mottoEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="e.g. Education for Truth and Enlightenment"
+                />
+              </div>
             </div>
 
             {/* Website-specific affiliation badges */}

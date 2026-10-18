@@ -211,6 +211,11 @@ export interface PublicWebsiteOverview {
     mottoNp?: string | null;
     logoUrl?: string | null;
     iemisCode?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    addressNp?: string | null;
+    addressEn?: string | null;
+    establishedBsYear?: number | null;
   };
   settings: WebsiteSettings;
   navItems?: WebsiteNavItem[];
