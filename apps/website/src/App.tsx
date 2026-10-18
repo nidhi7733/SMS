@@ -532,31 +532,23 @@ export const App: React.FC = () => {
                       `Established in ${schoolEstd || 2028} BS, ${schoolName} is dedicated to holistic and high-standard schooling.`)}
               </p>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-xs font-bold text-slate-700">
-                    {isNp ? 'आधुनिक कम्प्युटर तथा विज्ञान ल्याब' : 'Advanced ICT & Science Labs'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-xs font-bold text-slate-700">
-                    {isNp ? 'सुरक्षित विद्यालय बस यातायात सेवा' : 'Safe School Transport Fleet'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-xs font-bold text-slate-700">
-                    {isNp ? 'ई-पुस्तकालय तथा अतिरिक्त क्रियाकलाप' : 'Digital Library & Sports ECA'}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-xs font-bold text-slate-700">
-                    {isNp ? 'अनुभवी तथा तालिमप्राप्त शिक्षक वर्ग' : 'Certified & Passionate Educators'}
-                  </span>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {(settings?.aboutFeaturesList && settings.aboutFeaturesList.length > 0
+                  ? settings.aboutFeaturesList
+                  : [
+                      { textNp: 'आधुनिक कम्प्युटर तथा विज्ञान ल्याब', textEn: 'Advanced ICT & Science Labs' },
+                      { textNp: 'सुरक्षित विद्यालय बस यातायात सेवा', textEn: 'Safe School Transport Fleet' },
+                      { textNp: 'ई-पुस्तकालय तथा अतिरिक्त क्रियाकलाप', textEn: 'Digital Library & Sports ECA' },
+                      { textNp: 'अनुभवी तथा तालिमप्राप्त शिक्षक वर्ग', textEn: 'Certified & Passionate Educators' },
+                    ]
+                ).map((feat, idx) => (
+                  <div key={idx} className="flex items-start gap-2.5">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span className="text-xs font-bold text-slate-700">
+                      {isNp ? feat.textNp : feat.textEn}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
 

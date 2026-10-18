@@ -368,6 +368,7 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       aboutImageUrl: body.aboutImageUrl,
       aboutImageCaptionNp: body.aboutImageCaptionNp,
       aboutImageCaptionEn: body.aboutImageCaptionEn,
+      aboutFeaturesList: body.aboutFeaturesList,
 
       // Leadership Messages
       principalNameNp: body.principalNameNp,

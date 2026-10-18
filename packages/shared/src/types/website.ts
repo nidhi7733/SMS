@@ -1,3 +1,9 @@
+export interface WebsiteAboutFeature {
+  id?: string;
+  textNp: string;
+  textEn: string;
+}
+
 export interface WebsiteSettings {
   id: string;
   schoolId: string;
@@ -26,7 +32,7 @@ export interface WebsiteSettings {
   aboutImageUrl?: string | null;
   aboutImageCaptionNp?: string | null;
   aboutImageCaptionEn?: string | null;
-  aboutFeaturesList?: string[] | null;
+  aboutFeaturesList?: WebsiteAboutFeature[] | null;
 
   // Leadership Messages (Principal & SMC Chairperson)
   principalNameNp?: string | null;

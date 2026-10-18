@@ -1194,6 +1194,100 @@ export const WebsiteManagement: React.FC = () => {
                   placeholder="Lush Green Child-friendly Campus"
                 />
               </div>
+
+              {/* Key Highlights / Feature Bullets (मुख्य विशेषता बुलेटहरू) */}
+              <div className="md:col-span-2 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      {isNp ? 'विद्यालयका मुख्य विशेषता तथा सबल पक्षहरू (बुलेट सूची)' : 'Key Features & School Highlights (Bullet List)'}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {isNp ? 'वेबसाइटको About सेक्सनमा देखिने यी बुलेटहरू यहाँबाट सम्पादन गर्न, थप्न वा हटाउन सकिन्छ।' : 'Manage, add or delete the checkmark bullet highlights displayed in the About section.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = settings.aboutFeaturesList && settings.aboutFeaturesList.length > 0
+                        ? settings.aboutFeaturesList
+                        : [
+                            { textNp: 'आधुनिक कम्प्युटर तथा विज्ञान ल्याब', textEn: 'Advanced ICT & Science Labs' },
+                            { textNp: 'सुरक्षित विद्यालय बस यातायात सेवा', textEn: 'Safe School Transport Fleet' },
+                            { textNp: 'ई-पुस्तकालय तथा अतिरिक्त क्रियाकलाप', textEn: 'Digital Library & Sports ECA' },
+                            { textNp: 'अनुभवी तथा तालिमप्राप्त शिक्षक वर्ग', textEn: 'Certified & Passionate Educators' },
+                          ];
+                      setSettings({
+                        ...settings,
+                        aboutFeaturesList: [...current, { textNp: '', textEn: '' }],
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold transition shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isNp ? '+ नयाँ विशेषता बुलेट थप्नुहोस्' : '+ Add Highlight Bullet'}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  {(
+                    settings.aboutFeaturesList && settings.aboutFeaturesList.length > 0
+                      ? settings.aboutFeaturesList
+                      : [
+                          { textNp: 'आधुनिक कम्प्युटर तथा विज्ञान ल्याब', textEn: 'Advanced ICT & Science Labs' },
+                          { textNp: 'सुरक्षित विद्यालय बस यातायात सेवा', textEn: 'Safe School Transport Fleet' },
+                          { textNp: 'ई-पुस्तकालय तथा अतिरिक्त क्रियाकलाप', textEn: 'Digital Library & Sports ECA' },
+                          { textNp: 'अनुभवी तथा तालिमप्राप्त शिक्षक वर्ग', textEn: 'Certified & Passionate Educators' },
+                        ]
+                  ).map((feat, idx, arr) => (
+                    <div key={idx} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <span className="text-xs font-bold text-slate-400 w-5 text-center shrink-0">{idx + 1}.</span>
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 uppercase">नेपाली</label>
+                          <input
+                            type="text"
+                            value={feat.textNp}
+                            onChange={(e) => {
+                              const updated = [...arr];
+                              updated[idx] = { ...updated[idx], textNp: e.target.value };
+                              setSettings({ ...settings, aboutFeaturesList: updated });
+                            }}
+                            placeholder="उदा: आधुनिक कम्प्युटर तथा विज्ञान ल्याब"
+                            className="w-full text-xs mt-0.5 px-2.5 py-1.5 border rounded-md dark:bg-slate-800 dark:border-slate-600 font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-500 uppercase">English</label>
+                          <input
+                            type="text"
+                            value={feat.textEn}
+                            onChange={(e) => {
+                              const updated = [...arr];
+                              updated[idx] = { ...updated[idx], textEn: e.target.value };
+                              setSettings({ ...settings, aboutFeaturesList: updated });
+                            }}
+                            placeholder="e.g. Advanced ICT & Science Labs"
+                            className="w-full text-xs mt-0.5 px-2.5 py-1.5 border rounded-md dark:bg-slate-800 dark:border-slate-600 font-medium"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = arr.filter((_, i) => i !== idx);
+                          setSettings({ ...settings, aboutFeaturesList: updated });
+                        }}
+                        className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition shrink-0 mt-3 sm:mt-0"
+                        title={isNp ? 'हटाउनुहोस्' : 'Delete'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

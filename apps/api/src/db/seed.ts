@@ -1507,6 +1507,7 @@ export async function runMigrationsAndSeed() {
     'about_image_url TEXT',
     'about_image_caption_np TEXT',
     'about_image_caption_en TEXT',
+    'about_features_list JSONB',
     'principal_designation_np TEXT',
     'principal_designation_en TEXT',
     'principal_visible BOOLEAN DEFAULT true',

@@ -1244,6 +1244,7 @@ export const websiteSettings = pgTable('website_settings', {
   aboutImageUrl: text('about_image_url'),
   aboutImageCaptionNp: text('about_image_caption_np'),
   aboutImageCaptionEn: text('about_image_caption_en'),
+  aboutFeaturesList: jsonb('about_features_list').$type<{ textNp: string; textEn: string }[]>(),
 
   // Leadership Messages
   principalNameNp: text('principal_name_np'),
