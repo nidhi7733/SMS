@@ -204,9 +204,11 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       {/* ========================================================= */}
-      {/* 1. TOP ANNOUNCEMENT BAR & PORTAL LINK */}
+      {/* STICKY TOP CONTAINER (ANNOUNCEMENT BAR + HEADER) */}
       {/* ========================================================= */}
-      <div className="bg-slate-900 text-slate-200 text-xs py-2 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
+      <div className="sticky top-0 z-40 w-full shadow-sm">
+        {/* 1. TOP ANNOUNCEMENT BAR & PORTAL LINK */}
+        <div className="bg-slate-900 text-slate-200 text-xs py-2 px-4 sm:px-6 lg:px-8 border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
           {/* Contact snippets */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
@@ -252,7 +254,7 @@ export const App: React.FC = () => {
       {/* ========================================================= */}
       {/* 2. MAIN HEADER & LOGO BRANDING */}
       {/* ========================================================= */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+      <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
           {/* Logo & School Name */}
           <a href="#" className="flex items-center gap-3.5 group">
@@ -345,6 +347,7 @@ export const App: React.FC = () => {
           </div>
         )}
       </header>
+    </div>
 
       {/* ========================================================= */}
       {/* 3. LATEST NOTICES TICKER */}
