@@ -33,9 +33,11 @@ import {
   Camera,
 } from 'lucide-react';
 import { downloadIemisTemplate, parseIemisExcel, IemisStudentRow, ParseResult } from '../utils/iemisExcel';
+import { ImageUploadField } from '../components/ImageUploadField';
 
 export const StudentsManagement: React.FC = () => {
   const { language, t, formatNumber } = useLanguage();
+  const isNp = language === 'np';
   const { hasRole } = useAuth();
   const isPrincipalOrAdmin = hasRole('PRINCIPAL') || hasRole('SYSTEM_ADMIN');
 
@@ -1439,55 +1441,14 @@ export const StudentsManagement: React.FC = () => {
                     </div>
 
                     {/* Student Photo Section */}
-                    <div className="flex items-center space-x-4 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                      <div className="w-20 h-24 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                        {editForm.photoUrl ? (
-                          <img src={editForm.photoUrl} alt="Photo" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="text-center text-slate-400 text-[10px] flex flex-col items-center">
-                            <Camera className="w-5 h-5 mb-1 text-slate-400" />
-                            <span>तस्बिर छैन</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-1.5 flex-1">
-                        <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                          विद्यार्थीको तस्बिर (Student Passport Photo)
-                        </div>
-                        <p className="text-[11px] text-slate-500">
-                          पासपोर्ट साइजको तस्बिर (JPG, PNG) - रिपोर्ट कार्ड, प्रमाणपत्र र परिचयपत्रमा प्रयोग हुन्छ।
-                        </p>
-                        <div className="flex items-center gap-2 pt-1">
-                          <label className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition shadow-2xs">
-                            <UploadCloud className="w-3.5 h-3.5 mr-1.5" />
-                            <span>{editForm.photoUrl ? 'तस्बिर फेर्नुहोस्' : 'तस्बिर छान्नुहोस्'}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    setEditForm({ ...editForm, photoUrl: reader.result as string });
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                            />
-                          </label>
-                          {editForm.photoUrl && (
-                            <button
-                              type="button"
-                              onClick={() => setEditForm({ ...editForm, photoUrl: '' })}
-                              className="px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 text-xs font-bold hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-                            >
-                              हटाउनुहोस्
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                    <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                      <ImageUploadField
+                        label={isNp ? 'विद्यार्थीको तस्बिर (Student Passport Photo)' : 'Student Passport Photo'}
+                        helpText={isNp ? 'पासपोर्ट साइजको तस्बिर (JPG, PNG) - रिपोर्ट कार्ड, प्रमाणपत्र र परिचयपत्रमा प्रयोग हुन्छ।' : 'Passport photo used for report cards and ID cards.'}
+                        value={editForm.photoUrl || ''}
+                        onChange={(url) => setEditForm({ ...editForm, photoUrl: url })}
+                        folder="students"
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2043,55 +2004,14 @@ export const StudentsManagement: React.FC = () => {
               {admitTab === 'identity' && (
                 <div className="space-y-4">
                   {/* Student Photo Upload */}
-                  <div className="flex items-center space-x-4 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
-                    <div className="w-20 h-24 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
-                      {admitForm.photoUrl ? (
-                        <img src={admitForm.photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-center text-slate-400 text-[10px] flex flex-col items-center">
-                          <Camera className="w-5 h-5 mb-1 text-slate-400" />
-                          <span>तस्बिर</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-1.5 flex-1">
-                      <div className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                        विद्यार्थीको तस्बिर (Student Passport Photo)
-                      </div>
-                      <p className="text-[11px] text-slate-500">
-                        पासपोर्ट साइजको तस्बिर (JPG, PNG) - प्रमाणपत्र, परिचयपत्र र परीक्षा रिपोर्ट कार्डमा छापिन्छ।
-                      </p>
-                      <div className="flex items-center gap-2 pt-1">
-                        <label className="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer transition shadow-2xs">
-                          <UploadCloud className="w-3.5 h-3.5 mr-1.5" />
-                          <span>{admitForm.photoUrl ? 'तस्बिर फेर्नुहोस्' : 'तस्बिर छान्नुहोस्'}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setAdmitForm({ ...admitForm, photoUrl: reader.result as string });
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                        {admitForm.photoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => setAdmitForm({ ...admitForm, photoUrl: '' })}
-                            className="px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 text-xs font-bold hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
-                          >
-                            हटाउनुहोस्
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">
+                    <ImageUploadField
+                      label={isNp ? 'विद्यार्थीको तस्बिर (Student Passport Photo)' : 'Student Passport Photo'}
+                      helpText={isNp ? 'पासपोर्ट साइजको तस्बिर (JPG, PNG) - प्रमाणपत्र, परिचयपत्र र परीक्षा रिपोर्ट कार्डमा छापिन्छ।' : 'Passport photo used for certificates and ID cards.'}
+                      value={admitForm.photoUrl || ''}
+                      onChange={(url) => setAdmitForm({ ...admitForm, photoUrl: url })}
+                      folder="students"
+                    />
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">

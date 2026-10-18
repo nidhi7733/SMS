@@ -43,6 +43,8 @@ import {
   WebsiteDownload,
   WebsiteInquiry,
 } from '@sms/shared';
+import { ImageUploadField } from '../components/ImageUploadField';
+import { FileUploadField } from '../components/FileUploadField';
 
 export const WebsiteManagement: React.FC = () => {
   const { language } = useLanguage();
@@ -879,160 +881,76 @@ export const WebsiteManagement: React.FC = () => {
       {/* TAB 1: GENERAL SETTINGS, LOGO & MESSAGES */}
       {activeTab === 'settings' && (
         <form onSubmit={handleSaveSettings} className="space-y-6">
-          {/* Card 1: School Identity & Logo */}
+          {/* Card 1: School Identity Synchronized from School Settings */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <Building className="w-5 h-5 text-indigo-600" />
-              {isNp ? 'विद्यालयको पहिचान, लोगो तथा नाम' : 'School Identity, Logo & Names'}
-            </h2>
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Building className="w-5 h-5 text-indigo-600" />
+                {isNp ? 'विद्यालयको आधिकारिक पहिचान तथा सम्बद्धता' : 'Official School Identity & Affiliation'}
+              </h2>
+              <a
+                href="/school_settings"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 transition"
+              >
+                <span>{isNp ? 'विद्यालय सेटिङ सच्याउनुहोस्' : 'Edit School Settings'}</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-              {/* Logo Preview & Input */}
-              <div className="md:col-span-4 p-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex flex-col items-center text-center space-y-3">
-                <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shadow-sm p-1.5">
-                  {settings.logoUrl ? (
-                    <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-contain" />
-                  ) : (
-                    <span className="text-3xl">🏛️</span>
-                  )}
+            {/* School Settings Live Sync Summary */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-16 h-16 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 shrink-0 shadow-xs">
+                {school?.logoUrl ? (
+                  <img src={school.logoUrl} alt="School Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-2xl">🏛️</span>
+                )}
+              </div>
+              <div className="flex-1 text-center sm:text-left space-y-1">
+                <div className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय'}
+                  <span className="text-xs font-medium text-slate-500 ml-2">({school?.nameEn || 'Shree Shanti Secondary School'})</span>
                 </div>
-                <div className="w-full space-y-2">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                    {isNp ? 'विद्यालय लोगो लिङ्क (Logo URL)' : 'School Logo URL'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.logoUrl || ''}
-                    onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-                    className="w-full text-xs px-3 py-2 border rounded-lg dark:bg-slate-900 dark:border-slate-700 font-mono"
-                    placeholder="https://.../logo.png"
-                  />
-                  <div className="flex justify-center gap-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setSettings({ ...settings, logoUrl: 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=120&auto=format&fit=crop&q=80' })}
-                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300"
-                    >
-                      {isNp ? 'नमुना १' : 'Demo 1'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSettings({ ...settings, logoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=120&auto=format&fit=crop&q=80' })}
-                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300"
-                    >
-                      {isNp ? 'नमुना २' : 'Demo 2'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSettings({ ...settings, logoUrl: '' })}
-                      className="text-[10px] px-2 py-0.5 bg-slate-200 dark:bg-slate-700 rounded hover:bg-slate-300 text-rose-600"
-                    >
-                      {isNp ? 'हटाउनुहोस्' : 'Clear'}
-                    </button>
-                  </div>
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  {school?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा'}
+                </div>
+                <div className="text-[11px] text-slate-500 flex flex-wrap gap-3 pt-0.5 justify-center sm:justify-start">
+                  <span>IEMIS: <strong className="text-slate-700 dark:text-slate-300">{school?.iemisCode || '270010001'}</strong></span>
+                  <span>स्थापना: <strong className="text-slate-700 dark:text-slate-300">{school?.establishedBsYear || 2028} वि.सं.</strong></span>
+                  <span>सम्पर्क: <strong className="text-slate-700 dark:text-slate-300">{school?.phone || '+977-01-5250000'}</strong></span>
                 </div>
               </div>
+              <div className="text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-lg flex items-center gap-1.5 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{isNp ? 'SMS विद्यालय सेटिङबाट सिङ्क' : 'Synced from School Profile'}</span>
+              </div>
+            </div>
 
-              {/* Names & Motto */}
-              <div className="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'विद्यालयको नाम (नेपाली) *' : 'School Name (Nepali) *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.schoolNameNp || ''}
-                    onChange={(e) => setSettings({ ...settings, schoolNameNp: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="श्री शान्ति माध्यमिक विद्यालय"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'विद्यालयको नाम (English) *' : 'School Name (English) *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.schoolNameEn || ''}
-                    onChange={(e) => setSettings({ ...settings, schoolNameEn: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="Shree Shanti Secondary School"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'विद्यालयको मूल मन्त्र / नारा (नेपाली)' : 'School Motto (Nepali)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.mottoNp || ''}
-                    onChange={(e) => setSettings({ ...settings, mottoNp: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं."
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'विद्यालयको मूल मन्त्र / नारा (English)' : 'School Motto (English)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.mottoEn || ''}
-                    onChange={(e) => setSettings({ ...settings, mottoEn: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="Education for Truth and Enlightenment"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'सम्बद्धता / मान्यता ब्याड्ज (नेपाली)' : 'Affiliation Badge (Nepali)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.affiliationTextNp || ''}
-                    onChange={(e) => setSettings({ ...settings, affiliationTextNp: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="नेपाल सरकार | CEHRD मान्यता प्राप्त"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'सम्बद्धता / मान्यता ब्याड्ज (English)' : 'Affiliation Badge (English)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.affiliationTextEn || ''}
-                    onChange={(e) => setSettings({ ...settings, affiliationTextEn: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="Govt. of Nepal | CEHRD Aligned"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'IEMIS कोड' : 'CEHRD IEMIS Code'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.iemisCode || ''}
-                    onChange={(e) => setSettings({ ...settings, iemisCode: e.target.value })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="270010001"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    {isNp ? 'स्थापना वर्ष (वि.सं.)' : 'Established Year (BS)'}
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.establishedYearBs || 2028}
-                    onChange={(e) => setSettings({ ...settings, establishedYearBs: Number(e.target.value) })}
-                    className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  />
-                </div>
+            {/* Website-specific affiliation badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'वेबसाइट सम्बद्धता / मान्यता ब्याड्ज (नेपाली)' : 'Website Affiliation Badge (Nepali)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.affiliationTextNp || ''}
+                  onChange={(e) => setSettings({ ...settings, affiliationTextNp: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="नेपाल सरकार | CEHRD मान्यता प्राप्त"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'वेबसाइट सम्बद्धता / मान्यता ब्याड्ज (English)' : 'Website Affiliation Badge (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.affiliationTextEn || ''}
+                  onChange={(e) => setSettings({ ...settings, affiliationTextEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Govt. of Nepal | CEHRD Aligned"
+                />
               </div>
             </div>
           </div>
@@ -1125,16 +1043,13 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'क्याम्पस फोटो लिङ्क (Campus Photo URL)' : 'Campus Photo URL'}
-                </label>
-                <input
-                  type="text"
+              <div className="md:col-span-2">
+                <ImageUploadField
+                  label={isNp ? 'क्याम्पस तस्बिर (Campus Photo)' : 'Campus Photo'}
                   value={settings.aboutImageUrl || ''}
-                  onChange={(e) => setSettings({ ...settings, aboutImageUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://..."
+                  onChange={(url) => setSettings({ ...settings, aboutImageUrl: url })}
+                  folder="campus"
+                  helpText="विद्यालय परिसर तथा भवनको मुख्य तस्बिर (सिफारिस: 16:9 ल्याण्डस्केप तस्बिर)"
                 />
               </div>
               <div>
@@ -1220,23 +1135,13 @@ export const WebsiteManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फोटो लिङ्क (Photo URL)' : 'Photo URL'}
-                </label>
-                <div className="flex gap-2 items-center mt-1">
-                  {settings.principalPhotoUrl && (
-                    <img src={settings.principalPhotoUrl} alt="Principal" className="w-10 h-10 rounded-full object-cover border" />
-                  )}
-                  <input
-                    type="text"
-                    value={settings.principalPhotoUrl || ''}
-                    onChange={(e) => setSettings({ ...settings, principalPhotoUrl: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
+              <ImageUploadField
+                label={isNp ? 'प्रधानाध्यापकको तस्बिर (Principal Photo)' : 'Principal Photo'}
+                value={settings.principalPhotoUrl || ''}
+                onChange={(url) => setSettings({ ...settings, principalPhotoUrl: url })}
+                folder="leadership"
+                helpText="सिफारिस: पासपोर्ट आकार वा वर्गाकार फोटो (Square Photo)"
+              />
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -1329,23 +1234,13 @@ export const WebsiteManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फोटो लिङ्क (Photo URL)' : 'Photo URL'}
-                </label>
-                <div className="flex gap-2 items-center mt-1">
-                  {settings.smcChairPhotoUrl && (
-                    <img src={settings.smcChairPhotoUrl} alt="SMC Chair" className="w-10 h-10 rounded-full object-cover border" />
-                  )}
-                  <input
-                    type="text"
-                    value={settings.smcChairPhotoUrl || ''}
-                    onChange={(e) => setSettings({ ...settings, smcChairPhotoUrl: e.target.value })}
-                    className="w-full text-sm px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
+              <ImageUploadField
+                label={isNp ? 'वि.व्य.स. अध्यक्षको तस्बिर (SMC Chairperson Photo)' : 'SMC Chair Photo'}
+                value={settings.smcChairPhotoUrl || ''}
+                onChange={(url) => setSettings({ ...settings, smcChairPhotoUrl: url })}
+                folder="leadership"
+                helpText="सिफारिस: पासपोर्ट आकार वा वर्गाकार फोटो (Square Photo)"
+              />
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -2492,19 +2387,14 @@ export const WebsiteManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फोटो लिङ्क (Image URL) *' : 'Image URL *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={slideForm.imageUrl}
-                  onChange={(e) => setSlideForm({ ...slideForm, imageUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://..."
-                />
-              </div>
+              <ImageUploadField
+                label={isNp ? 'ब्यानर तस्बिर (Slide Image) *' : 'Slide Image *'}
+                helpText={isNp ? 'ल्यान्डस्केप १६:९ वा १९२०x१०८० सिफारिस गरिन्छ' : '16:9 or 1920x1080 recommended'}
+                value={slideForm.imageUrl}
+                onChange={(url) => setSlideForm({ ...slideForm, imageUrl: url })}
+                folder="slides"
+                required
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -2639,18 +2529,13 @@ export const WebsiteManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'संलग्न फाइल/फोटो लिङ्क' : 'Attached File/Image URL'}
-                </label>
-                <input
-                  type="text"
-                  value={noticeForm.fileUrl}
-                  onChange={(e) => setNoticeForm({ ...noticeForm, fileUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://... वा /downloads/notice.pdf"
-                />
-              </div>
+              <FileUploadField
+                label={isNp ? 'संलग्न फाइल वा सूचनाको कागजात (वैकल्पिक)' : 'Attached Document/Notice File (Optional)'}
+                helpText={isNp ? 'PDF, DOC, DOCX वा तस्बिर (अधिकतम १५ MB)' : 'PDF, DOC, DOCX or image (max 15MB)'}
+                value={noticeForm.fileUrl || ''}
+                onChange={(url) => setNoticeForm({ ...noticeForm, fileUrl: url })}
+                folder="notices"
+              />
 
               <div className="flex items-center gap-4 pt-2">
                 <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -2855,19 +2740,14 @@ export const WebsiteManagement: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'कभर फोटो लिङ्क (Cover Image URL) *' : 'Cover Image URL *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={albumForm.coverImageUrl}
-                  onChange={(e) => setAlbumForm({ ...albumForm, coverImageUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://..."
-                />
-              </div>
+              <ImageUploadField
+                label={isNp ? 'कभर फोटो (Cover Image) *' : 'Cover Image *'}
+                helpText={isNp ? 'एल्बमको मुख्य कभर तस्बिर' : 'Main album cover photo'}
+                value={albumForm.coverImageUrl}
+                onChange={(url) => setAlbumForm({ ...albumForm, coverImageUrl: url })}
+                folder="gallery"
+                required
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -2917,19 +2797,14 @@ export const WebsiteManagement: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'तस्बिरको लिङ्क (Image URL) *' : 'Image URL *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={photoForm.imageUrl}
-                  onChange={(e) => setPhotoForm({ ...photoForm, imageUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="https://..."
-                />
-              </div>
+              <ImageUploadField
+                label={isNp ? 'तस्बिर (Photo) *' : 'Photo *'}
+                helpText={isNp ? 'एल्बममा थपिने तस्बिर अपलोड गर्नुहोस्' : 'Upload photo for the album'}
+                value={photoForm.imageUrl}
+                onChange={(url) => setPhotoForm({ ...photoForm, imageUrl: url })}
+                folder="gallery"
+                required
+              />
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -2997,19 +2872,14 @@ export const WebsiteManagement: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फाइल लिङ्क (File URL) *' : 'File URL *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={downloadForm.fileUrl}
-                  onChange={(e) => setDownloadForm({ ...downloadForm, fileUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="/downloads/form.pdf वा बाहिरी लिङ्क"
-                />
-              </div>
+              <FileUploadField
+                label={isNp ? 'डाउनलोड फाइल (Download File) *' : 'Download File *'}
+                helpText={isNp ? 'PDF, DOC, XLS, ZIP फाइल (अधिकतम १५ MB)' : 'PDF, DOC, XLS, ZIP file (max 15MB)'}
+                value={downloadForm.fileUrl}
+                onChange={(url) => setDownloadForm({ ...downloadForm, fileUrl: url })}
+                folder="downloads"
+                required
+              />
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">

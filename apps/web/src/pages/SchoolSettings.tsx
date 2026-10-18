@@ -17,6 +17,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 
+import { ImageUploadField } from '../components/ImageUploadField';
+
 export const SchoolSettings: React.FC = () => {
   const { t, formatNumber } = useLanguage();
   const { setSchoolData, refreshSchool } = useSchool();
@@ -292,64 +294,14 @@ export const SchoolSettings: React.FC = () => {
       <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden transition-colors">
         
         {/* Section 0: Official School Logo Upload */}
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center space-x-2">
-            <ImageIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>Official School Logo / विद्यालयको लोगो</span>
-          </h3>
-
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            {/* Logo Preview */}
-            <div className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center overflow-hidden shadow-xs shrink-0 p-1">
-              {form.logoUrl ? (
-                <img
-                  src={form.logoUrl}
-                  alt="School Logo Preview"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="text-center p-2">
-                  <School className="w-8 h-8 mx-auto text-slate-400 dark:text-slate-500 mb-1" />
-                  <span className="text-[10px] text-slate-500 font-medium">No Logo</span>
-                </div>
-              )}
-            </div>
-
-            {/* Logo Controls */}
-            <div className="space-y-2 text-center sm:text-left">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                onChange={handleLogoUpload}
-                className="hidden"
-                id="school-logo-input"
-              />
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <label
-                  htmlFor="school-logo-input"
-                  className="inline-flex items-center px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition"
-                >
-                  <Upload className="w-3.5 h-3.5 mr-1.5" />
-                  Upload New Logo
-                </label>
-
-                {form.logoUrl && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveLogo}
-                    className="inline-flex items-center px-3 py-2 rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 text-xs font-semibold transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                    Remove Logo
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Recommended: Square PNG or SVG (transparent background), max 2MB. Logo appears immediately on Header and report cards.
-              </p>
-            </div>
-          </div>
+        <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30">
+          <ImageUploadField
+            label="विद्यालयको आधिकारिक लोगो (Official School Logo)"
+            value={form.logoUrl}
+            onChange={(url) => setForm((prev) => ({ ...prev, logoUrl: url }))}
+            folder="school"
+            helpText="सिफारिस: पारदर्शी पृष्ठभूमि (Transparent Background) भएको वर्गाकार PNG, SVG वा WebP। यहाँ राखिएको लोगो SMS हेडर, विद्यार्थी रसिद, चारित्रिक प्रमाणपत्र र सार्वजनिक वेबसाइटमा स्वतः प्रदर्शित हुन्छ।"
+          />
         </div>
 
         {/* Section 1: Basic Information */}

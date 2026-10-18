@@ -5,7 +5,10 @@ import jwt from '@fastify/jwt';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
+import multipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
 import { runMigrationsAndSeed } from './db/seed.js';
 import { authRoutes } from './routes/auth.js';
 import { schoolRoutes } from './routes/school.js';
@@ -28,6 +31,7 @@ import learningRoutes from './routes/learning.js';
 import documentRoutes from './routes/documents.js';
 import transportRoutes from './routes/transport.js';
 import websiteRoutes from './routes/website.js';
+import uploadRoutes from './routes/upload.js';
 
 
 // Load environment variables from cwd or parent directories
@@ -108,7 +112,25 @@ async function main() {
       },
     });
 
-    // 6. Health Check
+    // 6. Multipart Form Data (File / Image Uploads)
+    await fastify.register(multipart, {
+      limits: {
+        fileSize: 15 * 1024 * 1024, // 15MB max file size
+      },
+    });
+
+    // 7. Static File Serving for Local Uploads (/uploads/...)
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    await fastify.register(fastifyStatic, {
+      root: uploadsDir,
+      prefix: '/uploads/',
+      decorateReply: false,
+    });
+
+    // 8. Health Check
     fastify.get('/api/health', async () => {
       return {
         status: 'ok',
@@ -118,7 +140,8 @@ async function main() {
       };
     });
 
-    // 7. Register Feature Routes
+    // 9. Register Feature Routes
+    await fastify.register(uploadRoutes, { prefix: '/api/upload' });
     await fastify.register(authRoutes, { prefix: '/api/auth' });
     await fastify.register(schoolRoutes, { prefix: '/api/school' });
     await fastify.register(usersRoutes, { prefix: '/api/users' });

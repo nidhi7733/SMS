@@ -27,6 +27,7 @@ import {
   FileBadge,
   Sparkles,
 } from 'lucide-react';
+import { FileUploadField } from '../components/FileUploadField';
 
 interface InwardDoc {
   id: string;
@@ -1368,6 +1369,14 @@ export const DocumentManagement: React.FC = () => {
                 </select>
               </div>
 
+              <FileUploadField
+                label={isNp ? 'दर्ता पत्रको स्क्यान फाइल (वैकल्पिक)' : 'Scanned Letter (Optional)'}
+                helpText={isNp ? 'PDF वा तस्बिर (अधिकतम १५ MB)' : 'PDF or Image (max 15MB)'}
+                value={inwardForm.scannedFileUrl || ''}
+                onChange={(url) => setInwardForm({ ...inwardForm, scannedFileUrl: url })}
+                folder="darta"
+              />
+
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'कैफियत' : 'Remarks'}
@@ -1532,6 +1541,14 @@ export const DocumentManagement: React.FC = () => {
                   ))}
                 </select>
               </div>
+
+              <FileUploadField
+                label={isNp ? 'चलानी पत्रको स्क्यान फाइल (वैकल्पिक)' : 'Scanned Dispatch Letter (Optional)'}
+                helpText={isNp ? 'PDF वा तस्बिर (अधिकतम १५ MB)' : 'PDF or Image (max 15MB)'}
+                value={outwardForm.scannedFileUrl || ''}
+                onChange={(url) => setOutwardForm({ ...outwardForm, scannedFileUrl: url })}
+                folder="chalani"
+              />
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
@@ -1926,19 +1943,14 @@ export const DocumentManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'कागजात लिङ्क वा फाइल मार्ग (File URL/Path)' : 'File URL or Cloud Path'} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={archiveForm.fileUrl}
-                  onChange={(e) => setArchiveForm({ ...archiveForm, fileUrl: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-md dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="/uploads/documents/sample.pdf"
-                />
-              </div>
+              <FileUploadField
+                label={isNp ? 'अभिलेख कागजात / फाइल' : 'Archive Document File'}
+                helpText={isNp ? 'PDF, DOC, XLS, ZIP फाइल वा स्क्यान कागजात (अधिकतम १५ MB)' : 'PDF, DOC, XLS, ZIP or scan document (max 15MB)'}
+                value={archiveForm.fileUrl}
+                onChange={(url) => setArchiveForm({ ...archiveForm, fileUrl: url })}
+                folder="archives"
+                required
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
