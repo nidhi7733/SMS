@@ -12,6 +12,7 @@
     "dev": "npm run dev --workspaces --parallel",
     "dev:api": "npm run dev --workspace=@sms/api",
     "dev:web": "npm run dev --workspace=@sms/web",
+    "dev:website": "npm run dev --workspace=@sms/website",
     "db:seed": "npm run db:seed --workspace=@sms/api",
     "lint": "npm run lint --workspaces --if-present"
   },

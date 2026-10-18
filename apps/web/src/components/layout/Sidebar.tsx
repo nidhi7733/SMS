@@ -20,6 +20,7 @@ import {
   BookMarked,
   FileText,
   Bus,
+  Globe,
   X,
 } from 'lucide-react';
 
@@ -173,6 +174,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         hasRole('PRINCIPAL') ||
         hasRole('ADMINISTRATIVE_STAFF') ||
         hasRole('ACCOUNTANT'),
+    },
+    {
+      id: 'website_cms',
+      label: t('nav.website_cms'),
+      icon: Globe,
+      visible:
+        hasRole('PRINCIPAL') ||
+        hasRole('SYSTEM_ADMIN') ||
+        hasRole('ADMINISTRATIVE_STAFF') ||
+        Boolean(user?.isSuperAdmin),
     },
     {
       id: 'school_settings',

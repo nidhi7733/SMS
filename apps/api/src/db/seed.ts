@@ -1316,6 +1316,152 @@ export async function runMigrationsAndSeed() {
     )
   `);
 
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_settings (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      hero_title_np TEXT,
+      hero_title_en TEXT,
+      hero_subtitle_np TEXT,
+      hero_subtitle_en TEXT,
+      about_title_np TEXT,
+      about_title_en TEXT,
+      about_content_np TEXT,
+      about_content_en TEXT,
+      principal_name_np TEXT,
+      principal_name_en TEXT,
+      principal_message_np TEXT,
+      principal_message_en TEXT,
+      principal_photo_url TEXT,
+      smc_chair_name_np TEXT,
+      smc_chair_name_en TEXT,
+      smc_chair_message_np TEXT,
+      smc_chair_message_en TEXT,
+      smc_chair_photo_url TEXT,
+      contact_address_np TEXT,
+      contact_address_en TEXT,
+      contact_phone TEXT,
+      contact_email TEXT,
+      facebook_url TEXT,
+      youtube_url TEXT,
+      admission_open BOOLEAN NOT NULL DEFAULT true,
+      admission_banner_text_np TEXT,
+      admission_banner_text_en TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_hero_slides (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      subtitle_np TEXT,
+      subtitle_en TEXT,
+      image_url TEXT NOT NULL,
+      button_text_np TEXT,
+      button_text_en TEXT,
+      button_link TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_notices (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      content_np TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'GENERAL',
+      publish_date_bs TEXT NOT NULL,
+      expire_date_bs TEXT,
+      file_url TEXT,
+      is_pinned BOOLEAN NOT NULL DEFAULT false,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_events (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      description_np TEXT,
+      description_en TEXT,
+      event_date_bs TEXT NOT NULL,
+      event_time TEXT,
+      venue_np TEXT,
+      venue_en TEXT,
+      status TEXT NOT NULL DEFAULT 'UPCOMING',
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_gallery_albums (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'CAMPUS',
+      cover_image_url TEXT NOT NULL,
+      description_np TEXT,
+      description_en TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_gallery_images (
+      id TEXT PRIMARY KEY,
+      album_id TEXT NOT NULL REFERENCES website_gallery_albums(id) ON DELETE CASCADE,
+      title_np TEXT,
+      title_en TEXT,
+      image_url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_downloads (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      title_np TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'OTHER',
+      file_url TEXT NOT NULL,
+      file_size TEXT,
+      download_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS website_inquiries (
+      id TEXT PRIMARY KEY,
+      school_id TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+      sender_name TEXT NOT NULL,
+      sender_phone TEXT NOT NULL,
+      sender_email TEXT,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      response_notes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('[Seed] Inserting/Syncing system permissions...');
   for (const p of SYSTEM_PERMISSIONS) {
     const existing = await db.query.permissions.findFirst({
@@ -3726,6 +3872,332 @@ export async function runMigrationsAndSeed() {
       },
     ]);
   }
+
+  // =========================================================================
+  // 15. SEED WEBSITE CMS (सार्वजनिक विद्यालय वेबसाइट सामग्री)
+  // =========================================================================
+  console.log('[Seed] Seeding Public Website CMS & Settings...');
+    const existingWebSettings = await db.query.websiteSettings.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingWebSettings) {
+      await db.insert(schema.websiteSettings).values({
+        id: crypto.randomUUID(),
+        schoolId,
+        heroTitleNp: 'ज्ञान, संस्कार र प्रविधिको त्रिवेणी',
+        heroTitleEn: 'Center of Excellence in Modern & Value-Based Education',
+        heroSubtitleNp: 'वि.सं. २०२८ सालदेखि निरन्तर राष्ट्र निर्माणका लागि दक्ष, योग्य र नैतिकवान् नागरिक उत्पादनमा समर्पित अग्रणी सामुदायिक विद्यालय।',
+        heroSubtitleEn: 'Empowering young minds with scientific temper, cultural ethics, and future-ready skills since 2028 BS.',
+        aboutTitleNp: 'श्री शान्ति माध्यमिक विद्यालयको संक्षिप्त परिचय',
+        aboutTitleEn: 'About Shree Shanti Secondary School',
+        aboutContentNp: 'ललितपुर जिल्लाको रमणीय तथा शान्त वातावरणमा अवस्थित श्री शान्ति माध्यमिक विद्यालय वि.सं. २०२८ सालमा स्थापित भई विगत पाँच दशकदेखि गुणस्तरीय, जीवनोपयोगी तथा प्रविधिमैत्री शिक्षा प्रदान गर्दै आएको छ। प्रारम्भिक बाल विकास (ECD) देखि कक्षा १२ सम्म आधुनिक विज्ञान (Science), व्यवस्थापन (Management) र शिक्षा (Education) संकायहरू सञ्चालनमा रहेको यस विद्यालयमा सुविधासम्पन्न कम्प्युटर ल्याब, विज्ञान प्रयोगशाला, समृद्ध ई-लाइब्रेरी तथा खेलमैदान उपलब्ध छन्।',
+        aboutContentEn: 'Established in 2028 BS, Shree Shanti Secondary School is a premier model public school located in Lalitpur. Offering comprehensive schooling from ECD to Grade 12 in Science, Management, and Education streams, our institution boasts cutting-edge computer and science laboratories, a rich digital library, and dedicated sporting facilities.',
+        principalNameNp: 'श्री रामेश्वर शर्मा',
+        principalNameEn: 'Mr. Rameshwar Sharma',
+        principalMessageNp: 'आदरणीय अभिभावक, प्यारा विद्यार्थी भाइबहिनीहरू तथा सम्पूर्ण शुभचिन्तकहरूमा हार्दिक नमस्कार। हाम्रो विद्यालय केवल पाठ्यपुस्तकको ज्ञानमा मात्र सीमित नभई विद्यार्थीहरूको चौतर्फी प्रतिभा प्रस्फुटन गराउन, असल संस्कार सिकाउन र २१ औँ शताब्दीका चुनौतीहरूको सामना गर्न सक्ने स्वावलम्बी नागरिक बनाउन सदैव कटिबद्ध छ। यहाँहरूको विश्वास र सहयोग नै हाम्रो प्रेरणा हो।',
+        principalMessageEn: 'Warmest greetings to our esteemed parents, learners, and community members. Our institution is committed to holistic student development, blending academic rigor with moral values and technological adaptability.',
+        principalPhotoUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80',
+        smcChairNameNp: 'श्री कृष्णप्रसाद दाहाल',
+        smcChairNameEn: 'Mr. Krishna Prasad Dahal',
+        smcChairMessageNp: 'सामुदायिक विद्यालयको स्तरोन्नति, भौतिक पूर्वाधारको विकास र पूर्ण पारदर्शिता नै विद्यालय व्यवस्थापन समितिको मुख्य प्राथमिकता हो। हामी सम्पूर्ण सरोकारवालाहरूको सहकार्यमा यस विद्यालयलाई देशकै नमुना शैक्षिक संस्थाका रूपमा विकास गर्न दत्तचित्त छौँ।',
+        smcChairMessageEn: 'The School Management Committee remains steadfast in upgrading educational infrastructure, fostering accountability, and ensuring an equitable learning environment for every child.',
+        smcChairPhotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
+        contactAddressNp: 'गोदावरी-१४, ठैव, ललितपुर, बागमती प्रदेश',
+        contactAddressEn: 'Godawari-14, Thaiba, Lalitpur, Bagmati Province',
+        contactPhone: '+977-01-5250000, +977-9851000000',
+        contactEmail: 'info@shreeshanti.edu.np',
+        facebookUrl: 'https://facebook.com/shreeshantischool',
+        youtubeUrl: 'https://youtube.com/@shreeshantischool',
+        admissionOpen: true,
+        admissionBannerTextNp: 'शैक्षिक सत्र २०८३ का लागि कक्षा १ देखि ९ तथा ११ मा नयाँ विद्यार्थी भर्ना खुल्यो!',
+        admissionBannerTextEn: 'Admissions Open for Academic Session 2083 BS (Grades 1-9 & 11) — Apply Today!',
+      });
+    }
+
+    const existingSlides = await db.query.websiteHeroSlides.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingSlides) {
+      await db.insert(schema.websiteHeroSlides).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'आधुनिक प्रविधि र बालमैत्री सिकाइ वातावरण',
+          titleEn: 'Modern Technology & Child-Friendly Learning Environment',
+          subtitleNp: 'स्मार्ट क्लासरुम, ई-हाजिरी तथा अन्तरक्रियात्मक मल्टिमिडिया शिक्षण विधि',
+          subtitleEn: 'Smart classrooms, digital attendance, and interactive multimedia pedagogy',
+          imageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1200&auto=format&fit=crop&q=80',
+          buttonTextNp: 'हाम्रो बारेमा थप जान्नुहोस्',
+          buttonTextEn: 'Discover Our School',
+          buttonLink: '#about',
+          sortOrder: 1,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'सुसज्जित विज्ञान तथा कम्प्युटर अनुसन्धान प्रयोगशाला',
+          titleEn: 'Well-Equipped Science & ICT Research Laboratories',
+          subtitleNp: 'प्रयोगात्मक सिकाइ र रोबोटिक्स मार्फत विद्यार्थीको सृजनशीलता विकास',
+          subtitleEn: 'Fostering practical exploration, robotics, and critical analytical thinking',
+          imageUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1200&auto=format&fit=crop&q=80',
+          buttonTextNp: 'शैक्षिक कार्यक्रमहरू',
+          buttonTextEn: 'Academic Programs',
+          buttonLink: '#academics',
+          sortOrder: 2,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'अतिरिक्त क्रियाकलाप तथा खेलकुदमा अग्रपंक्ति',
+          titleEn: 'Excellence in Sports & Extracurricular Activities',
+          subtitleNp: 'शारीरिक तथा मानसिक विकासका लागि नियमित खेलकुद, संगीत र कला प्रशिक्षण',
+          subtitleEn: 'Nurturing sportsmanship, music, fine arts, and leadership qualities',
+          imageUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=1200&auto=format&fit=crop&q=80',
+          buttonTextNp: 'अनलाइन भर्ना सोधपुछ',
+          buttonTextEn: 'Admission Inquiry',
+          buttonLink: '#contact',
+          sortOrder: 3,
+          isActive: true,
+        },
+      ]);
+    }
+
+    const existingNotices = await db.query.websiteNotices.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingNotices) {
+      await db.insert(schema.websiteNotices).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'शैक्षिक सत्र २०८३ को प्रथम त्रैमासिक परीक्षा तालिका प्रकाशन सम्बन्धी जरूरी सूचना',
+          titleEn: 'Notice regarding Publication of First Terminal Examination Routine 2083',
+          contentNp: 'यस श्री शान्ति माध्यमिक विद्यालयका कक्षा १ देखि १० सम्मका सम्पूर्ण विद्यार्थी तथा अभिभावकज्यूहरूमा शैक्षिक सत्र २०८३ को प्रथम त्रैमासिक परीक्षा आगामी २०८३ भदौ १५ गतेदेखि सञ्चालन हुने भएकाले विस्तृत कार्यतालिका यसै सूचना साथ संलग्न गरिएको व्यहोरा जानकारी गराइन्छ।',
+          contentEn: 'This is to inform all students and guardians of Grades 1 through 10 that the First Terminal Examination of Academic Session 2083 BS will commence from 2083-05-15.',
+          category: 'EXAM',
+          publishDateBs: '2083-04-20',
+          expireDateBs: '2083-05-30',
+          isPinned: true,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'कक्षा ११ तथा १२ का जेहेन्दार तथा विपन्न विद्यार्थीहरूका लागि छात्रवृत्ति आवेदन आह्वान',
+          titleEn: 'Scholarship Application Call for Meritorious & Deserving Students (Grades 11 & 12)',
+          contentNp: 'शैक्षिक सत्र २०८३ मा कक्षा ११ मा भर्ना भएका विज्ञान, व्यवस्थापन र शिक्षा संकायका जेहेन्दार, पिछडिएका तथा विपन्न वर्गका विद्यार्थीहरूले आवश्यक प्रमाण सहित मिति २०८३ साउन २५ गतेभित्र प्रशासन शाखामा छात्रवृत्ति फाराम बुझाउनुहुन सूचित गरिन्छ।',
+          contentEn: 'Applications are invited from eligible students enrolled in Class 11 for merit and need-based scholarships. Submit documents by 2083-04-25.',
+          category: 'ADMISSION',
+          publishDateBs: '2083-04-10',
+          expireDateBs: '2083-04-25',
+          isPinned: true,
+          isActive: true,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'शुभ विजया दशमी तथा दिपावली २०८३ को पावन अवसरमा बिदा तथा शुभकामना सन्देश',
+          titleEn: 'Notice on Festival Vacation & Warm Wishes for Dashain & Tihar 2083',
+          contentNp: 'नेपालीहरूको महान् चाड विजया दशमी, शुभ दिपावली तथा छठ पर्व २०८३ को पावन अवसरमा विद्यालय परिवार सम्पूर्ण विद्यार्थी, शिक्षक, कर्मचारी तथा अभिभावकहरूमा सुख, शान्ति र प्रगतिको हार्दिक मंगलमय शुभकामना व्यक्त गर्दछ।',
+          contentEn: 'Shree Shanti School extends heartfelt festive greetings to all students, parents, and staff on the auspicious occasions of Dashain and Tihar.',
+          category: 'HOLIDAY',
+          publishDateBs: '2083-06-15',
+          expireDateBs: '2083-07-20',
+          isPinned: false,
+          isActive: true,
+        },
+      ]);
+    }
+
+    const existingEvents = await db.query.websiteEvents.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingEvents) {
+      await db.insert(schema.websiteEvents).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'अन्तर-सदन वार्षिक खेलकुद सप्ताह २०८३',
+          titleEn: 'Annual Inter-House Sports Meet 2083',
+          descriptionNp: 'फुटबल, भलिबल, एथलेटिक्स, ब्याडमिन्टन तथा चेस प्रतियोगिताहरू सञ्चालन हुने।',
+          descriptionEn: 'Inter-house tournaments covering Football, Volleyball, Track & Field, and Chess.',
+          eventDateBs: '2083-08-10',
+          eventTime: '१०:०० AM - ४:०० PM',
+          venueNp: 'विद्यालयको मूल खेलमैदान, ठैव',
+          venueEn: 'Main School Grounds, Thaiba',
+          status: 'UPCOMING',
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'सामुदायिक विज्ञान, रोबोटिक्स तथा नवप्रवर्तन मेला',
+          titleEn: 'Community Science, Robotics & Innovation Expo',
+          descriptionNp: 'कक्षा ८ देखि १२ सम्मका विद्यार्थीहरूले निर्माण गरेका ५० भन्दा बढी वैज्ञानिक प्रोजेक्टहरूको सार्वजनिक प्रदर्शनी।',
+          descriptionEn: 'Public exhibition showcasing over 50 innovative student scientific prototypes.',
+          eventDateBs: '2083-09-05',
+          eventTime: '११:०० AM - ३:३० PM',
+          venueNp: 'विद्यालयको मल्टिपर्पज हल',
+          venueEn: 'School Multipurpose Auditorium',
+          status: 'UPCOMING',
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'अभिभावक-शिक्षक अन्तरक्रिया तथा पहिलो त्रैमासिक प्रगति समीक्षा',
+          titleEn: 'Parent-Teacher Conference & Academic Progress Review',
+          descriptionNp: 'विद्यार्थीहरूको शैक्षिक प्रगति, गृहकार्य तथा अनुशासन सम्बन्धी गहन समीक्षा बैठक।',
+          descriptionEn: 'Evaluation of student learning achievements and individual counseling.',
+          eventDateBs: '2083-06-02',
+          eventTime: '१:०० PM - ४:०० PM',
+          venueNp: 'आ-आफ्नो कक्षाकोठा',
+          venueEn: 'Respective Classrooms',
+          status: 'COMPLETED',
+        },
+      ]);
+    }
+
+    const existingAlbums = await db.query.websiteGalleryAlbums.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingAlbums) {
+      const album1Id = crypto.randomUUID();
+      const album2Id = crypto.randomUUID();
+      const album3Id = crypto.randomUUID();
+
+      await db.insert(schema.websiteGalleryAlbums).values([
+        {
+          id: album1Id,
+          schoolId,
+          titleNp: '५२ औँ वार्षिकोत्सव तथा सांस्कृतिक उत्सव',
+          titleEn: '52nd School Anniversary & Cultural Gala',
+          category: 'CULTURAL',
+          coverImageUrl: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&auto=format&fit=crop&q=80',
+          descriptionNp: 'विद्यार्थीहरूद्वारा प्रस्तुत विविध जातजातिको मौलिक सांस्कृतिक झाँकी तथा नृत्य।',
+          descriptionEn: 'Celebration of rich cultural diversity and performing arts by students.',
+        },
+        {
+          id: album2Id,
+          schoolId,
+          titleNp: 'आधुनिक विज्ञान तथा रोबोटिक्स प्रयोगशाला',
+          titleEn: 'State-of-the-Art Science & Robotics Lab',
+          category: 'ACADEMIC',
+          coverImageUrl: 'https://images.unsplash.com/photo-1562774053-701939374585?w=800&auto=format&fit=crop&q=80',
+          descriptionNp: 'भौतिक, रसायन र जीवविज्ञान प्रयोगात्मक कक्षाका रोचक क्षणहरू।',
+          descriptionEn: 'Students engaged in physics, chemistry, and biology laboratory experiments.',
+        },
+        {
+          id: album3Id,
+          schoolId,
+          titleNp: 'खेलकुद, योग तथा शारीरिक सुगठन',
+          titleEn: 'Sports, Athletics & Morning Yoga Assembly',
+          category: 'SPORTS',
+          coverImageUrl: 'https://images.unsplash.com/photo-1526676037777-05a232554f77?w=800&auto=format&fit=crop&q=80',
+          descriptionNp: 'विद्यार्थीहरूको दैनिक योग, ध्यान तथा अन्तर-सदन प्रतियोगिताहरू।',
+          descriptionEn: 'Daily mindfulness sessions and spirited athletic competitions.',
+        },
+      ]);
+
+      await db.insert(schema.websiteGalleryImages).values([
+        {
+          id: crypto.randomUUID(),
+          albumId: album1Id,
+          titleNp: 'परम्परागत नेवारी लाखे तथा कौडा नृत्य',
+          titleEn: 'Traditional Cultural Dance Performance',
+          imageUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&auto=format&fit=crop&q=80',
+          sortOrder: 1,
+        },
+        {
+          id: crypto.randomUUID(),
+          albumId: album1Id,
+          titleNp: 'उत्कृष्ट विद्यार्थीहरूलाई पदक तथा पुरस्कार वितरण',
+          titleEn: 'Annual Academic Merit Award Presentation',
+          imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+          sortOrder: 2,
+        },
+        {
+          id: crypto.randomUUID(),
+          albumId: album2Id,
+          titleNp: 'कम्प्युटर प्रोग्रामिङ तथा कोडिङ क्लब',
+          titleEn: 'Students learning coding in Computer Lab',
+          imageUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&auto=format&fit=crop&q=80',
+          sortOrder: 1,
+        },
+        {
+          id: crypto.randomUUID(),
+          albumId: album3Id,
+          titleNp: 'फुटबल फाइनल खेलको रोमाञ्चक दृश्य',
+          titleEn: 'Thrilling Inter-House Football Championship Match',
+          imageUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?w=800&auto=format&fit=crop&q=80',
+          sortOrder: 1,
+        },
+      ]);
+    }
+
+    const existingDownloads = await db.query.websiteDownloads.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingDownloads) {
+      await db.insert(schema.websiteDownloads).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'नयाँ विद्यार्थी भर्ना आवेदन फाराम २०८३ (PDF)',
+          titleEn: 'Student Admission Application Form 2083 (PDF)',
+          category: 'ADMISSION',
+          fileUrl: '/downloads/admission_form_2083.pdf',
+          fileSize: '1.2 MB',
+          downloadCount: 142,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'कक्षा ९-१० अनिवार्य विषयहरूको नयाँ पाठ्यक्रम ग्रिड',
+          titleEn: 'CDC Curriculum Grid for Secondary Level (Grades 9-10)',
+          category: 'SYLLABUS',
+          fileUrl: '/downloads/curriculum_grid_grade9_10.pdf',
+          fileSize: '3.8 MB',
+          downloadCount: 89,
+        },
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          titleNp: 'वार्षिक शैक्षिक क्यालेन्डर २०८३ (वि.सं.)',
+          titleEn: 'Annual Academic Calendar 2083 BS',
+          category: 'CALENDAR',
+          fileUrl: '/downloads/academic_calendar_2083.pdf',
+          fileSize: '2.4 MB',
+          downloadCount: 310,
+        },
+      ]);
+    }
+
+    const existingInquiries = await db.query.websiteInquiries.findFirst({
+      where: (table: any, { eq }: any) => eq(table.schoolId, schoolId),
+    });
+
+    if (!existingInquiries) {
+      await db.insert(schema.websiteInquiries).values([
+        {
+          id: crypto.randomUUID(),
+          schoolId,
+          senderName: 'सुमन श्रेष्ठ (अभिभावक)',
+          senderPhone: '9841234567',
+          senderEmail: 'suman.shrestha@gmail.com',
+          subject: 'कक्षा ११ विज्ञान संकायमा भर्ना सम्बन्धी सोधपुछ',
+          message: 'नमस्ते, मेरो छोराले एसईई (SEE) मा ३.६० जीपीए ल्याएको छ। कक्षा ११ मा विज्ञान संकाय (Computer Group) मा भर्ना हुनका लागि प्रवेश परीक्षाको मिति र शुल्क संरचनाबारे जानकारी पाउँ।',
+          status: 'PENDING',
+          responseNotes: null,
+        },
+      ]);
+    }
 
   console.log('[Seed] Seeding completed successfully!');
 }

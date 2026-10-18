@@ -65,11 +65,19 @@ The Fastify HTTP application delivering high-throughput JSON endpoints:
 - Automatic schema verification and seed execution on startup (`runMigrationsAndSeed`).
 
 ### 2.3. `@sms/web` (`apps/web`)
-A single-page web application built with React 19 and Vite:
+A single-page web application built with React and Vite:
 - **Tailwind CSS**: Modern, utility-first design with dark mode and high-contrast printing styles.
 - **Bilingual Engine (`LanguageContext`)**: Instant switching between Nepali (Devanagari numerals, localized labels) and English.
 - **Mobile Responsive Navigation**: Drawer sidebar with backdrop and hamburger button on small screens.
 - **Print Optimization**: Dedicated CSS print styles for Admit Cards (A4 2-up format), Grade Sheets, and Tabulation Ledgers.
+- **Website CMS Admin Module**: Dedicated dashboard for school administrators to manage all public website content (Hero banners, notices, events, photo gallery, downloads, and visitor inquiries).
+
+### 2.4. `@sms/website` (`apps/website`)
+A dedicated public-facing informative school website built with React, Vite, and Tailwind CSS:
+- **Audience**: General public, prospective and current students, parents, alumni, and educational authorities.
+- **Public Informative Sections**: About School, Principal's Message, SMC Chairperson's Message, Dynamic Hero Slider, Notice Ticker & Archive, Upcoming Events, Photo Gallery Albums, Public Downloads (Forms, Curricula), and Online Admission/Contact Inquiry Form.
+- **Seamless Portal Access**: Prominent "पोर्टल लगइन (Portal Login)" buttons in header and navigation linking directly to the SMS internal management portal.
+- **Fully Managed by SMS CMS**: Consumes public API endpoints (`/api/public/website/...`) populated by administrators in `@sms/web`.
 
 ---
 

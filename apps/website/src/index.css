@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Notice Ticker Animation */
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-ticker {
+  animation: ticker 25s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}

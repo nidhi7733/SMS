@@ -14,6 +14,7 @@ export * from './types/library.js';
 export * from './types/learning.js';
 export * from './types/document.js';
 export * from './types/transport.js';
+export * from './types/website.js';
 export * from './constants/roles.js';
 export * from './constants/bs-calendar.js';
 

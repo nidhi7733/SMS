@@ -1215,6 +1215,140 @@ export const transportMaintenanceLogs = pgTable('transport_maintenance_logs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// 70. Website Settings & Messages (सार्वजनिक वेबसाइट सेटिङ तथा मन्तव्य)
+export const websiteSettings = pgTable('website_settings', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  heroTitleNp: text('hero_title_np'),
+  heroTitleEn: text('hero_title_en'),
+  heroSubtitleNp: text('hero_subtitle_np'),
+  heroSubtitleEn: text('hero_subtitle_en'),
+  aboutTitleNp: text('about_title_np'),
+  aboutTitleEn: text('about_title_en'),
+  aboutContentNp: text('about_content_np'),
+  aboutContentEn: text('about_content_en'),
+  principalNameNp: text('principal_name_np'),
+  principalNameEn: text('principal_name_en'),
+  principalMessageNp: text('principal_message_np'),
+  principalMessageEn: text('principal_message_en'),
+  principalPhotoUrl: text('principal_photo_url'),
+  smcChairNameNp: text('smc_chair_name_np'),
+  smcChairNameEn: text('smc_chair_name_en'),
+  smcChairMessageNp: text('smc_chair_message_np'),
+  smcChairMessageEn: text('smc_chair_message_en'),
+  smcChairPhotoUrl: text('smc_chair_photo_url'),
+  contactAddressNp: text('contact_address_np'),
+  contactAddressEn: text('contact_address_en'),
+  contactPhone: text('contact_phone'),
+  contactEmail: text('contact_email'),
+  facebookUrl: text('facebook_url'),
+  youtubeUrl: text('youtube_url'),
+  admissionOpen: boolean('admission_open').notNull().default(true),
+  admissionBannerTextNp: text('admission_banner_text_np'),
+  admissionBannerTextEn: text('admission_banner_text_en'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
+// 71. Website Hero Slides (होमपेज ब्यानर तथा स्लाइडहरू)
+export const websiteHeroSlides = pgTable('website_hero_slides', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  subtitleNp: text('subtitle_np'),
+  subtitleEn: text('subtitle_en'),
+  imageUrl: text('image_url').notNull(),
+  buttonTextNp: text('button_text_np'),
+  buttonTextEn: text('button_text_en'),
+  buttonLink: text('button_link'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
+// 72. Website Public Notices & News (सार्वजनिक सूचना तथा समाचार)
+export const websiteNotices = pgTable('website_notices', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  contentNp: text('content_np').notNull(),
+  contentEn: text('content_en').notNull(),
+  category: text('category').notNull().default('GENERAL'),
+  publishDateBs: text('publish_date_bs').notNull(),
+  expireDateBs: text('expire_date_bs'),
+  fileUrl: text('file_url'),
+  isPinned: boolean('is_pinned').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
+// 73. Website Events & Calendar (सार्वजनिक कार्यक्रम तथा गतिविधि)
+export const websiteEvents = pgTable('website_events', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  descriptionNp: text('description_np'),
+  descriptionEn: text('description_en'),
+  eventDateBs: text('event_date_bs').notNull(),
+  eventTime: text('event_time'),
+  venueNp: text('venue_np'),
+  venueEn: text('venue_en'),
+  status: text('status').notNull().default('UPCOMING'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 74. Website Photo Gallery Albums (फोटो ग्यालरी एल्बमहरू)
+export const websiteGalleryAlbums = pgTable('website_gallery_albums', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  category: text('category').notNull().default('CAMPUS'),
+  coverImageUrl: text('cover_image_url').notNull(),
+  descriptionNp: text('description_np'),
+  descriptionEn: text('description_en'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 75. Website Gallery Images (एल्बम भित्रका तस्बिरहरू)
+export const websiteGalleryImages = pgTable('website_gallery_images', {
+  id: text('id').primaryKey(),
+  albumId: text('album_id').notNull().references(() => websiteGalleryAlbums.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np'),
+  titleEn: text('title_en'),
+  imageUrl: text('image_url').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 76. Website Public Downloads (सार्वजनिक डाउनलोड फारामहरू)
+export const websiteDownloads = pgTable('website_downloads', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  titleNp: text('title_np').notNull(),
+  titleEn: text('title_en').notNull(),
+  category: text('category').notNull().default('OTHER'),
+  fileUrl: text('file_url').notNull(),
+  fileSize: text('file_size'),
+  downloadCount: integer('download_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 77. Website Visitor Inquiries (वेबसाइटबाट आएका सोधपुछ तथा सन्देशहरू)
+export const websiteInquiries = pgTable('website_inquiries', {
+  id: text('id').primaryKey(),
+  schoolId: text('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  senderName: text('sender_name').notNull(),
+  senderPhone: text('sender_phone').notNull(),
+  senderEmail: text('sender_email'),
+  subject: text('subject').notNull(),
+  message: text('message').notNull(),
+  status: text('status').notNull().default('PENDING'),
+  responseNotes: text('response_notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

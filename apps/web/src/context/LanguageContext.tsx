@@ -39,6 +39,7 @@ const translations: Record<string, { en: string; np: string }> = {
   'nav.certificates': { en: 'Certificates & Testimonials', np: 'प्रमाणपत्र तथा चारित्रिक' },
   'nav.documents': { en: 'Document & Darta/Chalani', np: 'कागजात तथा दर्ता/चलानी' },
   'nav.transport': { en: 'Transport & Bus Fleet', np: 'यातायात तथा बस सेवा' },
+  'nav.website_cms': { en: 'Website CMS', np: 'वेबसाइट व्यवस्थापन' },
   'nav.hostel': { en: 'Hostel & Boarding', np: 'छात्रावास व्यवस्थापन' },
   'nav.alumni': { en: 'Alumni Network', np: 'पूर्व विद्यार्थी सञ्जाल' },
   'nav.logout': { en: 'Log Out', np: 'लग आउट' },

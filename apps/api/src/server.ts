@@ -27,6 +27,7 @@ import libraryRoutes from './routes/library.js';
 import learningRoutes from './routes/learning.js';
 import documentRoutes from './routes/documents.js';
 import transportRoutes from './routes/transport.js';
+import websiteRoutes from './routes/website.js';
 
 
 // Load environment variables from cwd or parent directories
@@ -138,6 +139,7 @@ async function main() {
     await fastify.register(learningRoutes, { prefix: '/api/learning' });
     await fastify.register(documentRoutes, { prefix: '/api/documents' });
     await fastify.register(transportRoutes, { prefix: '/api/transport' });
+    await fastify.register(websiteRoutes, { prefix: '/api' });
 
 
     // 8. Auto-run database seed and migration
