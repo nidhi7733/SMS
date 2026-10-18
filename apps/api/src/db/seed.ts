@@ -4337,13 +4337,13 @@ export async function runMigrationsAndSeed() {
     // Update settings with defaults if columns were recently added
     await db.execute(sql`
       UPDATE website_settings SET
-        logo_url = COALESCE(logo_url, 'https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=120&auto=format&fit=crop&q=80'),
-        school_name_np = COALESCE(school_name_np, 'श्री शान्ति माध्यमिक विद्यालय'),
-        school_name_en = COALESCE(school_name_en, 'Shree Shanti Secondary School'),
-        motto_np = COALESCE(motto_np, 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.'),
-        motto_en = COALESCE(motto_en, 'Education for Truth and Enlightenment | Estd. 2028 BS'),
-        iemis_code = COALESCE(iemis_code, '270010001'),
-        established_year_bs = COALESCE(established_year_bs, 2028),
+        logo_url = COALESCE(logo_url, (SELECT logo_url FROM schools WHERE id = ${schoolId})),
+        school_name_np = COALESCE(school_name_np, (SELECT name_np FROM schools WHERE id = ${schoolId})),
+        school_name_en = COALESCE(school_name_en, (SELECT name_en FROM schools WHERE id = ${schoolId})),
+        motto_np = COALESCE(motto_np, (SELECT motto_np FROM schools WHERE id = ${schoolId})),
+        motto_en = COALESCE(motto_en, (SELECT motto_en FROM schools WHERE id = ${schoolId})),
+        iemis_code = COALESCE(iemis_code, (SELECT iemis_code FROM schools WHERE id = ${schoolId})),
+        established_year_bs = COALESCE(established_year_bs, (SELECT established_bs_year FROM schools WHERE id = ${schoolId})),
         affiliation_text_np = COALESCE(affiliation_text_np, 'नेपाल सरकार | CEHRD मान्यता प्राप्त'),
         affiliation_text_en = COALESCE(affiliation_text_en, 'Govt. of Nepal | CEHRD Aligned'),
         office_hours_np = COALESCE(office_hours_np, 'आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:०० बजेसम्म'),
