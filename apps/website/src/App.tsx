@@ -522,14 +522,14 @@ export const App: React.FC = () => {
                 {isNp ? 'हाम्रो गौरवमय इतिहास' : 'Our Legacy & Vision'}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
-                {isNp ? (settings?.aboutTitleNp || 'श्री शान्ति माध्यमिक विद्यालयको संक्षिप्त परिचय') : (settings?.aboutTitleEn || 'About Shree Shanti Secondary School')}
+                {isNp ? (settings?.aboutTitleNp || `${schoolName}को संक्षिप्त परिचय`) : (settings?.aboutTitleEn || `About ${schoolName}`)}
               </h2>
               <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
                 {isNp
                   ? (settings?.aboutContentNp ||
-                      'ललितपुरको सुरम्य वातावरणमा अवस्थित श्री शान्ति माध्यमिक विद्यालय वि.सं. २०२८ सालमा स्थापना भई विगत ५ दशकदेखि गुणस्तरीय शिक्षा प्रदान गर्दै आएको छ।')
+                      `${schoolName} वि.सं. ${schoolEstd || 2028} सालमा स्थापना भई गुणस्तरीय, जीवनोपयोगी तथा प्रविधिमैत्री शिक्षा प्रदान गर्दै आएको छ।`)
                   : (settings?.aboutContentEn ||
-                      'Established in 2028 BS, Shree Shanti Secondary School is dedicated to holistic and high-standard schooling in Lalitpur.')}
+                      `Established in ${schoolEstd || 2028} BS, ${schoolName} is dedicated to holistic and high-standard schooling.`)}
               </p>
 
               <div className="grid grid-cols-2 gap-4 pt-2">

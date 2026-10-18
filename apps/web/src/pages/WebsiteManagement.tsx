@@ -1078,7 +1078,7 @@ export const WebsiteManagement: React.FC = () => {
                   placeholder="Center of Excellence in Modern Education"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {isNp ? 'उप-शीर्षक / नारा (नेपाली)' : 'Hero Subtitle (Nepali)'}
                 </label>
@@ -1087,7 +1087,19 @@ export const WebsiteManagement: React.FC = () => {
                   value={settings.heroSubtitleNp || ''}
                   onChange={(e) => setSettings({ ...settings, heroSubtitleNp: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
-                  placeholder="२०२८ सालदेखि निरन्तर ज्ञान र नवप्रवर्तनतर्फ अग्रसर..."
+                  placeholder="ज्ञान र नवप्रवर्तनतर्फ अग्रसर..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'उप-शीर्षक / नारा (English)' : 'Hero Subtitle (English)'}
+                </label>
+                <textarea
+                  rows={2}
+                  value={settings.heroSubtitleEn || ''}
+                  onChange={(e) => setSettings({ ...settings, heroSubtitleEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Pioneering excellence and character education..."
                 />
               </div>
             </div>
@@ -1109,7 +1121,8 @@ export const WebsiteManagement: React.FC = () => {
                   type="text"
                   value={settings.aboutTitleNp || ''}
                   onChange={(e) => setSettings({ ...settings, aboutTitleNp: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 font-semibold"
+                  placeholder="श्री राजेश्वर निधि माध्यमिक विद्यालयको संक्षिप्त परिचय"
                 />
               </div>
               <div>
@@ -1120,18 +1133,32 @@ export const WebsiteManagement: React.FC = () => {
                   type="text"
                   value={settings.aboutTitleEn || ''}
                   onChange={(e) => setSettings({ ...settings, aboutTitleEn: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 font-semibold"
+                  placeholder="About Shree Rajeshwar Nidhi Secondary School"
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  {isNp ? 'परिचय विवरण (नेपाली)' : 'About Content (Nepali)'}
+                  {isNp ? 'परिचय विस्तृत विवरण (नेपाली)' : 'About Content (Nepali)'}
                 </label>
                 <textarea
-                  rows={4}
+                  rows={6}
                   value={settings.aboutContentNp || ''}
                   onChange={(e) => setSettings({ ...settings, aboutContentNp: e.target.value })}
-                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 leading-relaxed"
+                  placeholder="विद्यालयको स्थापना, इतिहास, संकाय तथा पूर्वाधार सम्बन्धी विस्तृत परिचय..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'परिचय विस्तृत विवरण (English)' : 'About Content (English)'}
+                </label>
+                <textarea
+                  rows={6}
+                  value={settings.aboutContentEn || ''}
+                  onChange={(e) => setSettings({ ...settings, aboutContentEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700 leading-relaxed"
+                  placeholder="Detailed background, history, academic streams, and modern facilities of the school..."
                 />
               </div>
               <div className="md:col-span-2">
@@ -1153,6 +1180,18 @@ export const WebsiteManagement: React.FC = () => {
                   onChange={(e) => setSettings({ ...settings, aboutImageCaptionNp: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                   placeholder="शान्त तथा बालमैत्री परिसर"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {isNp ? 'फोटो क्याप्सन (English)' : 'Photo Caption (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.aboutImageCaptionEn || ''}
+                  onChange={(e) => setSettings({ ...settings, aboutImageCaptionEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Lush Green Child-friendly Campus"
                 />
               </div>
             </div>
@@ -1366,8 +1405,8 @@ export const WebsiteManagement: React.FC = () => {
               {isNp ? 'कार्यालय समय, सम्पर्क तथा भर्ना सेटिङ' : 'Office Hours, Contact & Admissions'}
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-3 flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2 flex items-center gap-3 p-3 bg-indigo-50 dark:bg-indigo-950/40 rounded-lg">
                 <input
                   type="checkbox"
                   id="admissionToggle"
@@ -1380,7 +1419,7 @@ export const WebsiteManagement: React.FC = () => {
                 </label>
               </div>
 
-              <div className="md:col-span-2">
+              <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
                   {isNp ? 'भर्ना ब्यानर सन्देश (नेपाली)' : 'Admission Banner Text (Nepali)'}
                 </label>
@@ -1392,10 +1431,22 @@ export const WebsiteManagement: React.FC = () => {
                   placeholder="शैक्षिक सत्र २०८३ का लागि नयाँ भर्ना खुल्यो!"
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'भर्ना ब्यानर सन्देश (English)' : 'Admission Banner Text (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.admissionBannerTextEn || ''}
+                  onChange={(e) => setSettings({ ...settings, admissionBannerTextEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Admissions Open for Academic Session 2083 BS!"
+                />
+              </div>
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'पोर्टल लगइन बटन पाठ' : 'Portal Button Text'}
+                  {isNp ? 'पोर्टल लगइन बटन पाठ (नेपाली)' : 'Portal Button Text (Nepali)'}
                 </label>
                 <input
                   type="text"
@@ -1403,6 +1454,18 @@ export const WebsiteManagement: React.FC = () => {
                   onChange={(e) => setSettings({ ...settings, portalButtonTextNp: e.target.value })}
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                   placeholder="पोर्टल लगइन (SMS Login)"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'पोर्टल लगइन बटन पाठ (English)' : 'Portal Button Text (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.portalButtonTextEn || ''}
+                  onChange={(e) => setSettings({ ...settings, portalButtonTextEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Portal Login (SMS)"
                 />
               </div>
 
@@ -1418,10 +1481,22 @@ export const WebsiteManagement: React.FC = () => {
                   placeholder="आइतबार – शुक्रबार: बिहान १०:०० देखि साँझ ४:००"
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'कार्यालय समय (English)' : 'Office Hours (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.officeHoursEn || ''}
+                  onChange={(e) => setSettings({ ...settings, officeHoursEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                  placeholder="Sun – Fri: 10:00 AM – 4:00 PM"
+                />
+              </div>
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'सम्पर्क फोन' : 'Contact Phone'}
+                  {isNp ? 'सम्पर्क फोन (Phone)' : 'Contact Phone'}
                 </label>
                 <input
                   type="text"
@@ -1430,10 +1505,9 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
-
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'सम्पर्क इमेल' : 'Contact Email'}
+                  {isNp ? 'सम्पर्क इमेल (Email)' : 'Contact Email'}
                 </label>
                 <input
                   type="email"
@@ -1454,10 +1528,21 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
+              <div>
+                <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {isNp ? 'ठेगाना (English)' : 'Address (English)'}
+                </label>
+                <input
+                  type="text"
+                  value={settings.contactAddressEn || ''}
+                  onChange={(e) => setSettings({ ...settings, contactAddressEn: e.target.value })}
+                  className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
+                />
+              </div>
 
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'फेसबुक पेज लिङ्क' : 'Facebook Page URL'}
+                  {isNp ? 'फेसबुक पेज लिङ्क (Facebook URL)' : 'Facebook Page URL'}
                 </label>
                 <input
                   type="text"
@@ -1466,10 +1551,9 @@ export const WebsiteManagement: React.FC = () => {
                   className="w-full text-sm mt-1 px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-700"
                 />
               </div>
-
               <div>
                 <label className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                  {isNp ? 'युट्युब च्यानल लिङ्क' : 'YouTube Channel URL'}
+                  {isNp ? 'युट्युब च्यानल लिङ्क (YouTube URL)' : 'YouTube Channel URL'}
                 </label>
                 <input
                   type="text"
