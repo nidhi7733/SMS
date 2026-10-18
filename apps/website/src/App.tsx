@@ -176,6 +176,7 @@ export const App: React.FC = () => {
 
   const schoolName = isNp ? (settings?.schoolNameNp || school?.nameNp || 'श्री शान्ति माध्यमिक विद्यालय') : (settings?.schoolNameEn || school?.nameEn || 'Shree Shanti Secondary School');
   const schoolMotto = isNp ? (settings?.mottoNp || school?.mottoNp || 'सत्य र ज्ञानका लागि शिक्षा | स्थापना: २०२८ वि.सं.') : (settings?.mottoEn || school?.mottoEn || 'Education for Truth and Enlightenment | Estd. 2028 BS');
+  const schoolLogo = school?.logoUrl || settings?.logoUrl;
   const portalUrl = settings?.portalUrl || 'http://localhost:5173/login';
   const portalBtnLabel = isNp ? (settings?.portalButtonTextNp || 'पोर्टल लगइन (SMS Login)') : (settings?.portalButtonTextEn || 'Portal Login (SMS)');
 
@@ -234,9 +235,9 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
           {/* Logo & School Name */}
           <a href="#" className="flex items-center gap-3.5 group">
-            {settings?.logoUrl ? (
+            {schoolLogo ? (
               <img
-                src={settings.logoUrl}
+                src={schoolLogo}
                 alt={schoolName}
                 className="w-12 h-12 rounded-xl object-contain shadow-md bg-white p-1 border border-slate-100 group-hover:scale-105 transition"
               />
@@ -1074,9 +1075,9 @@ export const App: React.FC = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-3 md:col-span-2">
             <div className="flex items-center gap-3 text-white">
-              {settings?.logoUrl ? (
+              {schoolLogo ? (
                 <img
-                  src={settings.logoUrl}
+                  src={schoolLogo}
                   alt={schoolName}
                   className="w-10 h-10 rounded-xl object-contain bg-white p-1 border border-slate-700 shadow-xs"
                 />

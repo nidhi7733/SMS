@@ -48,7 +48,7 @@ import { FileUploadField } from '../components/FileUploadField';
 
 export const WebsiteManagement: React.FC = () => {
   const { language } = useLanguage();
-  const { school } = useSchool();
+  const { school, setSchoolData, refreshSchool } = useSchool();
   const isNp = language === 'np';
 
   const [activeTab, setActiveTab] = useState<
@@ -924,6 +924,40 @@ export const WebsiteManagement: React.FC = () => {
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 <span>{isNp ? 'SMS विद्यालय सेटिङबाट सिङ्क' : 'Synced from School Profile'}</span>
               </div>
+            </div>
+
+            {/* Direct Logo Upload in Website Management */}
+            <div className="pt-2">
+              <ImageUploadField
+                label={isNp ? 'विद्यालयको आधिकारिक लोगो (Official School Logo)' : 'Official School Logo'}
+                value={settings.logoUrl || school?.logoUrl || ''}
+                onChange={async (url) => {
+                  setSettings((prev) => ({ ...prev, logoUrl: url }));
+                  try {
+                    const token = localStorage.getItem('sms_token');
+                    await fetch('/api/school/profile', {
+                      method: 'PUT',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({
+                        ...school,
+                        logoUrl: url,
+                      }),
+                    });
+                    if (school) {
+                      setSchoolData({ ...school, logoUrl: url });
+                      await refreshSchool();
+                    }
+                    setSuccessMessage(isNp ? 'विद्यालयको नयाँ लोगो सफलतापूर्वक सुरक्षित भयो!' : 'School logo updated successfully!');
+                  } catch (err) {
+                    console.error('Failed to sync school logo:', err);
+                  }
+                }}
+                folder="school"
+                helpText={isNp ? 'यहाँ नयाँ लोगो अपलोड गर्दा SMS र वेबसाइट दुवैमा एकैसाथ तुरुन्त अपडेट हुन्छ।' : 'Uploading logo here immediately updates both SMS and Website.'}
+              />
             </div>
 
             {/* Website-specific affiliation badges */}

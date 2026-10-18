@@ -172,52 +172,31 @@ export const SchoolSettings: React.FC = () => {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleLogoChange = async (newLogoUrl: string) => {
+    setForm((prev) => ({ ...prev, logoUrl: newLogoUrl }));
+    setSuccess(null);
     setError(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize to maximum 400x400 for crisp header rendering & lightweight payload
-        const maxDim = 400;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxDim) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          }
-        } else {
-          if (height > maxDim) {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const mimeType = file.type === 'image/png' || file.type === 'image/svg+xml' ? 'image/png' : 'image/jpeg';
-          const optimizedDataUrl = canvas.toDataURL(mimeType, 0.92);
-          setForm((prev) => ({ ...prev, logoUrl: optimizedDataUrl }));
-        }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveLogo = () => {
-    setForm((prev) => ({ ...prev, logoUrl: '' }));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    try {
+      const token = localStorage.getItem('sms_token');
+      const res = await fetch('/api/school/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...form,
+          logoUrl: newLogoUrl,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSchoolData(data.school);
+        await refreshSchool();
+        setSuccess('विद्यालयको नयाँ लोगो सफलतापूर्वक सुरक्षित भयो (Logo saved & updated)!');
+      }
+    } catch (err: any) {
+      console.error('Failed to auto-save logo:', err);
     }
   };
 
@@ -298,7 +277,7 @@ export const SchoolSettings: React.FC = () => {
           <ImageUploadField
             label="विद्यालयको आधिकारिक लोगो (Official School Logo)"
             value={form.logoUrl}
-            onChange={(url) => setForm((prev) => ({ ...prev, logoUrl: url }))}
+            onChange={handleLogoChange}
             folder="school"
             helpText="सिफारिस: पारदर्शी पृष्ठभूमि (Transparent Background) भएको वर्गाकार PNG, SVG वा WebP। यहाँ राखिएको लोगो SMS हेडर, विद्यार्थी रसिद, चारित्रिक प्रमाणपत्र र सार्वजनिक वेबसाइटमा स्वतः प्रदर्शित हुन्छ।"
           />
