@@ -38,17 +38,19 @@ export default async function certificateRoutes(fastify: FastifyInstance) {
       orderBy: (t: any, { desc }: any) => [desc(t.createdAt)],
     });
 
-    // Lookup metadata: students, classes, streams, guardians
-    const [allStudents, allClasses, allStreams, allGuardians] = await Promise.all([
+    // Lookup metadata: students, classes, streams, guardians, houses
+    const [allStudents, allClasses, allStreams, allGuardians, allHouses] = await Promise.all([
       db.query.students.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId) }),
       db.query.classes.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId) }),
       db.query.streams.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId) }),
       db.query.guardians.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId) }),
+      db.query.houses.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, currentUser.schoolId) }),
     ]);
 
     const studentMap = new Map<string, any>(allStudents.map((s: any) => [s.id, s]));
     const classMap = new Map<string, any>(allClasses.map((c: any) => [c.id, c]));
     const streamMap = new Map<string, any>(allStreams.map((st: any) => [st.id, st]));
+    const houseMap = new Map<string, any>(allHouses.map((h: any) => [h.id, h]));
 
     const enriched = certs.map((c: any) => {
       const student = studentMap.get(c.studentId);
@@ -56,6 +58,7 @@ export default async function certificateRoutes(fastify: FastifyInstance) {
       const stream = streamMap.get(c.streamId);
       const father = allGuardians.find((g: any) => g.studentId === c.studentId && (g.relationship === 'FATHER' || g.isPrimaryContact));
       const mother = allGuardians.find((g: any) => g.studentId === c.studentId && g.relationship === 'MOTHER');
+      const house = student?.houseId ? houseMap.get(student.houseId) : null;
 
       return {
         ...c,
@@ -67,6 +70,10 @@ export default async function certificateRoutes(fastify: FastifyInstance) {
         dobAd: student?.dobAd,
         gender: student?.gender,
         photoUrl: student?.photoUrl || null,
+        houseId: student?.houseId || null,
+        houseNameNp: house?.nameNp || null,
+        houseNameEn: house?.nameEn || null,
+        houseColor: house?.colorHex || null,
         fatherNameEn: father?.fullNameEn || student?.fatherNameEn || '',
         fatherNameNp: father?.fullNameNp || student?.fatherNameNp || '',
         motherNameEn: mother?.fullNameEn || student?.motherNameEn || '',
@@ -218,12 +225,20 @@ export default async function certificateRoutes(fastify: FastifyInstance) {
       db.query.guardians.findMany({ where: (t: any, { eq }: any) => eq(t.studentId, cert.studentId) }),
     ]);
 
+    const house = student?.houseId
+      ? await db.query.houses.findFirst({ where: (t: any, { eq }: any) => eq(t.id, student.houseId) })
+      : null;
+
     const father = guardians.find((g: any) => g.relationship === 'FATHER' || g.isPrimaryContact);
     const mother = guardians.find((g: any) => g.relationship === 'MOTHER');
 
     const enrichedStudent = student
       ? {
           ...student,
+          houseId: student.houseId || null,
+          houseNameNp: house?.nameNp || null,
+          houseNameEn: house?.nameEn || null,
+          houseColor: house?.colorHex || null,
           fatherNameEn: father?.fullNameEn || '',
           fatherNameNp: father?.fullNameNp || '',
           motherNameEn: mother?.fullNameEn || '',
@@ -233,11 +248,17 @@ export default async function certificateRoutes(fastify: FastifyInstance) {
       : null;
 
     return reply.send({
-      certificate: cert,
+      certificate: {
+        ...cert,
+        houseNameNp: house?.nameNp || null,
+        houseNameEn: house?.nameEn || null,
+        houseColor: house?.colorHex || null,
+      },
       school,
       student: enrichedStudent,
       classInfo: cls,
       streamInfo: stream,
+      house,
       issuedBy: issuer ? { id: issuer.id, fullNameEn: issuer.fullNameEn, fullNameNp: issuer.fullNameNp } : null,
     });
   });

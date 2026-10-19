@@ -1179,6 +1179,10 @@ export default async function examRoutes(fastify: FastifyInstance) {
       }),
     ]);
 
+    const house = student.houseId
+      ? await db.query.houses.findFirst({ where: (t: any, { eq }: any) => eq(t.id, student.houseId) })
+      : null;
+
     const isClass1To3 = cls && ['ECD', '1', '2', '3'].includes(cls.code);
 
     // ================= CLASS 1-3 INTEGRATED CAS REPORT CARD =================
@@ -1249,6 +1253,10 @@ export default async function examRoutes(fastify: FastifyInstance) {
           sectionCode: sec?.code || 'A',
           sectionNameNp: sec?.nameNp || 'खण्ड क',
           photoUrl: student.photoUrl || null,
+          houseId: student.houseId || null,
+          houseNameNp: house?.nameNp || null,
+          houseNameEn: house?.nameEn || null,
+          houseColor: house?.colorHex || null,
         },
         class: cls,
         section: sec,
@@ -1390,6 +1398,10 @@ export default async function examRoutes(fastify: FastifyInstance) {
         sectionCode: sec?.code || 'A',
         sectionNameNp: sec?.nameNp || 'खण्ड क',
         photoUrl: student.photoUrl || null,
+        houseId: student.houseId || null,
+        houseNameNp: house?.nameNp || null,
+        houseNameEn: house?.nameEn || null,
+        houseColor: house?.colorHex || null,
       },
       class: cls,
       section: sec,

@@ -26,6 +26,8 @@ import {
   FileText,
   Pin,
   Share2,
+  Trophy,
+  Flag,
 } from 'lucide-react';
 import {
   PublicWebsiteOverview,
@@ -150,6 +152,8 @@ export const App: React.FC = () => {
   const events = overview?.upcomingEvents || [];
   const albums = overview?.featuredAlbums || [];
   const downloads = overview?.downloads || [];
+  const houseStandings = overview?.houseStandings || [];
+  const recentHouseActivities = overview?.recentHouseActivities || [];
   const stats = overview?.stats;
 
   // Dynamic Ticker / Marquee Computation
@@ -174,10 +178,11 @@ export const App: React.FC = () => {
     { id: '2', schoolId: '', titleNp: 'हाम्रो बारेमा', titleEn: 'About', url: '#about', isExternal: false, sortOrder: 2, isVisible: true },
     { id: '3', schoolId: '', titleNp: 'शैक्षिक कार्यक्रम', titleEn: 'Academics', url: '#academics', isExternal: false, sortOrder: 3, isVisible: true },
     { id: '4', schoolId: '', titleNp: 'सूचनाहरू', titleEn: 'Notices', url: '#notices', isExternal: false, sortOrder: 4, isVisible: true },
-    { id: '5', schoolId: '', titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 5, isVisible: true },
-    { id: '6', schoolId: '', titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 6, isVisible: true },
-    { id: '7', schoolId: '', titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 7, isVisible: true },
-    { id: '8', schoolId: '', titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 8, isVisible: true },
+    { id: '5', schoolId: '', titleNp: 'सदन तथा ECA', titleEn: 'House & ECA', url: '#houses', isExternal: false, sortOrder: 5, isVisible: true },
+    { id: '6', schoolId: '', titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 6, isVisible: true },
+    { id: '7', schoolId: '', titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 7, isVisible: true },
+    { id: '8', schoolId: '', titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 8, isVisible: true },
+    { id: '9', schoolId: '', titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 9, isVisible: true },
   ];
   const navItems = overview?.navItems && overview.navItems.length > 0 ? overview.navItems : defaultNavItems;
 
@@ -808,6 +813,239 @@ export const App: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ========================================================= */}
+      {/* 9.5. HOUSE CHAMPIONSHIP & ECA STANDINGS */}
+      {/* ========================================================= */}
+      <section id="houses" className="py-16 bg-gradient-to-b from-slate-50 via-indigo-50/20 to-slate-50 border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          {/* Header */}
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-black tracking-wide border border-amber-200 shadow-2xs">
+              <Trophy className="w-3.5 h-3.5 text-amber-600" />
+              {isNp ? 'सदन च्याम्पियनसिप तथा अतिरिक्त क्रियाकलाप' : 'House Championship & ECA Standings'}
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900">
+              {isNp ? 'सदन अङ्क तालिका तथा प्रतियोगिता नतिजा' : 'Live House Standings & Competition Results'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {isNp
+                ? 'विद्यार्थीहरू बीच नेतृत्व, खेलकुद, अनुशासन, सिर्जनशीलता तथा सहकार्य प्रवर्द्धन गर्न ४ सदन (रातो, नीलो, हरियो, पहेंलो) बीच सञ्चालित वार्षिक प्रतियोगिताको प्रत्यक्ष अङ्क तथा पदक तालिका।'
+                : 'Fostering teamwork, sportsmanship, creativity, and leadership across our 4 school houses (Red, Blue, Green, Yellow) with real-time tournament standings and medals.'}
+            </p>
+          </div>
+
+          {/* House Standings Cards */}
+          {houseStandings.length === 0 ? (
+            <div className="text-center py-12 px-4 rounded-2xl border border-dashed border-slate-200 bg-white text-slate-500 text-sm">
+              <Trophy className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+              {isNp ? 'सदन विवरण उपलब्ध छैन।' : 'House standings not available yet.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {houseStandings.map((h: any, idx: number) => {
+                const rankColor =
+                  idx === 0
+                    ? 'border-amber-400 bg-amber-50/50 shadow-md ring-2 ring-amber-300/60'
+                    : idx === 1
+                    ? 'border-slate-300 bg-slate-50 shadow-xs'
+                    : idx === 2
+                    ? 'border-amber-200 bg-white shadow-xs'
+                    : 'border-slate-200 bg-white shadow-xs';
+
+                const rankBadge =
+                  idx === 0
+                    ? { labelNp: '१st प्रथम (Leader)', labelEn: '1st (Leader)', bg: 'bg-amber-500 text-white', icon: '🏆' }
+                    : idx === 1
+                    ? { labelNp: '२nd दोस्रो', labelEn: '2nd Place', bg: 'bg-slate-500 text-white', icon: '🥈' }
+                    : idx === 2
+                    ? { labelNp: '३rd तेस्रो', labelEn: '3rd Place', bg: 'bg-amber-700 text-white', icon: '🥉' }
+                    : { labelNp: `${idx + 1}th चौथो`, labelEn: `${idx + 1}th Place`, bg: 'bg-slate-400 text-white', icon: '🎖️' };
+
+                return (
+                  <div
+                    key={h.id}
+                    className={`rounded-2xl border p-5 flex flex-col justify-between transition hover:-translate-y-1 hover:shadow-lg relative overflow-hidden ${rankColor}`}
+                  >
+                    {/* Top Accent Strip with House Color */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-2"
+                      style={{ backgroundColor: h.colorHex || '#4f46e5' }}
+                    />
+
+                    <div>
+                      {/* Rank & House Dot Header */}
+                      <div className="flex justify-between items-center mb-3 pt-1">
+                        <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs ${rankBadge.bg}`}>
+                          <span>{rankBadge.icon}</span>
+                          {isNp ? rankBadge.labelNp : rankBadge.labelEn}
+                        </span>
+                        <div
+                          className="w-4 h-4 rounded-full border border-white shadow-xs"
+                          style={{ backgroundColor: h.colorHex || '#4f46e5' }}
+                          title={h.nameEn}
+                        />
+                      </div>
+
+                      {/* House Name */}
+                      <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                        {isNp ? h.nameNp : h.nameEn}
+                      </h3>
+
+                      {/* Points Banner */}
+                      <div className="my-3 p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {isNp ? 'कुल अङ्क' : 'Total Points'}
+                          </div>
+                          <div className="text-2xl font-black text-amber-300">
+                            {h.totalPoints || 0}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {isNp ? 'सदस्य विद्यार्थी' : 'Members'}
+                          </div>
+                          <div className="text-sm font-bold text-white flex items-center justify-end gap-1">
+                            <Users className="w-3.5 h-3.5 text-slate-400" />
+                            {h.memberCount || 0}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medal Tally */}
+                      <div className="grid grid-cols-3 gap-1.5 py-2 px-2.5 bg-slate-100/80 rounded-xl text-center text-xs">
+                        <div className="p-1 rounded bg-white/80 border border-slate-200/60">
+                          <span className="block text-sm">🥇</span>
+                          <span className="font-extrabold text-slate-900">{h.goldMedals || 0}</span>
+                          <span className="block text-[9px] text-slate-500 font-semibold">{isNp ? 'स्वर्ण' : 'Gold'}</span>
+                        </div>
+                        <div className="p-1 rounded bg-white/80 border border-slate-200/60">
+                          <span className="block text-sm">🥈</span>
+                          <span className="font-extrabold text-slate-900">{h.silverMedals || 0}</span>
+                          <span className="block text-[9px] text-slate-500 font-semibold">{isNp ? 'रजत' : 'Silver'}</span>
+                        </div>
+                        <div className="p-1 rounded bg-white/80 border border-slate-200/60">
+                          <span className="block text-sm">🥉</span>
+                          <span className="font-extrabold text-slate-900">{h.bronzeMedals || 0}</span>
+                          <span className="block text-[9px] text-slate-500 font-semibold">{isNp ? 'कांस्य' : 'Bronze'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* House Leadership Info */}
+                    <div className="mt-4 pt-3 border-t border-slate-200/70 text-[11px] text-slate-600 space-y-1">
+                      {h.masterTeacherName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">{isNp ? 'सदनाध्यक्ष:' : 'Master:'}</span>
+                          <span className="font-bold text-slate-800 truncate max-w-[140px]">{h.masterTeacherName}</span>
+                        </div>
+                      )}
+                      {h.captainStudentName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">{isNp ? 'कप्तान:' : 'Captain:'}</span>
+                          <span className="font-bold text-slate-800 truncate max-w-[140px]">{h.captainStudentName}</span>
+                        </div>
+                      )}
+                      {h.viceCaptainStudentName && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 font-medium">{isNp ? 'उप-कप्तान:' : 'Vice-Capt:'}</span>
+                          <span className="font-medium text-slate-700 truncate max-w-[140px]">{h.viceCaptainStudentName}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Recent ECA Competitions & Match Results */}
+          {recentHouseActivities.length > 0 && (
+            <div className="pt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Flag className="w-5 h-5 text-indigo-600" />
+                    {isNp ? 'हालै सम्पन्न अन्तर-सदन प्रतियोगिताहरू' : 'Recent Inter-House Competitions'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {isNp ? 'प्रतियोगितामा प्राप्त स्थान तथा विजेता सदनहरू' : 'Podium finishes and points awarded to winning houses'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {recentHouseActivities.map((act: any) => (
+                  <div
+                    key={act.id}
+                    className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:border-indigo-300 transition space-y-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        {act.category || 'ECA'}
+                      </span>
+                      {act.eventDateBs && (
+                        <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {act.eventDateBs}
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {isNp ? (act.titleNp || act.title) : (act.title || act.titleNp)}
+                      </h4>
+                      {act.description && (
+                        <p className="text-xs text-slate-600 line-clamp-2 mt-1 leading-relaxed">
+                          {act.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Podium Results */}
+                    <div className="pt-2 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+                      {act.firstHouse ? (
+                        <div className="p-2 rounded-xl bg-amber-50/70 border border-amber-200/60">
+                          <span className="text-[10px] font-black text-amber-800 block">🥇 {isNp ? 'प्रथम (+१००)' : '1st (+100)'}</span>
+                          <span className="text-xs font-bold text-slate-900 truncate block mt-0.5">
+                            {isNp ? act.firstHouse.nameNp : act.firstHouse.nameEn}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-slate-50 text-slate-400 text-[10px]">-</div>
+                      )}
+
+                      {act.secondHouse ? (
+                        <div className="p-2 rounded-xl bg-slate-100/70 border border-slate-200/60">
+                          <span className="text-[10px] font-black text-slate-700 block">🥈 {isNp ? 'दोस्रो (+६०)' : '2nd (+60)'}</span>
+                          <span className="text-xs font-bold text-slate-900 truncate block mt-0.5">
+                            {isNp ? act.secondHouse.nameNp : act.secondHouse.nameEn}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-slate-50 text-slate-400 text-[10px]">-</div>
+                      )}
+
+                      {act.thirdHouse ? (
+                        <div className="p-2 rounded-xl bg-amber-100/50 border border-amber-300/40">
+                          <span className="text-[10px] font-black text-amber-900 block">🥉 {isNp ? 'तेस्रो (+४०)' : '3rd (+40)'}</span>
+                          <span className="text-xs font-bold text-slate-900 truncate block mt-0.5">
+                            {isNp ? act.thirdHouse.nameNp : act.thirdHouse.nameEn}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded-xl bg-slate-50 text-slate-400 text-[10px]">-</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

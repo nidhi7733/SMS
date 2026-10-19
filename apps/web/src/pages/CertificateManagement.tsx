@@ -67,6 +67,10 @@ interface CertificateRecord {
   printCount?: number;
   firstPrintedAt?: string;
   lastPrintedAt?: string;
+  houseId?: string | null;
+  houseNameNp?: string | null;
+  houseNameEn?: string | null;
+  houseColor?: string | null;
   createdAt: string;
 }
 
@@ -484,6 +488,7 @@ export const CertificateManagement: React.FC = () => {
         </p>
         <p style="margin-bottom: ${mode === 'BI' ? '12px' : '20px'}; font-size: 14.5px; line-height: 1.8; text-align: justify;">
           यस विद्यालयमा अध्ययनरत रहँदा निजको चालचलन तथा चारित्रिक आचरण <b style="color: #451a03; text-decoration: underline dotted #78350f; padding: 0 2px;">${cert.characterRemarks}</b> रहेको पाइएको छ। 
+          ${cert.houseNameNp || cert.houseNameEn ? `निजले विद्यालयको <b style="color: #1e3a8a; padding: 0 2px;">${cert.houseNameNp || cert.houseNameEn}</b> मा आबद्ध रही अतिरिक्त क्रियाकलाप (ECA), खेलकुद तथा रचनात्मक गतिविधिहरूमा अनुशासित र सक्रिय सहभागिता जनाउनुभएको प्रमाणित गरिन्छ।` : ''}
           निजले <b style="text-decoration: underline dotted #78350f; padding: 0 2px;">${cert.reasonForLeaving}</b> कारणले यस विद्यालयबाट परित्याग लिनुभएको हो। 
           निजको उत्तरोत्तर शैक्षिक प्रगति तथा उज्ज्वल भविष्यको हार्दिक शुभकामना व्यक्त गर्दछौं।
         </p>
@@ -506,6 +511,7 @@ export const CertificateManagement: React.FC = () => {
           </p>
           <p style="margin-bottom: 16px; font-size: ${mode === 'BI' ? '13px' : '15px'}; line-height: 1.7; text-align: justify; color: ${mode === 'BI' ? '#334155' : '#0f172a'}; font-style: ${mode === 'BI' ? 'italic' : 'normal'};">
             During his / her period of study in this institution, his / her moral character and conduct was found to be <b style="color: #0f172a; font-style: normal;">${cert.characterRemarks}</b>. 
+            ${cert.houseNameEn || cert.houseNameNp ? `He / She was an active member of <b style="color: #1e3a8a; font-style: normal;">${cert.houseNameEn || cert.houseNameNp}</b> and actively participated in Extra Co-Curricular Activities (ECA), sports, and cultural events with commendable discipline.` : ''}
             He / She has left this school on account of <b style="font-style: normal;">${cert.reasonForLeaving}</b>. We wish him / her every success in future academic endeavors.
           </p>
         </div>
@@ -1741,7 +1747,17 @@ export const CertificateManagement: React.FC = () => {
                         <span className="font-bold text-amber-950 underline decoration-dotted underline-offset-2 px-1">
                           {activePrintCert.characterRemarks}
                         </span>{' '}
-                        रहेको पाइएको छ। निजले{' '}
+                        रहेको पाइएको छ।{' '}
+                        {(activePrintCert.houseNameNp || activePrintCert.houseNameEn) && (
+                          <span>
+                            निजले विद्यालयको{' '}
+                            <strong className="text-blue-900 font-bold">
+                              {activePrintCert.houseNameNp || activePrintCert.houseNameEn}
+                            </strong>{' '}
+                            मा आबद्ध रही अतिरिक्त क्रियाकलाप (ECA), खेलकुद तथा रचनात्मक गतिविधिहरूमा अनुशासित र सक्रिय सहभागिता जनाउनुभएको प्रमाणित गरिन्छ।{' '}
+                          </span>
+                        )}
+                        निजले{' '}
                         <span className="font-semibold underline decoration-dotted underline-offset-2 px-1">
                           {activePrintCert.reasonForLeaving}
                         </span>{' '}
@@ -1764,7 +1780,17 @@ export const CertificateManagement: React.FC = () => {
                         <span className="font-bold not-italic text-slate-900">
                           {activePrintCert.characterRemarks}
                         </span>
-                        . He / She has left this school on account of{' '}
+                        .{' '}
+                        {(activePrintCert.houseNameEn || activePrintCert.houseNameNp) && (
+                          <span className="not-italic">
+                            He / She was an active member of{' '}
+                            <strong className="text-blue-900 font-bold">
+                              {activePrintCert.houseNameEn || activePrintCert.houseNameNp}
+                            </strong>{' '}
+                            and actively participated in Extra Co-Curricular Activities (ECA), sports, and cultural events with commendable discipline.{' '}
+                          </span>
+                        )}
+                        He / She has left this school on account of{' '}
                         <span className="font-medium not-italic">{activePrintCert.reasonForLeaving}</span>. We wish him /
                         her every success in future endeavors.
                       </p>

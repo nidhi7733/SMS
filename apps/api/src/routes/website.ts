@@ -160,6 +160,62 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const totalTeachers = await db.select({ count: sql`count(*)` }).from(schema.staff).where(eq(schema.staff.schoolId, schoolId));
     const totalClassrooms = await db.select({ count: sql`count(*)` }).from(schema.sections);
 
+    // Fetch houses & ECA activities for public display
+    const [allHouses, allStudentsList, allActivities] = await Promise.all([
+      db.query.houses.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, schoolId) }),
+      db.query.students.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, schoolId) }),
+      db.query.houseActivities.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, schoolId),
+        orderBy: (t: any, { desc }: any) => [desc(t.createdAt)],
+      }),
+    ]);
+
+    const housesWithStats = allHouses.map((h: any) => {
+      let totalPoints = 0;
+      let goldMedals = 0;
+      let silverMedals = 0;
+      let bronzeMedals = 0;
+
+      for (const act of allActivities) {
+        if (act.firstHouseId === h.id) {
+          totalPoints += act.firstPoints || 100;
+          goldMedals += 1;
+        }
+        if (act.secondHouseId === h.id) {
+          totalPoints += act.secondPoints || 60;
+          silverMedals += 1;
+        }
+        if (act.thirdHouseId === h.id) {
+          totalPoints += act.thirdPoints || 40;
+          bronzeMedals += 1;
+        }
+      }
+
+      return {
+        ...h,
+        memberCount: allStudentsList.filter((s: any) => s.houseId === h.id).length,
+        totalPoints,
+        goldMedals,
+        silverMedals,
+        bronzeMedals,
+        totalEvents: goldMedals + silverMedals + bronzeMedals,
+      };
+    });
+
+    housesWithStats.sort((a: any, b: any) => b.totalPoints - a.totalPoints || b.goldMedals - a.goldMedals);
+    const houseStandings = housesWithStats.map((h: any, idx: number) => ({
+      ...h,
+      rank: idx + 1,
+    }));
+
+    const houseMap = new Map<string, any>(allHouses.map((h: any) => [h.id, h]));
+    const recentHouseActivities = allActivities.slice(0, 6).map((act: any) => ({
+      ...act,
+      firstHouse: act.firstHouseId ? houseMap.get(act.firstHouseId) : null,
+      secondHouse: act.secondHouseId ? houseMap.get(act.secondHouseId) : null,
+      thirdHouse: act.thirdHouseId ? houseMap.get(act.thirdHouseId) : null,
+    }));
+
     return reply.send({
       school: {
         id: school.id,
@@ -184,6 +240,8 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
       upcomingEvents,
       featuredAlbums,
       downloads,
+      houseStandings,
+      recentHouseActivities,
       stats: {
         totalStudents: settings.customTotalStudents || Number(totalStudents[0]?.count) || 450,
         totalTeachers: settings.customTotalTeachers || Number(totalTeachers[0]?.count) || 28,
@@ -219,6 +277,69 @@ export default async function websiteRoutes(fastify: FastifyInstance) {
     const events = await getPublicEvents(db, schoolId);
 
     return reply.send({ events });
+  });
+
+  // 3.1 Public House Standings & ECA Championship
+  fastify.get('/public/houses', async (_request: FastifyRequest, reply: FastifyReply) => {
+    const db = await getDb();
+    const schoolId = await getPublicSchoolId();
+
+    const [allHouses, allStudentsList, allActivities] = await Promise.all([
+      db.query.houses.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, schoolId) }),
+      db.query.students.findMany({ where: (t: any, { eq }: any) => eq(t.schoolId, schoolId) }),
+      db.query.houseActivities.findMany({
+        where: (t: any, { eq }: any) => eq(t.schoolId, schoolId),
+        orderBy: (t: any, { desc }: any) => [desc(t.createdAt)],
+      }),
+    ]);
+
+    const housesWithStats = allHouses.map((h: any) => {
+      let totalPoints = 0;
+      let goldMedals = 0;
+      let silverMedals = 0;
+      let bronzeMedals = 0;
+
+      for (const act of allActivities) {
+        if (act.firstHouseId === h.id) {
+          totalPoints += act.firstPoints || 100;
+          goldMedals += 1;
+        }
+        if (act.secondHouseId === h.id) {
+          totalPoints += act.secondPoints || 60;
+          silverMedals += 1;
+        }
+        if (act.thirdHouseId === h.id) {
+          totalPoints += act.thirdPoints || 40;
+          bronzeMedals += 1;
+        }
+      }
+
+      return {
+        ...h,
+        memberCount: allStudentsList.filter((s: any) => s.houseId === h.id).length,
+        totalPoints,
+        goldMedals,
+        silverMedals,
+        bronzeMedals,
+        totalEvents: goldMedals + silverMedals + bronzeMedals,
+      };
+    });
+
+    housesWithStats.sort((a: any, b: any) => b.totalPoints - a.totalPoints || b.goldMedals - a.goldMedals);
+    const houseStandings = housesWithStats.map((h: any, idx: number) => ({
+      ...h,
+      rank: idx + 1,
+    }));
+
+    const houseMap = new Map<string, any>(allHouses.map((h: any) => [h.id, h]));
+    const recentHouseActivities = allActivities.slice(0, 10).map((act: any) => ({
+      ...act,
+      firstHouse: act.firstHouseId ? houseMap.get(act.firstHouseId) : null,
+      secondHouse: act.secondHouseId ? houseMap.get(act.secondHouseId) : null,
+      thirdHouse: act.thirdHouseId ? houseMap.get(act.thirdHouseId) : null,
+    }));
+
+    return reply.send({ houses: houseStandings, activities: recentHouseActivities });
   });
 
   // 4. Public Gallery Albums with Images

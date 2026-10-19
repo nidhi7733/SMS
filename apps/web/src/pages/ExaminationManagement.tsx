@@ -2447,6 +2447,22 @@ export const ExaminationManagement: React.FC = () => {
                       <span className="text-slate-500">हाजिरी प्रतिशत: </span>
                       <span className="font-mono font-bold text-emerald-700">{gradesheetData.attendance?.attendanceRate || 92}%</span>
                     </div>
+                    <div>
+                      <span className="text-slate-500">सदन (House): </span>
+                      <span className="font-bold inline-flex items-center gap-1.5">
+                        {gradesheetData.student?.houseColor && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block border border-black/20"
+                            style={{ backgroundColor: gradesheetData.student.houseColor }}
+                          />
+                        )}
+                        <span>
+                          {isNp
+                            ? (gradesheetData.student?.houseNameNp || gradesheetData.student?.houseNameEn || '—')
+                            : (gradesheetData.student?.houseNameEn || gradesheetData.student?.houseNameNp || '—')}
+                        </span>
+                      </span>
+                    </div>
                   </div>
 
                   {/* Student Photo Box */}
@@ -2645,6 +2661,22 @@ export const ExaminationManagement: React.FC = () => {
                       <span className="text-slate-500">विद्यार्थी नं (ID): </span>
                       <span className="font-mono font-bold">{gradesheetData.student?.studentId}</span>
                     </div>
+                    <div>
+                      <span className="text-slate-500">सदन (House): </span>
+                      <span className="font-bold inline-flex items-center gap-1.5">
+                        {gradesheetData.student?.houseColor && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block border border-black/20"
+                            style={{ backgroundColor: gradesheetData.student.houseColor }}
+                          />
+                        )}
+                        <span>
+                          {isNp
+                            ? (gradesheetData.student?.houseNameNp || gradesheetData.student?.houseNameEn || '—')
+                            : (gradesheetData.student?.houseNameEn || gradesheetData.student?.houseNameNp || '—')}
+                        </span>
+                      </span>
+                    </div>
                   </div>
 
                   {/* Student Photo Box */}
@@ -2738,6 +2770,33 @@ export const ExaminationManagement: React.FC = () => {
                     <span className="text-lg font-black text-blue-700 font-mono">
                       {gradesheetData.resultStatus === 'NG' ? 'NG' : gradesheetData.gpa}
                     </span>
+                  </div>
+                </div>
+
+                {/* House & ECA Conduct Evaluation */}
+                <div className="bg-slate-50 border border-slate-300 p-2.5 rounded-lg text-xs flex flex-wrap items-center justify-between gap-2 my-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-700">सदन तथा अतिरिक्त क्रियाकलाप (House & ECA):</span>
+                    {gradesheetData.student?.houseNameNp || gradesheetData.student?.houseNameEn ? (
+                      <span className="inline-flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full text-[11px] bg-white border border-slate-300">
+                        {gradesheetData.student.houseColor && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full inline-block border border-black/20"
+                            style={{ backgroundColor: gradesheetData.student.houseColor }}
+                          />
+                        )}
+                        <span>
+                          {isNp
+                            ? (gradesheetData.student.houseNameNp || gradesheetData.student.houseNameEn)
+                            : (gradesheetData.student.houseNameEn || gradesheetData.student.houseNameNp)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">—</span>
+                    )}
+                  </div>
+                  <div className="text-slate-600 font-medium">
+                    सहभागिता तथा आचरण मूल्याङ्कन: <span className="font-bold text-emerald-800">उत्कृष्ट / सक्रिय (Exemplary & Active)</span>
                   </div>
                 </div>
 

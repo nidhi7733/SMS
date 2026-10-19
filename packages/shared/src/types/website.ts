@@ -243,6 +243,8 @@ export interface PublicWebsiteOverview {
   upcomingEvents: WebsiteEvent[];
   featuredAlbums: WebsiteGalleryAlbum[];
   downloads: WebsiteDownload[];
+  houseStandings?: any[];
+  recentHouseActivities?: any[];
   stats: {
     totalStudents: number;
     totalTeachers: number;
