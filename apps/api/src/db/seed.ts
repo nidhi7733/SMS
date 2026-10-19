@@ -4548,10 +4548,11 @@ export async function runMigrationsAndSeed() {
         { id: crypto.randomUUID(), schoolId, titleNp: 'हाम्रो बारेमा', titleEn: 'About', url: '#about', isExternal: false, sortOrder: 2, isVisible: true },
         { id: crypto.randomUUID(), schoolId, titleNp: 'शैक्षिक कार्यक्रम', titleEn: 'Academics', url: '#academics', isExternal: false, sortOrder: 3, isVisible: true },
         { id: crypto.randomUUID(), schoolId, titleNp: 'सूचनाहरू', titleEn: 'Notices', url: '#notices', isExternal: false, sortOrder: 4, isVisible: true },
-        { id: crypto.randomUUID(), schoolId, titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 5, isVisible: true },
-        { id: crypto.randomUUID(), schoolId, titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 6, isVisible: true },
-        { id: crypto.randomUUID(), schoolId, titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 7, isVisible: true },
-        { id: crypto.randomUUID(), schoolId, titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 8, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'सदन तथा ECA', titleEn: 'House & ECA', url: '#houses', isExternal: false, sortOrder: 5, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'कार्यक्रम', titleEn: 'Events', url: '#events', isExternal: false, sortOrder: 6, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'ग्यालरी', titleEn: 'Gallery', url: '#gallery', isExternal: false, sortOrder: 7, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'डाउनलोड', titleEn: 'Downloads', url: '#downloads', isExternal: false, sortOrder: 8, isVisible: true },
+        { id: crypto.randomUUID(), schoolId, titleNp: 'सम्पर्क', titleEn: 'Contact', url: '#contact', isExternal: false, sortOrder: 9, isVisible: true },
       ]);
     }
 

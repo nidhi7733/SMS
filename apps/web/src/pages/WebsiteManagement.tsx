@@ -2676,7 +2676,7 @@ export const WebsiteManagement: React.FC = () => {
                 {/* Preset shortcuts */}
                 <div className="flex flex-wrap gap-1 mt-2">
                   <span className="text-[10px] text-slate-400 self-center mr-1">{isNp ? 'छिटो छनोट:' : 'Quick:'}</span>
-                  {['#home', '#about', '#academics', '#notices', '#events', '#gallery', '#downloads', '#contact'].map((sec) => (
+                  {['#home', '#about', '#academics', '#notices', '#houses', '#events', '#gallery', '#downloads', '#contact'].map((sec) => (
                     <button
                       key={sec}
                       type="button"
